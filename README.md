@@ -8,7 +8,7 @@ This document is the source of truth for the project: what it is, what it isn't,
 
 ## What this is
 
-A small, personal-use app for a group of friends who ride motorcycles together. It covers the full lifecycle of a trip: planning the route together, journaling the experience as it happens, tracking per-person costs, importing GPS tracks after the ride, and archiving past trips on a world map.
+A small, personal-use app for a fixed group of friends who ride motorcycles together. It covers the full lifecycle of a trip: planning the route together, journaling the experience as it happens, tracking per-person costs, importing GPS tracks after the ride, and archiving past trips on a world map.
 
 Not a commercial product. Not a startup. Built for ourselves.
 
@@ -21,6 +21,14 @@ Not a commercial product. Not a startup. Built for ourselves.
 3. **Cheap to run.** Free tiers only. No paid services for as long as possible.
 4. **Open the door, don't walk through it.** Realtime collaboration, offline queueing, photo hosting, advanced features — all *possible* in this architecture, but not built until needed.
 5. **Honesty about scope.** When something can be deferred, defer it. When something can be replaced by an external tool (Splitwise for cost splitting, Google Maps for navigation), use the external tool.
+
+---
+
+## Access model
+
+The app is for a fixed, trusted group of friends. Anyone who signs in with Google sees all trips. There are no per-trip permissions, no invites, no roles.
+
+Access to the app is controlled the same way access to a private group chat is: by who knows it exists and who has been told to sign in. If that ever becomes the wrong model (someone joins who shouldn't see everything, a private trip needs to be planned), per-trip membership can be added later as a non-breaking change.
 
 ---
 
@@ -54,12 +62,12 @@ Not a commercial product. Not a startup. Built for ourselves.
 Tables live in Supabase Postgres. All tables have `id` (UUID) and `created_at` unless noted.
 
 ### `users`
-Managed by Supabase Auth. We don't write to this directly.
+Managed by Supabase Auth. We don't write to this directly. Used as a reference for `created_by` / `author_id` fields and for displaying who wrote what.
 
 ### `trips`
 | Field | Type | Notes |
 |---|---|---|
-| owner_id | uuid | references auth.users |
+| created_by | uuid | references auth.users; informational, not access control |
 | title | text | |
 | description | text | |
 | start_date | date | |
@@ -67,14 +75,7 @@ Managed by Supabase Auth. We don't write to this directly.
 | cover_photo_url | text | external link |
 | status | text | `planning` / `active` / `completed` |
 
-### `trip_members`
-| Field | Type | Notes |
-|---|---|---|
-| trip_id | uuid | |
-| user_id | uuid | |
-| joined_at | timestamptz | |
-
-Everyone in `trip_members` can edit. No roles in v1.
+All signed-in users can read and edit all trips.
 
 ### `stages`
 One stage = one route segment, not strictly one day. A trip can have many stages.
@@ -99,7 +100,7 @@ One stage = one route segment, not strictly one day. A trip can have many stages
 | Field | Type | Notes |
 |---|---|---|
 | stage_id | uuid | |
-| author_id | uuid | |
+| author_id | uuid | who wrote it |
 | entry_type | text | `stop` / `meal` / `lodging` / `note` / `drink` / `other` |
 | title | text | |
 | description | text | |
@@ -113,7 +114,7 @@ Per-user, no splits.
 | Field | Type | Notes |
 |---|---|---|
 | trip_id | uuid | |
-| user_id | uuid | |
+| user_id | uuid | who spent it |
 | category | text | `fuel` / `food` / `lodging` / `tolls` / `other` |
 | amount | numeric | |
 | currency | text | ISO code |
@@ -158,16 +159,15 @@ Goal: usable for the next real trip. Plan a trip, see weather, write journal ent
 - [ ] Repo created, deployed to Cloudflare Pages on push
 - [ ] Supabase project set up, Google OAuth configured
 - [ ] Database schema created (all tables above)
-- [ ] Row-Level Security policies: users see trips they own or are members of
+- [ ] Row-Level Security policies: any signed-in user can read/write all rows
 - [ ] App shell: HTML, CSS, service worker, manifest
 - [ ] PWA installable on iOS and Android
 - [ ] Auth flow: sign in with Google, sign out
 
 **Trips**
 - [ ] Create a trip (title, dates, description)
-- [ ] List my trips
+- [ ] List all trips (visible to everyone signed in)
 - [ ] View a single trip
-- [ ] Invite a friend to a trip (by email; they get added on next sign-in)
 - [ ] Edit trip details
 - [ ] Delete a trip (with confirmation)
 
@@ -185,6 +185,7 @@ Goal: usable for the next real trip. Plan a trip, see weather, write journal ent
 **Journal**
 - [ ] Add a journal entry to a stage (type, title, description, timestamp, location, optional photo album link)
 - [ ] List entries for a stage, sorted by timestamp
+- [ ] Show who wrote each entry
 - [ ] Edit a journal entry
 - [ ] Delete a journal entry
 
@@ -237,12 +238,12 @@ Goal: make the app pleasant to use, add finishing touches.
 
 Things on the radar but not committed to. Considered when there's a clear reason.
 
+- Per-trip membership and roles (if the open-access model ever burns us)
 - Bike profiles (which bike per trip, per rider)
 - Maintenance log
 - Gear inventory
 - Photo upload + storage (when NAS + Nextcloud is ready)
 - Pre-ride essentials (fuel range estimation, checks)
-- Roles and permissions (if everyone-can-edit ever burns us)
 - Voice notes for journal entries
 
 ---
@@ -291,6 +292,7 @@ This structure is a target, not a constraint. Files split off when they get unwi
 
 A running list of decisions made and why. New entries go at the top.
 
+- **2026-05: No invites, no per-trip membership.** Anyone who signs in sees all trips. The app's audience is a fixed friend group, controlled by who is told the app exists. Reduces Phase 1 scope and removes a whole class of edge cases (pending invites, mismatched emails, role escalation). Reversible: per-trip membership can be added later as an additive change.
 - **2026-05: Photos as external links in v1.** Defers all photo storage complexity. Will be revisited when NAS + Nextcloud is set up.
 - **2026-05: World map archive moved from Phase 2 to Phase 3.** Nothing to archive until a few trips are completed.
 - **2026-05: No realtime in v1.** Refresh-to-see is sufficient for trip planning. Free tier supports it; adding later is straightforward.
