@@ -28,7 +28,9 @@ Not a commercial product. Not a startup. Built for ourselves.
 
 The app is for a fixed, trusted group of friends. Anyone who signs in with Google sees all trips. There are no per-trip permissions, no invites, no roles.
 
-Access to the app is controlled the same way access to a private group chat is: by who knows it exists and who has been told to sign in. If that ever becomes the wrong model (someone joins who shouldn't see everything, a private trip needs to be planned), per-trip membership can be added later as a non-breaking change.
+Access to the app is controlled the same way access to a private group chat is: by who knows it exists and who has been told to sign in. Currently this is enforced via the Google OAuth consent screen's **Test users** list — only emails on that list can complete sign-in.
+
+If that ever becomes the wrong model (someone joins who shouldn't see everything, a private trip needs to be planned), per-trip membership can be added later as a non-breaking change.
 
 ---
 
@@ -44,7 +46,7 @@ Access to the app is controlled the same way access to a private group chat is: 
 | Maps (navigation) | Google Maps intent links | Hand off to the user's existing maps app |
 | Weather | Open-Meteo API | Free, no key, generous limits |
 | Photos | External album links (Google Photos, iCloud, Nextcloud later) | Defers the complexity of photo storage entirely |
-| PWA | Hand-written service worker (~30 lines) | No plugin needed |
+| PWA | Hand-written service worker (~80 lines) | No plugin needed |
 | Icons | Inline SVGs (Lucide-style) | No icon library dependency |
 
 ### Stack things deliberately not used
@@ -67,13 +69,13 @@ Managed by Supabase Auth. We don't write to this directly. Used as a reference f
 ### `trips`
 | Field | Type | Notes |
 |---|---|---|
-| created_by | uuid | references auth.users; informational, not access control |
-| title | text | |
+| created_by | uuid | references auth.users; auto-set by trigger |
+| title | text | NOT NULL |
 | description | text | |
 | start_date | date | |
 | end_date | date | |
 | cover_photo_url | text | external link |
-| status | text | `planning` / `active` / `completed` |
+| status | text | `planning` / `active` / `completed` / `cancelled` |
 
 All signed-in users can read and edit all trips.
 
@@ -82,25 +84,25 @@ One stage = one route segment, not strictly one day. A trip can have many stages
 
 | Field | Type | Notes |
 |---|---|---|
-| trip_id | uuid | |
+| trip_id | uuid | ON DELETE CASCADE |
 | order_index | int | for ordering |
 | title | text | |
 | start_location | text | human-readable, e.g. "Lisbon" |
-| start_lat / start_lng | float | for weather and map |
+| start_lat / start_lng | double precision | for weather and map |
 | end_location | text | |
-| end_lat / end_lng | float | |
+| end_lat / end_lng | double precision | |
 | planned_date | date | |
 | gmaps_url | text | Google Maps intent link |
-| distance_km | float | |
+| distance_km | double precision | |
 | notes | text | |
 
-**Decision logged:** Stages are point-to-point in v1. Intermediate weather points (e.g. midpoint) are computed from start/end coordinates, not stored separately. If we later want named waypoints, we add a `stage_waypoints` table.
+**Decision logged:** Stages are point-to-point in v1. Intermediate weather points are computed from start/end coordinates, not stored separately. If we later want named waypoints, we add a `stage_waypoints` table.
 
 ### `journal_entries`
 | Field | Type | Notes |
 |---|---|---|
-| stage_id | uuid | |
-| author_id | uuid | who wrote it |
+| stage_id | uuid | ON DELETE CASCADE |
+| author_id | uuid | auto-set by trigger |
 | entry_type | text | `stop` / `meal` / `lodging` / `note` / `drink` / `other` |
 | title | text | |
 | description | text | |
@@ -113,33 +115,33 @@ Per-user, no splits.
 
 | Field | Type | Notes |
 |---|---|---|
-| trip_id | uuid | |
-| user_id | uuid | who spent it |
+| trip_id | uuid | ON DELETE CASCADE |
+| user_id | uuid | auto-set by trigger |
 | category | text | `fuel` / `food` / `lodging` / `tolls` / `other` |
-| amount | numeric | |
-| currency | text | ISO code |
+| amount | numeric(12, 2) | exact, never float |
+| currency | text | ISO code, default EUR |
 | description | text | |
 | date | date | |
 
 ### `video_notes`
-One row per trip in v1.
+One row per trip, enforced by `UNIQUE(trip_id)`.
 
 | Field | Type | Notes |
 |---|---|---|
-| trip_id | uuid | unique |
+| trip_id | uuid | UNIQUE, ON DELETE CASCADE |
 | content | text | freeform notes |
 | song_title | text | |
 | song_artist | text | |
 | song_url | text | |
-| updated_at | timestamptz | |
+| updated_at | timestamptz | auto-touched on update |
 
 ### `gpx_tracks`
 | Field | Type | Notes |
 |---|---|---|
-| trip_id | uuid | |
-| stage_id | uuid | nullable — a track may span the whole trip or one stage |
+| trip_id | uuid | ON DELETE CASCADE |
+| stage_id | uuid | nullable; ON DELETE SET NULL |
 | file_path | text | Supabase Storage path |
-| distance_km | float | |
+| distance_km | double precision | |
 | duration_seconds | int | |
 | uploaded_at | timestamptz | |
 
@@ -156,13 +158,13 @@ Each phase produces a working, deployable app. Tasks within a phase can be reord
 Goal: usable for the next real trip. Plan a trip, see weather, write journal entries during the ride.
 
 **Foundation**
-- [ ] Repo created, deployed to Cloudflare Pages on push
-- [ ] Supabase project set up, Google OAuth configured
-- [ ] Database schema created (all tables above)
-- [ ] Row-Level Security policies: any signed-in user can read/write all rows
-- [ ] App shell: HTML, CSS, service worker, manifest
-- [ ] PWA installable on iOS and Android
-- [ ] Auth flow: sign in with Google, sign out
+- [x] Repo created, deployed to Cloudflare Pages on push
+- [x] Supabase project set up, Google OAuth configured
+- [x] Database schema created (all tables above)
+- [x] Row-Level Security policies: any signed-in user can read/write all rows
+- [x] App shell: HTML, CSS, service worker, manifest
+- [x] PWA installable on iOS and Android
+- [x] Auth flow: sign in with Google, sign out
 
 **Trips**
 - [ ] Create a trip (title, dates, description)
@@ -190,7 +192,7 @@ Goal: usable for the next real trip. Plan a trip, see weather, write journal ent
 - [ ] Delete a journal entry
 
 **Polish**
-- [ ] Bottom nav (mobile) / sidebar (desktop) responsive
+- [ ] Bottom nav (mobile) / sidebar (desktop) responsive — done in shell
 - [ ] Loading states and error messages
 - [ ] Online-only with clear "you're offline" message when applicable
 
@@ -260,7 +262,7 @@ The human is a capable engineer new to this specific stack — explanations shou
 
 ---
 
-## Project structure (target)
+## Project structure
 
 ```
 routefolk/
@@ -268,23 +270,19 @@ routefolk/
 ├── style.css               # All styles
 ├── app.js                  # Main app logic and state
 ├── lib/
+│   ├── config.js           # Supabase URL + anon key
 │   ├── supabase.js         # Supabase client setup
-│   ├── auth.js             # Sign-in / sign-out
-│   ├── trips.js            # Trip CRUD
-│   ├── stages.js           # Stage CRUD
-│   ├── journal.js          # Journal entry CRUD
-│   ├── weather.js          # Open-Meteo wrapper
-│   └── render.js           # View rendering helpers
-├── sw.js                   # Service worker
+│   └── auth.js             # Sign-in / sign-out / current user
+├── sw.js                   # Service worker (bump CACHE version on shell changes)
 ├── manifest.json           # PWA manifest
 ├── icons/                  # PWA icons
 │   ├── icon-192.png
 │   └── icon-512.png
-├── README.md               # This file
-└── .gitignore
+├── schema.sql              # Database schema (run once in Supabase SQL Editor)
+└── README.md               # This file
 ```
 
-This structure is a target, not a constraint. Files split off when they get unwieldy; nothing is split prematurely.
+`lib/` will grow as Phase 1 progresses (`trips.js`, `stages.js`, `journal.js`, `weather.js`).
 
 ---
 
@@ -292,7 +290,12 @@ This structure is a target, not a constraint. Files split off when they get unwi
 
 A running list of decisions made and why. New entries go at the top.
 
-- **2026-05: No invites, no per-trip membership.** Anyone who signs in sees all trips. The app's audience is a fixed friend group, controlled by who is told the app exists. Reduces Phase 1 scope and removes a whole class of edge cases (pending invites, mismatched emails, role escalation). Reversible: per-trip membership can be added later as an additive change.
+- **2026-05: Service worker cache versioning.** The `CACHE` constant in `sw.js` must be bumped when shell assets change (e.g. `v1` → `v2`). The activate handler deletes old caches. Without bumping, devices keep serving stale files.
+- **2026-05: Supabase URL and anon key live in `lib/config.js`, committed to the repo.** They're public by design; the anon key only allows what RLS policies allow, which is why RLS was set up first.
+- **2026-05: Trips have four statuses: `planning`, `active`, `completed`, `cancelled`.** `cancelled` exists so we can record a planned-but-not-taken trip without deleting it.
+- **2026-05: Hard delete with confirmation, no soft-delete or archive table.** Past trips are `status='completed'`; that's the archive. Hard delete is reserved for real mistakes (typos, duplicates).
+- **2026-05: `created_by` / `author_id` / `user_id` are auto-set by database triggers from `auth.uid()`.** Clients cannot spoof these even if they try.
+- **2026-05: No invites, no per-trip membership.** Anyone who signs in sees all trips. Access controlled by Google OAuth Test users list. Reversible: per-trip membership can be added later as an additive change.
 - **2026-05: Photos as external links in v1.** Defers all photo storage complexity. Will be revisited when NAS + Nextcloud is set up.
 - **2026-05: World map archive moved from Phase 2 to Phase 3.** Nothing to archive until a few trips are completed.
 - **2026-05: No realtime in v1.** Refresh-to-see is sufficient for trip planning. Free tier supports it; adding later is straightforward.
@@ -305,4 +308,4 @@ A running list of decisions made and why. New entries go at the top.
 
 ## License
 
-MIT with changes.
+To be decided. Likely MIT or CC0 for personal-use simplicity.
