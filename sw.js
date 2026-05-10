@@ -1,14 +1,10 @@
 // ============================================================
 // routefolk — sw.js (service worker)
-// Caches the app shell so the app opens instantly and works
-// offline for static assets. Network-first for HTML, cache-first
-// for static assets.
-//
-// IMPORTANT: bump CACHE version when you change shell assets,
-// otherwise old devices keep serving stale files from cache.
+// Caches the app shell. Network-first for HTML, cache-first
+// for static assets. Bump CACHE when shell assets change.
 // ============================================================
 
-const CACHE = 'routefolk-shell-v2';
+const CACHE = 'routefolk-shell-v6';
 
 const SHELL_ASSETS = [
   './',
@@ -19,6 +15,10 @@ const SHELL_ASSETS = [
   './lib/config.js',
   './lib/supabase.js',
   './lib/auth.js',
+  './lib/trips.js',
+  './lib/stages.js',
+  './lib/geocoding.js',
+  './lib/weather.js',
   './icons/icon-192.png',
   './icons/icon-512.png',
 ];
@@ -43,15 +43,12 @@ self.addEventListener('activate', (event) => {
 
 self.addEventListener('fetch', (event) => {
   const req = event.request;
-
   if (req.method !== 'GET') return;
 
   const url = new URL(req.url);
 
-  // Never cache requests to Supabase or other third-party APIs.
   if (url.origin !== self.location.origin) return;
 
-  // For navigation (HTML), try network first, fall back to cache.
   if (req.mode === 'navigate') {
     event.respondWith((async () => {
       try {
@@ -67,7 +64,6 @@ self.addEventListener('fetch', (event) => {
     return;
   }
 
-  // Same-origin static assets: cache first, fall back to network.
   event.respondWith((async () => {
     const cached = await caches.match(req);
     if (cached) return cached;

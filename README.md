@@ -16,11 +16,11 @@ Not a commercial product. Not a startup. Built for ourselves.
 
 ## Core principles
 
-1. **Simple stack, no build step.** Plain HTML, CSS, and JavaScript. No framework, no bundler, no transpiler. Push files, deploy. Inspired by the SwimCoach PWA approach.
+1. **Simple stack, no build step.** Plain HTML, CSS, and JavaScript. No framework, no bundler, no transpiler. Push files, deploy.
 2. **Mobile-first, tablet- and desktop-friendly.** Designed for a phone screen at the side of the road, but expands gracefully on bigger displays.
-3. **Cheap to run.** Free tiers only. No paid services for as long as possible.
-4. **Open the door, don't walk through it.** Realtime collaboration, offline queueing, photo hosting, advanced features — all *possible* in this architecture, but not built until needed.
-5. **Honesty about scope.** When something can be deferred, defer it. When something can be replaced by an external tool (Splitwise for cost splitting, Google Maps for navigation), use the external tool.
+3. **Cheap to run.** Free tiers only.
+4. **Open the door, don't walk through it.** Realtime, offline queueing, photo hosting — possible in this architecture, not built until needed.
+5. **Honesty about scope.** Defer what can be deferred. Use external tools (Splitwise, Google Maps) when they exist.
 
 ---
 
@@ -28,9 +28,7 @@ Not a commercial product. Not a startup. Built for ourselves.
 
 The app is for a fixed, trusted group of friends. Anyone who signs in with Google sees all trips. There are no per-trip permissions, no invites, no roles.
 
-Access to the app is controlled the same way access to a private group chat is: by who knows it exists and who has been told to sign in. Currently this is enforced via the Google OAuth consent screen's **Test users** list — only emails on that list can complete sign-in.
-
-If that ever becomes the wrong model (someone joins who shouldn't see everything, a private trip needs to be planned), per-trip membership can be added later as a non-breaking change.
+Access is enforced via the Google OAuth consent screen's **Test users** list — only emails on that list can complete sign-in.
 
 ---
 
@@ -38,24 +36,25 @@ If that ever becomes the wrong model (someone joins who shouldn't see everything
 
 | Layer | Choice | Why |
 |---|---|---|
-| Frontend | Plain HTML + CSS + JS, native ES modules | No build step, low cognitive overhead, fast to iterate |
+| Frontend | Plain HTML + CSS + JS, native ES modules | No build step, low cognitive overhead |
 | Hosting | Cloudflare Pages, deployed from GitHub | Free, fast, deploy on push |
-| Backend | Supabase (Auth + Postgres + Storage) | Free tier generous enough for personal use |
-| Auth | Google sign-in via Supabase | No passwords, no friction |
-| Maps (archive) | Leaflet + OpenStreetMap | Free, no API key |
-| Maps (navigation) | Google Maps intent links | Hand off to the user's existing maps app |
-| Weather | Open-Meteo API | Free, no key, generous limits |
-| Photos | External album links (Google Photos, iCloud, Nextcloud later) | Defers the complexity of photo storage entirely |
-| PWA | Hand-written service worker (~80 lines) | No plugin needed |
-| Icons | Inline SVGs (Lucide-style) | No icon library dependency |
+| Backend | Supabase (Auth + Postgres + Storage) | Free tier generous enough |
+| Auth | Google sign-in via Supabase | No passwords |
+| Maps (archive) | Leaflet + OpenStreetMap | Free, no API key — Phase 3 |
+| Maps (navigation) | Google Maps intent links + user-pasted custom URLs | Hand off to user's existing maps app |
+| Geocoding | Open-Meteo geocoding API | Free, no key |
+| Weather | Open-Meteo forecast API | Free, no key, 16-day forecast |
+| Photos | External album links | Defers photo storage entirely |
+| PWA | Hand-written service worker | No plugin |
+| Icons | Inline SVGs | No icon library |
 
 ### Stack things deliberately not used
 
-- **No SvelteKit / React / Vue.** Plain JS keeps the learning surface small and matches the SwimCoach pattern that worked.
-- **No Tailwind / shadcn / component library.** Hand-written CSS, ~400-500 lines total expected.
-- **No TypeScript.** Acceptable trade-off for app size; revisit if the codebase grows.
-- **No build tools (Vite, Webpack, etc.).** Native ES modules are enough.
-- **No realtime subscriptions in v1.** Refresh-to-see is fine for trip planning. The free tier supports realtime; we'll add it when the value is clear.
+- No SvelteKit / React / Vue
+- No Tailwind / shadcn / component library
+- No TypeScript
+- No build tools
+- No realtime subscriptions in v1
 
 ---
 
@@ -64,51 +63,45 @@ If that ever becomes the wrong model (someone joins who shouldn't see everything
 Tables live in Supabase Postgres. All tables have `id` (UUID) and `created_at` unless noted.
 
 ### `users`
-Managed by Supabase Auth. We don't write to this directly. Used as a reference for `created_by` / `author_id` fields and for displaying who wrote what.
+Managed by Supabase Auth.
 
 ### `trips`
 | Field | Type | Notes |
 |---|---|---|
-| created_by | uuid | references auth.users; auto-set by trigger |
+| created_by | uuid | auto-set on INSERT |
 | title | text | NOT NULL |
 | description | text | |
-| start_date | date | |
-| end_date | date | |
+| start_date / end_date | date | |
 | cover_photo_url | text | external link |
 | status | text | `planning` / `active` / `completed` / `cancelled` |
-
-All signed-in users can read and edit all trips.
+| updated_by | uuid | auto-set on UPDATE |
+| updated_at | timestamptz | auto-set on UPDATE |
 
 ### `stages`
-One stage = one route segment, not strictly one day. A trip can have many stages.
-
 | Field | Type | Notes |
 |---|---|---|
 | trip_id | uuid | ON DELETE CASCADE |
 | order_index | int | for ordering |
 | title | text | |
-| start_location | text | human-readable, e.g. "Lisbon" |
-| start_lat / start_lng | double precision | for weather and map |
-| end_location | text | |
-| end_lat / end_lng | double precision | |
+| start_location / end_location | text | human-readable city names |
+| start_lat / start_lng / end_lat / end_lng | double precision | auto-filled via geocoding |
 | planned_date | date | |
-| gmaps_url | text | Google Maps intent link |
+| gmaps_url | text | auto-built from start/end |
+| custom_route_url | text | optional user-pasted Maps URL; takes priority for Navigate button |
 | distance_km | double precision | |
 | notes | text | |
-
-**Decision logged:** Stages are point-to-point in v1. Intermediate weather points are computed from start/end coordinates, not stored separately. If we later want named waypoints, we add a `stage_waypoints` table.
+| updated_by | uuid | auto-set on UPDATE |
+| updated_at | timestamptz | auto-set on UPDATE |
 
 ### `journal_entries`
 | Field | Type | Notes |
 |---|---|---|
 | stage_id | uuid | ON DELETE CASCADE |
-| author_id | uuid | auto-set by trigger |
+| author_id | uuid | auto-set on INSERT |
 | entry_type | text | `stop` / `meal` / `lodging` / `note` / `drink` / `other` |
-| title | text | |
-| description | text | |
-| location | text | optional |
-| timestamp | timestamptz | when it happened, not when entered |
-| photo_album_url | text | external link to photo album for this entry |
+| title / description / location | text | |
+| timestamp | timestamptz | when it happened |
+| photo_album_url | text | external link |
 
 ### `expenses`
 Per-user, no splits.
@@ -116,9 +109,9 @@ Per-user, no splits.
 | Field | Type | Notes |
 |---|---|---|
 | trip_id | uuid | ON DELETE CASCADE |
-| user_id | uuid | auto-set by trigger |
+| user_id | uuid | auto-set on INSERT |
 | category | text | `fuel` / `food` / `lodging` / `tolls` / `other` |
-| amount | numeric(12, 2) | exact, never float |
+| amount | numeric(12, 2) | exact |
 | currency | text | ISO code, default EUR |
 | description | text | |
 | date | date | |
@@ -126,127 +119,133 @@ Per-user, no splits.
 ### `video_notes`
 One row per trip, enforced by `UNIQUE(trip_id)`.
 
-| Field | Type | Notes |
-|---|---|---|
-| trip_id | uuid | UNIQUE, ON DELETE CASCADE |
-| content | text | freeform notes |
-| song_title | text | |
-| song_artist | text | |
-| song_url | text | |
-| updated_at | timestamptz | auto-touched on update |
-
 ### `gpx_tracks`
-| Field | Type | Notes |
-|---|---|---|
-| trip_id | uuid | ON DELETE CASCADE |
-| stage_id | uuid | nullable; ON DELETE SET NULL |
-| file_path | text | Supabase Storage path |
-| distance_km | double precision | |
-| duration_seconds | int | |
-| uploaded_at | timestamptz | |
+A track may belong to a stage OR to a whole trip.
 
-**Decision logged:** GPX tracks link to either a stage or a whole trip, since real rides don't always match planned stages.
+---
+
+## External APIs
+
+### Open-Meteo (CC BY-NC 4.0)
+
+- **Geocoding**: `GET https://geocoding-api.open-meteo.com/v1/search` — fuzzy place-name search. Cached 7 days in localStorage.
+- **Forecast**: `GET https://api.open-meteo.com/v1/forecast` — daily forecast, max 16 days ahead. Cached 1 hour in localStorage.
+
+Forecast strategy per stage: fetch start, midpoint, and end. Skip midpoint if start/end < 50 km apart.
+
+### Google Maps (intent links + user-pasted)
+
+The Navigate button on each stage opens a Google Maps URL. Two sources, in priority order:
+
+1. **`custom_route_url`** — if the user has pasted a Google Maps share link (e.g. `https://maps.app.goo.gl/...`). Validated to be `https` and point to a Google Maps host.
+2. **`gmaps_url`** — auto-generated from start/end locations.
+
+The custom URL is preserved across edits — it's never silently overwritten when start/end locations change.
+
+---
+
+## Database migrations
+
+The full current schema is in `schema.sql` (idempotent, safe to re-run for fresh setups). Incremental changes are tracked as numbered files in `migrations/`. Each migration is idempotent and meant to be pasted into Supabase's SQL Editor.
+
+| Migration | Description |
+|---|---|
+| `001_custom_route_url.sql` | Adds `custom_route_url` to stages, plus `updated_by`/`updated_at` audit columns + triggers on trips and stages |
 
 ---
 
 ## Roadmap
 
-Each phase produces a working, deployable app. Tasks within a phase can be reordered, but the phases themselves are sequential.
+Each phase produces a working, deployable app.
 
 ### Phase 1 — MVP: plan + journal
-
-Goal: usable for the next real trip. Plan a trip, see weather, write journal entries during the ride.
 
 **Foundation**
 - [x] Repo created, deployed to Cloudflare Pages on push
 - [x] Supabase project set up, Google OAuth configured
-- [x] Database schema created (all tables above)
-- [x] Row-Level Security policies: any signed-in user can read/write all rows
+- [x] Database schema created
+- [x] Row-Level Security policies
 - [x] App shell: HTML, CSS, service worker, manifest
 - [x] PWA installable on iOS and Android
 - [x] Auth flow: sign in with Google, sign out
 
 **Trips**
-- [ ] Create a trip (title, dates, description)
-- [ ] List all trips (visible to everyone signed in)
-- [ ] View a single trip
-- [ ] Edit trip details
-- [ ] Delete a trip (with confirmation)
+- [x] Create / list / view / edit / delete trips
+- [x] Archive tab shows completed and cancelled trips
 
 **Stages**
-- [ ] Add a stage to a trip
-- [ ] Reorder stages
-- [ ] Edit a stage (start, end, date, distance, notes)
-- [ ] Delete a stage
-- [ ] Show Google Maps intent link to navigate the stage
+- [x] Add / edit / reorder / delete stages
+- [x] Show Google Maps intent link to navigate the stage
+- [x] Custom Maps URL override for hand-tuned routes
 
 **Weather**
-- [ ] Show weather forecast for stage start, midpoint, end on the planned date
-- [ ] Handle Open-Meteo failures gracefully (show "weather unavailable")
+- [x] Auto-geocode city names on save
+- [x] Show weather forecast for stage start, midpoint, end on the planned date
+- [x] Handle Open-Meteo failures gracefully
 
 **Journal**
-- [ ] Add a journal entry to a stage (type, title, description, timestamp, location, optional photo album link)
+- [ ] Add a journal entry to a stage
 - [ ] List entries for a stage, sorted by timestamp
 - [ ] Show who wrote each entry
 - [ ] Edit a journal entry
 - [ ] Delete a journal entry
 
 **Polish**
-- [ ] Bottom nav (mobile) / sidebar (desktop) responsive — done in shell
-- [ ] Loading states and error messages
+- [x] Bottom nav (mobile) / sidebar (desktop) responsive
+- [ ] Loading states and error messages — partially done; refine as features land
 - [ ] Online-only with clear "you're offline" message when applicable
 
 ### Phase 2 — Money
 
-Goal: track per-person trip costs.
-
-- [ ] Add an expense to a trip (category, amount, currency, description, date)
-- [ ] List my expenses for a trip
-- [ ] Trip total per user
-- [ ] Trip total per category
-- [ ] Edit and delete expenses
-- [ ] Currency display (no conversion in v1; show as entered)
+- [ ] Add / list / edit / delete expenses
+- [ ] Trip total per user / per category
 
 ### Phase 3 — Archive + tracks
 
-Goal: see past trips visually, import GPS data.
-
-**World map archive**
-- [ ] Leaflet map rendering completed trips as markers/lines
-- [ ] Drill-down: world view → country → trip → stage → journal entries
+- [ ] Leaflet world map with completed trips
+- [ ] Drill-down: world → country → trip → stage → journal entries
 - [ ] Past trips list view as alternative to map
-- [ ] Basic stats per trip (total distance, days, journal entries, photos linked)
-
-**GPX**
-- [ ] Upload a GPX file (linked to trip or stage)
-- [ ] Parse GPX, extract distance and duration
-- [ ] Display GPX track as a line on the trip's map view
-- [ ] Show actual vs planned route comparison
+- [ ] Basic stats per trip
+- [ ] Upload + parse GPX files
+- [ ] Display GPX track on the trip's map view
 
 ### Phase 4 — Polish
 
-Goal: make the app pleasant to use, add finishing touches.
-
-- [ ] Video planning noteblock per trip (notes + song info)
+- [ ] Video planning noteblock per trip
 - [ ] PWA install prompts at the right moments
-- [ ] Offline app shell (already works; refine cache strategy)
-- [ ] Offline write queue: edits saved locally, synced when online
-- [ ] Realtime updates: changes from friends appear without refresh
+- [ ] Offline write queue
+- [ ] Realtime updates
 - [ ] Mobile UX refinements based on real-trip use
 - [ ] Export trip to PDF or shareable read-only view
-- [ ] Packing list per trip (simple checklist)
+- [ ] Packing list per trip
 
 ### Phase 5+ — Later
 
-Things on the radar but not committed to. Considered when there's a clear reason.
-
-- Per-trip membership and roles (if the open-access model ever burns us)
-- Bike profiles (which bike per trip, per rider)
-- Maintenance log
-- Gear inventory
+- Per-trip membership and roles
+- Bike profiles, maintenance log, gear inventory
 - Photo upload + storage (when NAS + Nextcloud is ready)
-- Pre-ride essentials (fuel range estimation, checks)
+- Pre-ride essentials
 - Voice notes for journal entries
+
+---
+
+## Nice to do
+
+Lower-priority items captured so they're not forgotten. These will be picked up when there's a natural moment, or when one of them becomes blocking.
+
+- **Display "last edited by … at …" on trips and stages.** The data is being captured in `updated_by` / `updated_at` columns from step 6.5 onwards. Display requires a `profiles` table mirroring user names, which we'll add when we tackle journal entries (so trips, stages, and entries all use the same display path).
+- **Geocoder ambiguity hints.** When a city name has multiple matches (e.g. Springfield), show the country in the result so the user can decide whether to override.
+- **Long-range weather outlook** beyond the 16-day Open-Meteo forecast — useful for early-stage trip planning.
+
+---
+
+## Things to revisit
+
+Small known issues and refinements that aren't blocking.
+
+- **iOS bottom nav padding feels too tall.** Worth tuning visual balance later.
+- **Site URL in Supabase is currently `http://localhost:8000`** for development convenience. Change to production Cloudflare Pages URL once daily development slows down.
+- **Weather attribution** is a small line on each weather strip. If it ever feels noisy, move to Account screen as a global "Data sources" list.
 
 ---
 
@@ -256,9 +255,9 @@ This project is a partnership.
 
 **Human (10–20%):** scoping, decisions, testing, real-world feedback, surfacing requirements as they emerge from real trips, reviewing output.
 
-**AI assistant (80–90%):** writing code, explaining what it does, debugging support, suggesting architecture, anticipating issues, translating between the human's Python/R intuition and JavaScript/web idioms.
+**AI assistant (80–90%):** writing code, explaining what it does, debugging support, suggesting architecture, anticipating issues.
 
-The human is a capable engineer new to this specific stack — explanations should cover the *why* alongside the *what*, especially for frontend concepts. Anti-patterns should be flagged, not silently worked around. Push back on ideas that will cause pain later.
+The human is a capable engineer new to this specific stack — explanations should cover the *why* alongside the *what*. Anti-patterns flagged, not silently worked around. Push back on ideas that will cause pain later.
 
 ---
 
@@ -272,17 +271,21 @@ routefolk/
 ├── lib/
 │   ├── config.js           # Supabase URL + anon key
 │   ├── supabase.js         # Supabase client setup
-│   └── auth.js             # Sign-in / sign-out / current user
-├── sw.js                   # Service worker (bump CACHE version on shell changes)
+│   ├── auth.js             # Sign-in / sign-out / current user
+│   ├── trips.js            # Trip CRUD
+│   ├── stages.js           # Stage CRUD with auto-geocoding & custom-URL validation
+│   ├── geocoding.js        # Open-Meteo geocoding wrapper + cache
+│   └── weather.js          # Open-Meteo forecast wrapper + cache
+├── sw.js                   # Service worker (bump CACHE on shell changes)
 ├── manifest.json           # PWA manifest
-├── icons/                  # PWA icons
+├── icons/
 │   ├── icon-192.png
 │   └── icon-512.png
-├── schema.sql              # Database schema (run once in Supabase SQL Editor)
+├── schema.sql              # Full current database schema (idempotent)
+├── migrations/             # Incremental schema changes, run in order
+│   └── 001_custom_route_url.sql
 └── README.md               # This file
 ```
-
-`lib/` will grow as Phase 1 progresses (`trips.js`, `stages.js`, `journal.js`, `weather.js`).
 
 ---
 
@@ -290,19 +293,28 @@ routefolk/
 
 A running list of decisions made and why. New entries go at the top.
 
-- **2026-05: Service worker cache versioning.** The `CACHE` constant in `sw.js` must be bumped when shell assets change (e.g. `v1` → `v2`). The activate handler deletes old caches. Without bumping, devices keep serving stale files.
-- **2026-05: Supabase URL and anon key live in `lib/config.js`, committed to the repo.** They're public by design; the anon key only allows what RLS policies allow, which is why RLS was set up first.
-- **2026-05: Trips have four statuses: `planning`, `active`, `completed`, `cancelled`.** `cancelled` exists so we can record a planned-but-not-taken trip without deleting it.
-- **2026-05: Hard delete with confirmation, no soft-delete or archive table.** Past trips are `status='completed'`; that's the archive. Hard delete is reserved for real mistakes (typos, duplicates).
-- **2026-05: `created_by` / `author_id` / `user_id` are auto-set by database triggers from `auth.uid()`.** Clients cannot spoof these even if they try.
-- **2026-05: No invites, no per-trip membership.** Anyone who signs in sees all trips. Access controlled by Google OAuth Test users list. Reversible: per-trip membership can be added later as an additive change.
-- **2026-05: Photos as external links in v1.** Defers all photo storage complexity. Will be revisited when NAS + Nextcloud is set up.
-- **2026-05: World map archive moved from Phase 2 to Phase 3.** Nothing to archive until a few trips are completed.
-- **2026-05: No realtime in v1.** Refresh-to-see is sufficient for trip planning. Free tier supports it; adding later is straightforward.
-- **2026-05: No offline queueing in v1.** Online-only with clear error states. Phase 4 adds write-through cache.
-- **2026-05: Plain HTML/JS/CSS, no framework.** SwimCoach proved this works for an app of this size. Migration to a framework remains an option if the app grows.
-- **2026-05: Stages are point-to-point.** Intermediate weather points computed, not stored. Add `stage_waypoints` table later if needed.
-- **2026-05: GPX tracks can link to stage *or* trip.** Real rides don't always follow planned stages.
+- **2026-05: Audit columns captured now, displayed later.** `updated_by` / `updated_at` on trips and stages are populated by triggers from step 6.5 onwards. Display deferred until a `profiles` table exists for user-name lookups.
+- **2026-05: Custom Maps URL is a separate column, never auto-overwritten.** Two URL fields on stages: auto-generated `gmaps_url` and user-pasted `custom_route_url`. Navigate button uses custom if present, else auto. Editing start/end locations does NOT clobber the custom URL.
+- **2026-05: Custom URL validation: https only, allowlisted Google Maps hosts.** Allowed: `google.com`, `www.google.com`, `maps.google.com`, `goo.gl`, `maps.app.goo.gl`. Anything else throws on save.
+- **2026-05: Migrations folder for incremental schema changes.** `schema.sql` always reflects current state. Incremental changes go in `migrations/NNN_name.sql`, idempotent, manually run in Supabase SQL Editor.
+- **2026-05: Geocoding via Open-Meteo, weather inline.** GPX-during-planning rejected — GPX exists post-ride, doesn't solve the planning-time weather problem.
+- **2026-05: Weather cached 1 hour, geocoding cached 7 days.** Forecasts move; place coordinates don't.
+- **2026-05: Skip midpoint forecast when start/end < 50 km apart.**
+- **2026-05: Trips list sorted by start_date DESC, nulls last.**
+- **2026-05: Active list = `planning` + `active`. Archive list = `completed` + `cancelled`.**
+- **2026-05: Hard delete for trips, with confirmation suggesting `cancelled` instead.**
+- **2026-05: Service worker cache versioning.** Bump on shell changes.
+- **2026-05: Supabase URL and anon key in committed code.** Public by design.
+- **2026-05: Trips have four statuses: `planning`, `active`, `completed`, `cancelled`.**
+- **2026-05: `created_by` / `author_id` / `user_id` auto-set by triggers.**
+- **2026-05: No invites, no per-trip membership.**
+- **2026-05: Photos as external links in v1.**
+- **2026-05: World map archive in Phase 3.**
+- **2026-05: No realtime in v1.**
+- **2026-05: No offline queueing in v1.**
+- **2026-05: Plain HTML/JS/CSS, no framework.**
+- **2026-05: Stages are point-to-point.**
+- **2026-05: GPX tracks can link to stage or trip.**
 
 ---
 
