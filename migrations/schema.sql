@@ -78,8 +78,6 @@ CREATE TABLE IF NOT EXISTS public.journal_entries (
   title           text,
   description     text,
   location        text,
-  location_url    text,
-  info_url        text,
   timestamp       timestamptz,
   photo_album_url text,
   created_at      timestamptz NOT NULL DEFAULT now()

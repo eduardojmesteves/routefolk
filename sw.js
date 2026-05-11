@@ -4,7 +4,7 @@
 // for static assets. Bump CACHE when shell assets change.
 // ============================================================
 
-const CACHE = 'routefolk-shell-v7';
+const CACHE = 'routefolk-shell-v8';
 
 const SHELL_ASSETS = [
   './',

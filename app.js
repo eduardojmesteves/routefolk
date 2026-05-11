@@ -1,6 +1,6 @@
 // ============================================================
 // routefolk — app.js
-// Phase 1, step 7: journal entries on each stage.
+// Phase 1: trips, stages, weather, journal, metrics, summary.
 // ============================================================
 
 import { signInWithGoogle, signOut, getCurrentUser, onAuthChange } from './lib/auth.js';
@@ -11,7 +11,7 @@ import { listEntriesForStage, createEntry, updateEntry, deleteEntry } from './li
 
 const STATE = {
   tab: 'trips',
-  view: 'list',
+  view: 'list', // list | detail | summary
   viewTripId: null,
   user: null,
   trips: [],
@@ -21,8 +21,9 @@ const STATE = {
   stagesLoading: false,
   stagesError: null,
   forecastsByStage: {},
-  entriesByStage: {},        // stageId -> array of entries OR 'loading'
-  expandedStages: new Set(), // stageIds whose journal section is open
+  entriesByStage: {},          // stageId -> array of entries OR 'loading'
+  expandedStages: new Set(),   // journal sections open in trip detail
+  expandedSummaryStages: new Set(),
 };
 
 const STATUS_META = {
@@ -48,6 +49,14 @@ function esc(v) {
   return String(v ?? '').replace(/[&<>'"]/g, (ch) => ({
     '&': '&amp;', '<': '&lt;', '>': '&gt;', "'": '&#39;', '"': '&quot;',
   }[ch]));
+}
+
+function attr(name, value) {
+  return value ? ` ${name}="${esc(value)}"` : '';
+}
+
+function boolAttr(name, condition) {
+  return condition ? ` ${name}` : '';
 }
 
 // ---------- Toast ----------
@@ -80,8 +89,10 @@ function showModal(title, bodyHtml, buttons) {
       if (e.target === overlay) closeModal();
     });
   }
+
   $('modalTitle').textContent = title;
   $('modalBody').innerHTML = bodyHtml;
+
   const btnWrap = $('modalBtns');
   btnWrap.innerHTML = '';
   buttons.forEach((b) => {
@@ -91,6 +102,7 @@ function showModal(title, bodyHtml, buttons) {
     btn.addEventListener('click', () => b.fn?.());
     btnWrap.appendChild(btn);
   });
+
   overlay.style.display = 'flex';
 }
 
@@ -104,16 +116,15 @@ function userInitials(user) {
   const name = user?.user_metadata?.full_name || user?.email || '?';
   return name.trim().split(/\s+/).slice(0, 2).map((w) => w[0]?.toUpperCase() || '').join('') || '?';
 }
+
 function userDisplayName(user) {
   return user?.user_metadata?.full_name || user?.user_metadata?.name || user?.email || 'Unknown';
 }
+
 function userAvatarUrl(user) {
   return user?.user_metadata?.avatar_url || user?.user_metadata?.picture || '';
 }
 
-/** Initials for an author_id when we don't yet have a profiles table.
- *  If the entry was authored by the current user, use their initials.
- *  Otherwise, use a short slice of the UUID. Placeholder until profiles land. */
 function authorInitials(authorId) {
   if (STATE.user && authorId === STATE.user.id) return userInitials(STATE.user);
   if (!authorId) return '?';
@@ -122,14 +133,13 @@ function authorInitials(authorId) {
 
 function authorLabel(authorId) {
   if (STATE.user && authorId === STATE.user.id) return 'You';
-  // Future: look up profiles table for the friend's name
   return 'Friend';
 }
 
 // ---------- Date helpers ----------
 function fmtDate(iso) {
   if (!iso) return '';
-  const d = new Date(iso + 'T00:00:00');
+  const d = new Date(`${iso}T00:00:00`);
   if (Number.isNaN(d.getTime())) return iso;
   return d.toLocaleDateString(undefined, { day: 'numeric', month: 'short', year: 'numeric' });
 }
@@ -151,8 +161,6 @@ function fmtDateTime(iso) {
   });
 }
 
-/** Convert an ISO timestamp to the value expected by <input type="datetime-local">,
- *  in the user's local timezone. */
 function isoToDatetimeLocal(iso) {
   if (!iso) return '';
   const d = new Date(iso);
@@ -161,7 +169,6 @@ function isoToDatetimeLocal(iso) {
   return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(d.getMinutes())}`;
 }
 
-/** Convert a datetime-local value (local time) back to a UTC ISO string. */
 function datetimeLocalToIso(value) {
   if (!value) return null;
   const d = new Date(value);
@@ -173,9 +180,27 @@ function nowAsDatetimeLocal() {
   return isoToDatetimeLocal(new Date().toISOString());
 }
 
-// ---------- Header ----------
+function inclusiveDays(start, end) {
+  if (!start || !end) return null;
+  const a = new Date(`${start}T00:00:00`);
+  const b = new Date(`${end}T00:00:00`);
+  if (Number.isNaN(a.getTime()) || Number.isNaN(b.getTime())) return null;
+  const diff = Math.round((b - a) / 86400000) + 1;
+  return diff > 0 ? diff : null;
+}
+
+function isStageDateOutsideTrip(stage, trip) {
+  if (!stage?.planned_date) return false;
+  if (trip.start_date && stage.planned_date < trip.start_date) return true;
+  if (trip.end_date && stage.planned_date > trip.end_date) return true;
+  return false;
+}
+
+// ---------- Header/nav ----------
 function renderHeader() {
   const right = $('hdrRight');
+  const sub = $('hdrSub');
+  if (sub) sub.textContent = headerSubtitle();
   if (!right) return;
 
   if (!STATE.user) {
@@ -195,12 +220,41 @@ function renderHeader() {
   $('hdrAvatarBtn')?.addEventListener('click', () => goTo('account'));
 }
 
+function headerSubtitle() {
+  if (!STATE.user) return 'Sign in to plan trips';
+  if (STATE.tab === 'account') return 'Account';
+  if (STATE.view === 'summary') return 'Trip summary';
+  if (STATE.view === 'detail') return 'Trip detail';
+  if (STATE.tab === 'archive') return 'Archive';
+  return 'Trips';
+}
+
+function renderNav() {
+  document.querySelectorAll('.nav-btn').forEach((btn) => {
+    btn.classList.toggle('active', btn.dataset.tab === STATE.tab);
+  });
+}
+
+function bindNav() {
+  document.querySelectorAll('.nav-btn').forEach((btn) => {
+    btn.addEventListener('click', () => goTo(btn.dataset.tab));
+  });
+}
+
+function goTo(tab) {
+  STATE.tab = tab;
+  STATE.view = 'list';
+  STATE.viewTripId = null;
+  renderAll();
+}
+
 // ---------- Data loaders ----------
 async function loadTrips() {
   if (!STATE.user) return;
   STATE.tripsLoading = true;
   STATE.tripsError = null;
-  renderTab();
+  renderAll();
+
   try {
     STATE.trips = await listTrips();
   } catch (err) {
@@ -208,24 +262,28 @@ async function loadTrips() {
     STATE.tripsError = err.message || 'Failed to load trips.';
   } finally {
     STATE.tripsLoading = false;
-    renderTab();
+    renderAll();
   }
 }
 
 async function loadStagesForTrip(tripId) {
   STATE.stagesLoading = true;
   STATE.stagesError = null;
-  renderTab();
+  renderAll();
+
   try {
     const stages = await listStages(tripId);
     STATE.stagesByTrip[tripId] = stages;
     stages.forEach(loadForecastForStage);
+    stages.forEach((stage) => {
+      if (!STATE.entriesByStage[stage.id]) loadEntriesForStage(stage.id, { quiet: true });
+    });
   } catch (err) {
     console.error(err);
     STATE.stagesError = err.message || 'Failed to load stages.';
   } finally {
     STATE.stagesLoading = false;
-    renderTab();
+    renderAll();
   }
 }
 
@@ -233,6 +291,7 @@ async function loadForecastForStage(stage) {
   if (!stage?.id) return;
   if (STATE.forecastsByStage[stage.id]) return;
   STATE.forecastsByStage[stage.id] = 'loading';
+
   try {
     const forecasts = await fetchStageForecasts(stage);
     STATE.forecastsByStage[stage.id] = forecasts;
@@ -240,44 +299,38 @@ async function loadForecastForStage(stage) {
     console.warn('Forecast load failed:', err);
     STATE.forecastsByStage[stage.id] = [];
   }
-  if (STATE.view === 'detail' && STATE.viewTripId === stage.trip_id) {
-    renderTab();
-  }
+
+  if (STATE.viewTripId === stage.trip_id) renderAll();
 }
 
-async function loadEntriesForStage(stageId) {
+async function loadEntriesForStage(stageId, options = {}) {
   STATE.entriesByStage[stageId] = 'loading';
-  renderTab();
+  if (!options.quiet) renderAll();
+
   try {
     const entries = await listEntriesForStage(stageId);
     STATE.entriesByStage[stageId] = entries;
   } catch (err) {
     console.error(err);
     STATE.entriesByStage[stageId] = [];
-    toast('Failed to load journal entries.');
+    if (!options.quiet) toast('Failed to load journal entries.');
   }
-  renderTab();
+
+  renderAll();
 }
 
-function toggleStageJournal(stageId) {
-  if (STATE.expandedStages.has(stageId)) {
-    STATE.expandedStages.delete(stageId);
-    renderTab();
-    return;
-  }
-  STATE.expandedStages.add(stageId);
-  if (!STATE.entriesByStage[stageId] || STATE.entriesByStage[stageId] === 'loading') {
-    loadEntriesForStage(stageId);
-  } else {
-    renderTab();
-  }
+async function openTrip(tripId, view = 'detail') {
+  STATE.viewTripId = tripId;
+  STATE.view = view;
+  renderAll();
+  if (!STATE.stagesByTrip[tripId]) await loadStagesForTrip(tripId);
 }
 
 // ---------- Trip cards / list ----------
 function tripCardHtml(trip) {
   const meta = STATUS_META[trip.status] || STATUS_META.planning;
   return `
-    <button class="trip-card" data-id="${esc(trip.id)}">
+    <button class="trip-card" data-trip-id="${esc(trip.id)}">
       <div class="trip-card-head">
         <div class="trip-title">${esc(trip.title)}</div>
         <span class="status-pill ${meta.cls}">${esc(meta.label)}</span>
@@ -289,31 +342,13 @@ function tripCardHtml(trip) {
 }
 
 function renderTrips() {
-  if (!STATE.user) {
-    return `
-      <div class="empty-state">
-        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
-          <path d="M3 6h18M3 12h18M3 18h12"/>
-        </svg>
-        <div class="empty-title">Sign in to see trips</div>
-        <div class="empty-sub">Trips are shared with everyone signed in.</div>
-      </div>
-    `;
-  }
+  if (!STATE.user) return signedOutState('Sign in to see trips', 'Trips are shared with everyone signed in.');
 
   if (STATE.tripsLoading && !STATE.trips.length) {
     return `<div class="empty-state"><div class="empty-sub">Loading trips…</div></div>`;
   }
 
-  if (STATE.tripsError) {
-    return `
-      <div class="card">
-        <div class="card-title" style="color:#ef6262;">Error</div>
-        <div style="color:#c5d0e0;font-size:14px;line-height:1.5;">${esc(STATE.tripsError)}</div>
-        <button class="btn btn-secondary btn-block" style="margin-top:12px;" id="retryTripsBtn">Retry</button>
-      </div>
-    `;
-  }
+  if (STATE.tripsError) return errorCard(STATE.tripsError, 'retryTripsBtn');
 
   const active = STATE.trips.filter((t) => t.status === 'planning' || t.status === 'active');
 
@@ -342,20 +377,15 @@ function renderTrips() {
 }
 
 function renderArchive() {
-  if (!STATE.user) {
-    return `
-      <div class="empty-state">
-        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
-          <circle cx="12" cy="12" r="9"/>
-          <path d="M3 12h18M12 3a14 14 0 010 18M12 3a14 14 0 000 18"/>
-        </svg>
-        <div class="empty-title">Sign in to see the archive</div>
-      </div>
-    `;
+  if (!STATE.user) return signedOutState('Sign in to see the archive', 'Completed and cancelled trips will appear here.');
+
+  if (STATE.tripsLoading && !STATE.trips.length) {
+    return `<div class="empty-state"><div class="empty-sub">Loading archive…</div></div>`;
   }
 
-  const archived = STATE.trips.filter((t) => t.status === 'completed' || t.status === 'cancelled');
+  if (STATE.tripsError) return errorCard(STATE.tripsError, 'retryTripsBtn');
 
+  const archived = STATE.trips.filter((t) => t.status === 'completed' || t.status === 'cancelled');
   if (!archived.length) {
     return `
       <div class="empty-state">
@@ -375,29 +405,43 @@ function renderArchive() {
   `;
 }
 
+function signedOutState(title, subtitle) {
+  return `
+    <div class="empty-state">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
+        <path d="M3 6h18M3 12h18M3 18h12"/>
+      </svg>
+      <div class="empty-title">${esc(title)}</div>
+      <div class="empty-sub">${esc(subtitle || '')}</div>
+      <button class="btn btn-primary" id="emptySignInBtn" style="margin-top:14px;">Sign in with Google</button>
+    </div>
+  `;
+}
+
+function errorCard(message, retryId) {
+  return `
+    <div class="card">
+      <div class="card-title" style="color:#ef6262;">Error</div>
+      <div style="color:#c5d0e0;font-size:14px;line-height:1.5;">${esc(message)}</div>
+      <button class="btn btn-secondary btn-block" style="margin-top:12px;" id="${esc(retryId)}">Retry</button>
+    </div>
+  `;
+}
+
 // ---------- Weather rendering ----------
 function weatherStripHtml(stage) {
   const result = STATE.forecastsByStage[stage.id];
-
   const hasAnyCoords =
     (typeof stage.start_lat === 'number' && typeof stage.start_lng === 'number') ||
     (typeof stage.end_lat === 'number' && typeof stage.end_lng === 'number');
+
   if (!hasAnyCoords) return '';
-
-  if (!stage.planned_date) {
-    return `<div class="weather-strip muted">Set a planned date to see the weather forecast.</div>`;
-  }
-
-  if (result === 'loading' || result === undefined) {
-    return `<div class="weather-strip muted">Loading weather…</div>`;
-  }
-
+  if (!stage.planned_date) return `<div class="weather-strip muted">Set a planned date to see the weather forecast.</div>`;
+  if (result === 'loading' || result === undefined) return `<div class="weather-strip muted">Loading weather…</div>`;
   if (!result.length) return '';
 
   const usable = result.filter((p) => p.forecast);
-  if (!usable.length) {
-    return `<div class="weather-strip muted">No forecast available for this date (max 16 days ahead).</div>`;
-  }
+  if (!usable.length) return `<div class="weather-strip muted">No forecast available for this date (max 16 days ahead).</div>`;
 
   const points = usable.map((p) => {
     const f = p.forecast;
@@ -429,6 +473,10 @@ function weatherStripHtml(stage) {
 // ---------- Journal rendering ----------
 function entryCardHtml(entry) {
   const meta = ENTRY_TYPE_META[entry.entry_type] || ENTRY_TYPE_META.note;
+  const location = entry.location_url
+    ? `<a class="entry-meta-link" href="${esc(entry.location_url)}" target="_blank" rel="noopener">📍 ${esc(entry.location || 'View location')}</a>`
+    : (entry.location ? `<span>📍 ${esc(entry.location)}</span>` : '');
+
   return `
     <div class="entry-card">
       <div class="entry-head">
@@ -438,7 +486,7 @@ function entryCardHtml(entry) {
           <div class="entry-meta">
             <span class="entry-author" title="${esc(authorLabel(entry.author_id))}">${esc(authorInitials(entry.author_id))}</span>
             ${entry.timestamp ? `<span>${esc(fmtDateTime(entry.timestamp))}</span>` : ''}
-            ${entry.location ? `<span>📍 ${esc(entry.location)}</span>` : ''}
+            ${location}
           </div>
         </div>
         <div class="entry-actions">
@@ -447,9 +495,16 @@ function entryCardHtml(entry) {
         </div>
       </div>
       ${entry.description ? `<div class="entry-desc">${esc(entry.description)}</div>` : ''}
-      ${entry.photo_album_url ? `<a class="entry-album" href="${esc(entry.photo_album_url)}" target="_blank" rel="noopener">📷 View photo album</a>` : ''}
+      ${entryLinksHtml(entry)}
     </div>
   `;
+}
+
+function entryLinksHtml(entry) {
+  const links = [];
+  if (entry.info_url) links.push(`<a class="entry-link" href="${esc(entry.info_url)}" target="_blank" rel="noopener">🔗 Website</a>`);
+  if (entry.photo_album_url) links.push(`<a class="entry-link" href="${esc(entry.photo_album_url)}" target="_blank" rel="noopener">📷 Photo album</a>`);
+  return links.length ? `<div class="entry-links">${links.join('')}</div>` : '';
 }
 
 function journalSectionHtml(stage) {
@@ -488,8 +543,17 @@ function stageNavigateUrl(stage) {
   return stage.custom_route_url || stage.gmaps_url || null;
 }
 
-function stageCardHtml(stage, index, total) {
-  const route = [stage.start_location, stage.end_location].filter(Boolean).join(' → ') || stage.title || `Stage ${index + 1}`;
+function stageRouteLabel(stage, index = 0) {
+  return [stage.start_location, stage.end_location].filter(Boolean).join(' → ') || stage.title || `Stage ${index + 1}`;
+}
+
+function stageDateWarningHtml(stage, trip) {
+  if (!isStageDateOutsideTrip(stage, trip)) return '';
+  return `<div class="stage-warn">Planned date is outside the trip date range.</div>`;
+}
+
+function stageCardHtml(stage, trip, index, total) {
+  const route = stageRouteLabel(stage, index);
   const meta = [];
   if (stage.planned_date) meta.push(fmtDate(stage.planned_date));
   if (stage.distance_km != null) meta.push(`${stage.distance_km} km`);
@@ -500,21 +564,22 @@ function stageCardHtml(stage, index, total) {
     <div class="stage-card">
       <div class="stage-card-row">
         <div class="stage-order">
-          <button class="stage-order-btn" data-action="up" data-id="${esc(stage.id)}" ${index === 0 ? 'disabled' : ''} title="Move up">↑</button>
-          <button class="stage-order-btn" data-action="down" data-id="${esc(stage.id)}" ${index === total - 1 ? 'disabled' : ''} title="Move down">↓</button>
+          <button class="stage-order-btn" data-stage-action="up" data-id="${esc(stage.id)}" ${index === 0 ? 'disabled' : ''} title="Move up">↑</button>
+          <button class="stage-order-btn" data-stage-action="down" data-id="${esc(stage.id)}" ${index === total - 1 ? 'disabled' : ''} title="Move down">↓</button>
         </div>
         <div class="stage-body">
           <div class="stage-title">${esc(route)}</div>
           ${meta.length ? `<div class="stage-meta">${esc(meta.join(' · '))}</div>` : ''}
           ${stage.notes ? `<div class="stage-notes">${esc(stage.notes)}</div>` : ''}
+          ${stageDateWarningHtml(stage, trip)}
           ${!hasCoords ? `<div class="stage-warn">No coordinates — type a city name and we'll look it up automatically.</div>` : ''}
         </div>
       </div>
       ${weatherStripHtml(stage)}
       <div class="stage-actions">
         ${navUrl ? `<a class="btn btn-secondary btn-sm" href="${esc(navUrl)}" target="_blank" rel="noopener">Navigate</a>` : ''}
-        <button class="btn btn-secondary btn-sm" data-action="edit" data-id="${esc(stage.id)}">Edit</button>
-        <button class="btn btn-danger btn-sm" data-action="delete" data-id="${esc(stage.id)}">Delete</button>
+        <button class="btn btn-secondary btn-sm" data-stage-action="edit" data-id="${esc(stage.id)}">Edit</button>
+        <button class="btn btn-danger btn-sm" data-stage-action="delete" data-id="${esc(stage.id)}">Delete</button>
       </div>
       <div class="journal-section">
         ${journalSectionHtml(stage)}
@@ -526,16 +591,8 @@ function stageCardHtml(stage, index, total) {
 function renderStagesSection(trip) {
   const stages = STATE.stagesByTrip[trip.id];
 
-  if (STATE.stagesLoading && !stages) {
-    return `<div class="empty-sub">Loading stages…</div>`;
-  }
-
-  if (STATE.stagesError) {
-    return `
-      <div style="color:#ef6262;font-size:13px;line-height:1.5;margin-bottom:8px;">${esc(STATE.stagesError)}</div>
-      <button class="btn btn-secondary btn-sm" id="retryStagesBtn">Retry</button>
-    `;
-  }
+  if (STATE.stagesLoading && !stages) return `<div class="empty-sub">Loading stages…</div>`;
+  if (STATE.stagesError) return errorCard(STATE.stagesError, 'retryStagesBtn');
 
   if (!stages || !stages.length) {
     return `
@@ -546,23 +603,15 @@ function renderStagesSection(trip) {
 
   return `
     <div class="stage-list">
-      ${stages.map((s, i) => stageCardHtml(s, i, stages.length)).join('')}
+      ${stages.map((s, i) => stageCardHtml(s, trip, i, stages.length)).join('')}
     </div>
     <button class="btn btn-primary btn-block" style="margin-top:12px;" id="addStageBtn">+ Add stage</button>
   `;
 }
 
 function renderTripDetail() {
-  const trip = STATE.trips.find((t) => t.id === STATE.viewTripId);
-  if (!trip) {
-    return `
-      <button class="btn btn-secondary btn-sm" id="backToTripsBtn" style="margin-bottom:12px;">← Back</button>
-      <div class="empty-state">
-        <div class="empty-title">Trip not found</div>
-        <div class="empty-sub">It may have been deleted.</div>
-      </div>
-    `;
-  }
+  const trip = currentTrip();
+  if (!trip) return tripNotFoundHtml();
 
   const meta = STATUS_META[trip.status] || STATUS_META.planning;
   return `
@@ -575,8 +624,9 @@ function renderTripDetail() {
       </div>
       <div class="trip-detail-dates">${esc(fmtDateRange(trip.start_date, trip.end_date))}</div>
       ${trip.description ? `<div class="trip-detail-desc">${esc(trip.description)}</div>` : ''}
-
+      ${tripStatsStripHtml(trip)}
       <div class="trip-detail-actions">
+        <button class="btn btn-secondary btn-sm" id="summaryTripBtn">Summary</button>
         <button class="btn btn-secondary btn-sm" id="editTripBtn">Edit</button>
         <button class="btn btn-danger btn-sm" id="deleteTripBtn">Delete</button>
       </div>
@@ -589,7 +639,194 @@ function renderTripDetail() {
   `;
 }
 
-// ---------- Trip forms ----------
+function currentTrip() {
+  return STATE.trips.find((t) => t.id === STATE.viewTripId) || null;
+}
+
+function tripNotFoundHtml() {
+  return `
+    <button class="btn btn-secondary btn-sm" id="backToTripsBtn" style="margin-bottom:12px;">← Back</button>
+    <div class="empty-state">
+      <div class="empty-title">Trip not found</div>
+      <div class="empty-sub">It may have been deleted.</div>
+    </div>
+  `;
+}
+
+function tripStats(trip) {
+  const stages = STATE.stagesByTrip[trip.id] || [];
+  const distanceValues = stages
+    .map((s) => Number(s.distance_km))
+    .filter((n) => Number.isFinite(n));
+  const totalDistance = distanceValues.reduce((sum, n) => sum + n, 0);
+  const allEntriesLoaded = stages.every((s) => Array.isArray(STATE.entriesByStage[s.id]));
+  const entries = allEntriesLoaded
+    ? stages.flatMap((s) => STATE.entriesByStage[s.id] || [])
+    : [];
+  const authors = new Set(entries.map((e) => e.author_id).filter(Boolean));
+  const avg = stages.length && totalDistance ? totalDistance / stages.length : null;
+
+  return {
+    days: inclusiveDays(trip.start_date, trip.end_date),
+    stages: stages.length,
+    distance: totalDistance || null,
+    entries: allEntriesLoaded ? entries.length : null,
+    authors: allEntriesLoaded ? authors.size : null,
+    avg,
+    entriesLoading: !allEntriesLoaded && stages.length > 0,
+  };
+}
+
+function tripStatsStripHtml(trip) {
+  const s = tripStats(trip);
+  const entryValue = s.entriesLoading ? '…' : String(s.entries ?? 0);
+  const authorValue = s.entriesLoading ? '…' : String(s.authors ?? 0);
+  return `
+    <div class="trip-stats" aria-label="Trip metrics">
+      ${statItemHtml('Days', s.days ?? '—')}
+      ${statItemHtml('Stages', s.stages)}
+      ${statItemHtml('Distance', s.distance ? `${Math.round(s.distance)} km` : '—')}
+      ${statItemHtml('Entries', entryValue)}
+      ${statItemHtml('Authors', authorValue)}
+      ${statItemHtml('Avg/stage', s.avg ? `${Math.round(s.avg)} km` : '—')}
+    </div>
+  `;
+}
+
+function statItemHtml(label, value) {
+  return `
+    <div class="trip-stat">
+      <div class="trip-stat-value">${esc(value)}</div>
+      <div class="trip-stat-label">${esc(label)}</div>
+    </div>
+  `;
+}
+
+// ---------- Summary view ----------
+function renderTripSummary() {
+  const trip = currentTrip();
+  if (!trip) return tripNotFoundHtml();
+
+  const stages = STATE.stagesByTrip[trip.id] || [];
+  return `
+    <button class="btn btn-secondary btn-sm" id="backToDetailBtn" style="margin-bottom:12px;">← Back to trip</button>
+
+    <div class="card">
+      <div class="trip-detail-head">
+        <h1 class="trip-detail-title">${esc(trip.title)}</h1>
+        <span class="status-pill ${(STATUS_META[trip.status] || STATUS_META.planning).cls}">${esc((STATUS_META[trip.status] || STATUS_META.planning).label)}</span>
+      </div>
+      <div class="trip-detail-dates">${esc(fmtDateRange(trip.start_date, trip.end_date))}</div>
+      ${tripStatsStripHtml(trip)}
+    </div>
+
+    <div class="card">
+      <div class="card-title">Summary table</div>
+      ${summaryTableHtml(stages, trip)}
+    </div>
+  `;
+}
+
+function summaryTableHtml(stages, trip) {
+  if (STATE.stagesLoading && !stages.length) return `<div class="empty-sub">Loading summary…</div>`;
+  if (!stages.length) return `<div class="empty-sub">No stages yet.</div>`;
+
+  return `
+    <div class="summary-table-wrap">
+      <table class="summary-table">
+        <thead>
+          <tr>
+            <th>Date</th>
+            <th>From → To</th>
+            <th>Distance</th>
+            <th>Notes</th>
+            <th>Journal</th>
+          </tr>
+        </thead>
+        <tbody>
+          ${stages.map((stage, index) => summaryStageRowsHtml(stage, trip, index)).join('')}
+        </tbody>
+      </table>
+    </div>
+  `;
+}
+
+function summaryStageRowsHtml(stage, trip, index) {
+  const entries = STATE.entriesByStage[stage.id];
+  const expanded = STATE.expandedSummaryStages.has(stage.id);
+  const count = Array.isArray(entries) ? entries.length : (entries === 'loading' ? '…' : 0);
+  const warning = isStageDateOutsideTrip(stage, trip) ? `<div class="summary-warning">Outside trip dates</div>` : '';
+
+  const main = `
+    <tr class="summary-stage-row">
+      <td>${stage.planned_date ? esc(fmtDate(stage.planned_date)) : '—'}${warning}</td>
+      <td>${esc(stageRouteLabel(stage, index))}</td>
+      <td>${stage.distance_km != null ? `${esc(stage.distance_km)} km` : '—'}</td>
+      <td>${stage.notes ? esc(stage.notes) : '—'}</td>
+      <td>
+        <button class="summary-toggle" data-summary-stage-id="${esc(stage.id)}">
+          ${expanded ? '▾' : '▸'} ${esc(count)}
+        </button>
+      </td>
+    </tr>
+  `;
+
+  if (!expanded) return main;
+
+  return main + `
+    <tr class="summary-entry-row">
+      <td colspan="5">
+        ${summaryEntriesHtml(entries)}
+      </td>
+    </tr>
+  `;
+}
+
+function summaryEntriesHtml(entries) {
+  if (entries === 'loading' || entries === undefined) return `<div class="empty-sub">Loading entries…</div>`;
+  if (!entries.length) return `<div class="empty-sub">No journal entries for this stage.</div>`;
+
+  return `
+    <div class="summary-entry-table-wrap">
+      <table class="summary-entry-table">
+        <thead>
+          <tr>
+            <th>Type</th>
+            <th>Time</th>
+            <th>Title</th>
+            <th>Location</th>
+            <th>Links</th>
+          </tr>
+        </thead>
+        <tbody>
+          ${entries.map(summaryEntryRowHtml).join('')}
+        </tbody>
+      </table>
+    </div>
+  `;
+}
+
+function summaryEntryRowHtml(entry) {
+  const meta = ENTRY_TYPE_META[entry.entry_type] || ENTRY_TYPE_META.note;
+  const location = entry.location_url
+    ? `<a href="${esc(entry.location_url)}" target="_blank" rel="noopener">${esc(entry.location || 'Map')}</a>`
+    : esc(entry.location || '—');
+  const links = [];
+  if (entry.info_url) links.push(`<a href="${esc(entry.info_url)}" target="_blank" rel="noopener">Website</a>`);
+  if (entry.photo_album_url) links.push(`<a href="${esc(entry.photo_album_url)}" target="_blank" rel="noopener">Album</a>`);
+
+  return `
+    <tr>
+      <td>${esc(meta.icon)} ${esc(meta.label)}</td>
+      <td>${entry.timestamp ? esc(fmtDateTime(entry.timestamp)) : '—'}</td>
+      <td>${entry.title ? esc(entry.title) : '—'}${entry.description ? `<div class="summary-entry-desc">${esc(entry.description)}</div>` : ''}</td>
+      <td>${location}</td>
+      <td>${links.length ? links.join(' · ') : '—'}</td>
+    </tr>
+  `;
+}
+
+// ---------- Forms ----------
 function tripFormHtml(trip = {}) {
   return `
     <div class="form-row">
@@ -659,8 +896,9 @@ function showDeleteTripConfirm(trip) {
     ]);
 }
 
-// ---------- Stage forms ----------
-function stageFormHtml(stage = {}) {
+function stageFormHtml(stage = {}, trip = {}) {
+  const hasTripDateBounds = Boolean(trip.start_date || trip.end_date);
+  const dateDisabled = !hasTripDateBounds;
   return `
     <div class="form-row">
       <label class="form-label" for="sfTitle">Stage title (optional)</label>
@@ -677,9 +915,7 @@ function stageFormHtml(stage = {}) {
     <div class="form-row">
       <label class="form-label" for="sfCustomUrl">Custom Maps URL (optional)</label>
       <input class="inp" id="sfCustomUrl" value="${esc(stage.custom_route_url || '')}" placeholder="https://maps.app.goo.gl/...">
-      <div class="form-help">
-        Plan your route in Google Maps, then paste the share link here to use it for navigation. Leave empty for the auto-generated route.
-      </div>
+      <div class="form-help">Plan your route in Google Maps, then paste the share link here. Leave empty for the auto-generated route.</div>
     </div>
     <details class="form-details">
       <summary>Coordinates (advanced — auto-filled from city names)</summary>
@@ -701,63 +937,76 @@ function stageFormHtml(stage = {}) {
           <input class="inp" id="sfEndLng" inputmode="decimal" value="${esc(stage.end_lng ?? '')}" placeholder="auto">
         </div>
       </div>
-      <div style="font-size:11px;color:#6b7a93;line-height:1.4;">
-        Override only if the city lookup picks the wrong place. In Google Maps, right-click a place and click the coordinates to copy them.
-      </div>
     </details>
     <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;">
       <div class="form-row">
         <label class="form-label" for="sfDate">Planned date</label>
-        <input class="inp" id="sfDate" type="date" value="${esc(stage.planned_date || '')}">
+        <input class="inp" id="sfDate" type="date" value="${esc(stage.planned_date || '')}"${attr('min', trip.start_date)}${attr('max', trip.end_date)}${boolAttr('disabled', dateDisabled)}>
+        ${dateDisabled ? `<div class="form-help">Set the trip's start or end date first to add stage dates.</div>` : ''}
       </div>
       <div class="form-row">
-        <label class="form-label" for="sfDist">Distance (km)</label>
-        <input class="inp" id="sfDist" type="number" min="0" step="1" value="${esc(stage.distance_km ?? '')}" placeholder="320">
+        <label class="form-label" for="sfDistance">Distance (km)</label>
+        <input class="inp" id="sfDistance" inputmode="decimal" value="${esc(stage.distance_km ?? '')}" placeholder="e.g. 240">
       </div>
     </div>
     <div class="form-row">
       <label class="form-label" for="sfNotes">Notes</label>
-      <textarea class="txt" id="sfNotes" maxlength="2000" placeholder="Optional notes about this stage">${esc(stage.notes || '')}</textarea>
+      <textarea class="txt" id="sfNotes" maxlength="2000" placeholder="Roads, stops, warnings, ideas">${esc(stage.notes || '')}</textarea>
     </div>
   `;
 }
 
 function readStageForm() {
-  return {
-    title: $('sfTitle')?.value || '',
-    start_location: $('sfStartLoc')?.value || '',
-    end_location: $('sfEndLoc')?.value || '',
-    custom_route_url: $('sfCustomUrl')?.value || '',
-    start_lat: $('sfStartLat')?.value || '',
-    start_lng: $('sfStartLng')?.value || '',
-    end_lat: $('sfEndLat')?.value || '',
-    end_lng: $('sfEndLng')?.value || '',
-    planned_date: $('sfDate')?.value || '',
-    distance_km: $('sfDist')?.value || '',
-    notes: $('sfNotes')?.value || '',
+  const fields = {
+    title: $('sfTitle')?.value.trim() || '',
+    start_location: $('sfStartLoc')?.value.trim() || '',
+    end_location: $('sfEndLoc')?.value.trim() || '',
+    custom_route_url: $('sfCustomUrl')?.value.trim() || '',
+    start_lat: $('sfStartLat')?.value.trim() || '',
+    start_lng: $('sfStartLng')?.value.trim() || '',
+    end_lat: $('sfEndLat')?.value.trim() || '',
+    end_lng: $('sfEndLng')?.value.trim() || '',
+    distance_km: $('sfDistance')?.value.trim() || '',
+    notes: $('sfNotes')?.value.trim() || '',
   };
+
+  const dateInput = $('sfDate');
+  if (dateInput && !dateInput.disabled) {
+    fields.planned_date = dateInput.value || '';
+  }
+
+  return fields;
+}
+
+function validateStageFormAgainstTrip(fields, trip) {
+  if (!fields.planned_date) return;
+  if (trip.start_date && fields.planned_date < trip.start_date) {
+    throw new Error(`Stage date cannot be before the trip starts (${fmtDate(trip.start_date)}).`);
+  }
+  if (trip.end_date && fields.planned_date > trip.end_date) {
+    throw new Error(`Stage date cannot be after the trip ends (${fmtDate(trip.end_date)}).`);
+  }
 }
 
 function showNewStageModal(trip) {
-  showModal('New stage', stageFormHtml(), [
+  showModal('Add stage', stageFormHtml({}, trip), [
     { label: 'Add stage', cls: 'btn-primary', fn: () => handleCreateStage(trip.id) },
     { label: 'Cancel', cls: 'btn-secondary', fn: closeModal },
   ]);
   setTimeout(() => $('sfStartLoc')?.focus(), 50);
 }
 
-function showEditStageModal(stage) {
-  showModal('Edit stage', stageFormHtml(stage), [
+function showEditStageModal(stage, trip) {
+  showModal('Edit stage', stageFormHtml(stage, trip), [
     { label: 'Save', cls: 'btn-primary', fn: () => handleUpdateStage(stage.id) },
     { label: 'Cancel', cls: 'btn-secondary', fn: closeModal },
   ]);
 }
 
 function showDeleteStageConfirm(stage) {
-  const label = [stage.start_location, stage.end_location].filter(Boolean).join(' → ') || stage.title || 'this stage';
   showModal('Delete stage',
     `<div style="font-size:14px;line-height:1.5;color:#c5d0e0;">
-      Delete <strong>${esc(label)}</strong>? This also deletes its journal entries.
+      Delete <strong>${esc(stageRouteLabel(stage))}</strong>? This also deletes its journal entries.
     </div>`,
     [
       { label: 'Delete', cls: 'btn-danger', fn: () => handleDeleteStage(stage.id) },
@@ -765,309 +1014,100 @@ function showDeleteStageConfirm(stage) {
     ]);
 }
 
-// ---------- Journal forms ----------
 function entryFormHtml(entry = {}) {
-  const currentType = entry.entry_type || 'note';
-  const tsValue = entry.timestamp ? isoToDatetimeLocal(entry.timestamp) : nowAsDatetimeLocal();
   return `
     <div class="form-row">
-      <label class="form-label" for="efType">Type</label>
-      <select class="sel" id="efType">
+      <label class="form-label" for="jfType">Type</label>
+      <select class="sel" id="jfType">
         ${Object.entries(ENTRY_TYPE_META).map(([key, m]) =>
-          `<option value="${esc(key)}" ${currentType === key ? 'selected' : ''}>${m.icon} ${esc(m.label)}</option>`
+          `<option value="${esc(key)}" ${(entry.entry_type || 'note') === key ? 'selected' : ''}>${esc(m.icon)} ${esc(m.label)}</option>`
         ).join('')}
       </select>
     </div>
     <div class="form-row">
-      <label class="form-label" for="efTitle">Title</label>
-      <input class="inp" id="efTitle" maxlength="120" value="${esc(entry.title || '')}" placeholder="e.g. Coffee at Pico do Arieiro">
+      <label class="form-label" for="jfTitle">Title</label>
+      <input class="inp" id="jfTitle" maxlength="120" value="${esc(entry.title || '')}" placeholder="e.g. Coffee stop, Hotel, Viewpoint">
     </div>
     <div class="form-row">
-      <label class="form-label" for="efDesc">Description</label>
-      <textarea class="txt" id="efDesc" maxlength="2000" placeholder="What happened, how was it, anything memorable">${esc(entry.description || '')}</textarea>
-    </div>
-    <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;">
-      <div class="form-row">
-        <label class="form-label" for="efTime">When</label>
-        <input class="inp" id="efTime" type="datetime-local" value="${esc(tsValue)}">
-      </div>
-      <div class="form-row">
-        <label class="form-label" for="efLoc">Location</label>
-        <input class="inp" id="efLoc" maxlength="120" value="${esc(entry.location || '')}" placeholder="optional">
-      </div>
+      <label class="form-label" for="jfDesc">Description</label>
+      <textarea class="txt" id="jfDesc" maxlength="4000" placeholder="What happened here?">${esc(entry.description || '')}</textarea>
     </div>
     <div class="form-row">
-      <label class="form-label" for="efAlbum">Photo album URL (optional)</label>
-      <input class="inp" id="efAlbum" value="${esc(entry.photo_album_url || '')}" placeholder="https://photos.app.goo.gl/...">
-      <div class="form-help">
-        Paste a link to a Google Photos / iCloud / Nextcloud / similar shared album. Must start with https://.
-      </div>
+      <label class="form-label" for="jfLocation">Location name</label>
+      <input class="inp" id="jfLocation" maxlength="160" value="${esc(entry.location || '')}" placeholder="e.g. Hotel Lisboa, The old pub, Miradouro">
+    </div>
+    <div class="form-row">
+      <label class="form-label" for="jfLocationUrl">Maps URL (optional)</label>
+      <input class="inp" id="jfLocationUrl" value="${esc(entry.location_url || '')}" placeholder="https://maps.app.goo.gl/...">
+      <div class="form-help">Google Maps link for where this entry happened.</div>
+    </div>
+    <div class="form-row">
+      <label class="form-label" for="jfInfoUrl">Website URL (optional)</label>
+      <input class="inp" id="jfInfoUrl" value="${esc(entry.info_url || '')}" placeholder="https://example.com/...">
+      <div class="form-help">Booking.com, restaurant website, pub page, TripAdvisor, or any useful HTTPS link.</div>
+    </div>
+    <div class="form-row">
+      <label class="form-label" for="jfTime">When</label>
+      <input class="inp" id="jfTime" type="datetime-local" value="${esc(entry.timestamp ? isoToDatetimeLocal(entry.timestamp) : nowAsDatetimeLocal())}">
+    </div>
+    <div class="form-row">
+      <label class="form-label" for="jfAlbum">Photo album URL (optional)</label>
+      <input class="inp" id="jfAlbum" value="${esc(entry.photo_album_url || '')}" placeholder="https://photos.app.goo.gl/...">
+      <div class="form-help">External album link. Must start with https://.</div>
     </div>
   `;
 }
 
 function readEntryForm() {
   return {
-    entry_type: $('efType')?.value || 'note',
-    title: $('efTitle')?.value || '',
-    description: $('efDesc')?.value || '',
-    location: $('efLoc')?.value || '',
-    timestamp: datetimeLocalToIso($('efTime')?.value),
-    photo_album_url: $('efAlbum')?.value || '',
+    entry_type: $('jfType')?.value || 'note',
+    title: $('jfTitle')?.value.trim() || '',
+    description: $('jfDesc')?.value.trim() || '',
+    location: $('jfLocation')?.value.trim() || '',
+    location_url: $('jfLocationUrl')?.value.trim() || '',
+    info_url: $('jfInfoUrl')?.value.trim() || '',
+    timestamp: datetimeLocalToIso($('jfTime')?.value || ''),
+    photo_album_url: $('jfAlbum')?.value.trim() || '',
   };
 }
 
 function showNewEntryModal(stageId) {
-  showModal('New journal entry', entryFormHtml(), [
+  showModal('Add journal entry', entryFormHtml({ entry_type: 'note' }), [
     { label: 'Add entry', cls: 'btn-primary', fn: () => handleCreateEntry(stageId) },
     { label: 'Cancel', cls: 'btn-secondary', fn: closeModal },
   ]);
-  setTimeout(() => $('efTitle')?.focus(), 50);
+  setTimeout(() => $('jfTitle')?.focus(), 50);
 }
 
-function showEditEntryModal(entry) {
+function showEditEntryModal(stageId, entry) {
   showModal('Edit journal entry', entryFormHtml(entry), [
-    { label: 'Save', cls: 'btn-primary', fn: () => handleUpdateEntry(entry.id, entry.stage_id) },
+    { label: 'Save', cls: 'btn-primary', fn: () => handleUpdateEntry(stageId, entry.id) },
     { label: 'Cancel', cls: 'btn-secondary', fn: closeModal },
   ]);
 }
 
-function showDeleteEntryConfirm(entry) {
-  const label = entry.title || ENTRY_TYPE_META[entry.entry_type]?.label || 'this entry';
+function showDeleteEntryConfirm(stageId, entry) {
   showModal('Delete entry',
     `<div style="font-size:14px;line-height:1.5;color:#c5d0e0;">
-      Delete <strong>${esc(label)}</strong>?
+      Delete <strong>${esc(entry.title || 'this journal entry')}</strong>?
     </div>`,
     [
-      { label: 'Delete', cls: 'btn-danger', fn: () => handleDeleteEntry(entry.id, entry.stage_id) },
+      { label: 'Delete', cls: 'btn-danger', fn: () => handleDeleteEntry(stageId, entry.id) },
       { label: 'Cancel', cls: 'btn-secondary', fn: closeModal },
     ]);
 }
 
-// ---------- Trip handlers ----------
-async function handleCreateTrip() {
-  const form = readTripForm();
-  if (!form.title) { toast('Title is required.'); return; }
-  try {
-    const trip = await createTrip(form);
-    STATE.trips = [trip, ...STATE.trips];
-    closeModal();
-    toast('Trip created.');
-    goToDetail(trip.id);
-  } catch (err) {
-    console.error(err);
-    toast(err.message || 'Failed to create trip.');
-  }
-}
-
-async function handleUpdateTrip(id) {
-  const form = readTripForm();
-  if (!form.title) { toast('Title is required.'); return; }
-  try {
-    const updated = await updateTrip(id, form);
-    STATE.trips = STATE.trips.map((t) => (t.id === id ? updated : t));
-    closeModal();
-    toast('Trip updated.');
-    renderTab();
-  } catch (err) {
-    console.error(err);
-    toast(err.message || 'Failed to update trip.');
-  }
-}
-
-async function handleDeleteTrip(id) {
-  try {
-    await deleteTrip(id);
-    STATE.trips = STATE.trips.filter((t) => t.id !== id);
-    delete STATE.stagesByTrip[id];
-    closeModal();
-    toast('Trip deleted.');
-    goTo(STATE.tab);
-  } catch (err) {
-    console.error(err);
-    toast(err.message || 'Failed to delete trip.');
-  }
-}
-
-// ---------- Stage handlers ----------
-async function handleCreateStage(tripId) {
-  const form = readStageForm();
-  if (!form.start_location && !form.end_location && !form.title) {
-    toast('Add at least a start, end, or stage title.');
-    return;
-  }
-  try {
-    const stage = await createStage(tripId, form);
-    const list = STATE.stagesByTrip[tripId] || [];
-    STATE.stagesByTrip[tripId] = [...list, stage];
-    closeModal();
-    toast('Stage added.');
-    loadForecastForStage(stage);
-    renderTab();
-  } catch (err) {
-    console.error(err);
-    toast(err.message || 'Failed to add stage.');
-  }
-}
-
-async function handleUpdateStage(id) {
-  const form = readStageForm();
-  try {
-    const updated = await updateStage(id, form);
-    const tripId = updated.trip_id;
-    STATE.stagesByTrip[tripId] = (STATE.stagesByTrip[tripId] || []).map((s) =>
-      (s.id === id ? updated : s)
-    );
-    delete STATE.forecastsByStage[id];
-    closeModal();
-    toast('Stage updated.');
-    loadForecastForStage(updated);
-    renderTab();
-  } catch (err) {
-    console.error(err);
-    toast(err.message || 'Failed to update stage.');
-  }
-}
-
-async function handleDeleteStage(id) {
-  const tripId = STATE.viewTripId;
-  try {
-    await deleteStage(id);
-    STATE.stagesByTrip[tripId] = (STATE.stagesByTrip[tripId] || []).filter((s) => s.id !== id);
-    delete STATE.forecastsByStage[id];
-    delete STATE.entriesByStage[id];
-    STATE.expandedStages.delete(id);
-    closeModal();
-    toast('Stage deleted.');
-    renderTab();
-  } catch (err) {
-    console.error(err);
-    toast(err.message || 'Failed to delete stage.');
-  }
-}
-
-async function handleMoveStage(id, direction) {
-  const tripId = STATE.viewTripId;
-  const stages = STATE.stagesByTrip[tripId] || [];
-  const idx = stages.findIndex((s) => s.id === id);
-  if (idx < 0) return;
-  const swapIdx = direction === 'up' ? idx - 1 : idx + 1;
-  if (swapIdx < 0 || swapIdx >= stages.length) return;
-
-  const a = stages[idx];
-  const b = stages[swapIdx];
-  try {
-    await swapStageOrder(a, b);
-    const aOrder = a.order_index;
-    a.order_index = b.order_index;
-    b.order_index = aOrder;
-    stages.sort((x, y) => x.order_index - y.order_index);
-    STATE.stagesByTrip[tripId] = [...stages];
-    renderTab();
-  } catch (err) {
-    console.error(err);
-    toast('Reorder failed; reloading…');
-    await loadStagesForTrip(tripId);
-  }
-}
-
-// ---------- Journal handlers ----------
-async function handleCreateEntry(stageId) {
-  const form = readEntryForm();
-  try {
-    const entry = await createEntry(stageId, form);
-    const existing = Array.isArray(STATE.entriesByStage[stageId]) ? STATE.entriesByStage[stageId] : [];
-    const next = [...existing, entry].sort((a, b) => {
-      const ta = a.timestamp || a.created_at;
-      const tb = b.timestamp || b.created_at;
-      return new Date(ta) - new Date(tb);
-    });
-    STATE.entriesByStage[stageId] = next;
-    STATE.expandedStages.add(stageId);
-    closeModal();
-    toast('Entry added.');
-    renderTab();
-  } catch (err) {
-    console.error(err);
-    toast(err.message || 'Failed to add entry.');
-  }
-}
-
-async function handleUpdateEntry(id, stageId) {
-  const form = readEntryForm();
-  try {
-    const updated = await updateEntry(id, form);
-    const list = Array.isArray(STATE.entriesByStage[stageId]) ? STATE.entriesByStage[stageId] : [];
-    const next = list.map((e) => (e.id === id ? updated : e)).sort((a, b) => {
-      const ta = a.timestamp || a.created_at;
-      const tb = b.timestamp || b.created_at;
-      return new Date(ta) - new Date(tb);
-    });
-    STATE.entriesByStage[stageId] = next;
-    closeModal();
-    toast('Entry updated.');
-    renderTab();
-  } catch (err) {
-    console.error(err);
-    toast(err.message || 'Failed to update entry.');
-  }
-}
-
-async function handleDeleteEntry(id, stageId) {
-  try {
-    await deleteEntry(id);
-    const list = Array.isArray(STATE.entriesByStage[stageId]) ? STATE.entriesByStage[stageId] : [];
-    STATE.entriesByStage[stageId] = list.filter((e) => e.id !== id);
-    closeModal();
-    toast('Entry deleted.');
-    renderTab();
-  } catch (err) {
-    console.error(err);
-    toast(err.message || 'Failed to delete entry.');
-  }
-}
-
-// ---------- Navigation ----------
-const SCREENS = {
-  trips:   renderTrips,
-  archive: renderArchive,
-  account: renderAccount,
-};
-
-function goTo(tab) {
-  if (!SCREENS[tab]) return;
-  STATE.tab = tab;
-  STATE.view = 'list';
-  STATE.viewTripId = null;
-  document.querySelectorAll('.nav-btn').forEach((b) => {
-    b.classList.toggle('active', b.dataset.tab === tab);
-  });
-  renderTab();
-}
-
-function goToDetail(tripId) {
-  STATE.view = 'detail';
-  STATE.viewTripId = tripId;
-  renderTab();
-  if (!STATE.stagesByTrip[tripId]) loadStagesForTrip(tripId);
-}
-
+// ---------- Account ----------
 function renderAccount() {
   if (!STATE.user) {
     return `
       <div class="card">
-        <div class="card-title">Sign in</div>
-        <div style="color:#6b7a93;font-size:14px;line-height:1.5;margin-bottom:16px;">
-          routefolk is for a fixed group of friends. Sign in with the Google
-          account whose email has been added to the test users list.
+        <div class="card-title">Account</div>
+        <div style="font-size:14px;color:#c5d0e0;line-height:1.5;margin-bottom:14px;">
+          Sign in with Google to access shared trips.
         </div>
-        <button class="btn-google" id="googleSignInBtn">
-          <svg viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
-            <path d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z" fill="#4285F4"/>
-            <path d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z" fill="#34A853"/>
-            <path d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18A10.99 10.99 0 0 0 1 12c0 1.77.42 3.45 1.18 4.93l2.85-2.22.81-.62z" fill="#FBBC05"/>
-            <path d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84C6.71 7.31 9.14 5.38 12 5.38z" fill="#EA4335"/>
-          </svg>
+        <button class="btn-google" id="accountSignInBtn">
+          <svg viewBox="0 0 24 24" aria-hidden="true"><path fill="#4285F4" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"/><path fill="#34A853" d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z"/><path fill="#FBBC05" d="M5.84 14.1c-.22-.66-.35-1.36-.35-2.1s.13-1.44.35-2.1V7.06H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.94l3.66-2.84z"/><path fill="#EA4335" d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.06L5.84 9.9C6.71 7.3 9.14 5.38 12 5.38z"/></svg>
           Sign in with Google
         </button>
       </div>
@@ -1080,151 +1120,341 @@ function renderAccount() {
       <div class="card-title">Account</div>
       <div class="account-row">
         <div class="account-avatar">
-          ${avatar
-            ? `<img src="${esc(avatar)}" alt="" referrerpolicy="no-referrer">`
-            : esc(userInitials(STATE.user))}
+          ${avatar ? `<img src="${esc(avatar)}" alt="" referrerpolicy="no-referrer">` : esc(userInitials(STATE.user))}
         </div>
         <div class="account-info">
           <div class="account-name">${esc(userDisplayName(STATE.user))}</div>
           <div class="account-email">${esc(STATE.user.email || '')}</div>
         </div>
       </div>
-      <div style="margin-top:16px;">
-        <button class="btn btn-danger btn-block" id="signOutBtn">Sign out</button>
-      </div>
+      <button class="btn btn-secondary btn-block" id="signOutBtn" style="margin-top:12px;">Sign out</button>
     </div>
   `;
 }
 
+// ---------- Handlers ----------
+async function handleSignIn() {
+  try {
+    await signInWithGoogle();
+  } catch (err) {
+    console.error(err);
+    toast(err.message || 'Sign-in failed.');
+  }
+}
+
+async function handleSignOut() {
+  try {
+    await signOut();
+  } catch (err) {
+    console.error(err);
+    toast(err.message || 'Sign-out failed.');
+  }
+}
+
+async function handleCreateTrip() {
+  try {
+    const trip = await createTrip(readTripForm());
+    closeModal();
+    await loadTrips();
+    await openTrip(trip.id);
+    toast('Trip created.');
+  } catch (err) {
+    console.error(err);
+    toast(err.message || 'Failed to create trip.');
+  }
+}
+
+async function handleUpdateTrip(tripId) {
+  try {
+    await updateTrip(tripId, readTripForm());
+    closeModal();
+    await loadTrips();
+    renderAll();
+    toast('Trip updated.');
+  } catch (err) {
+    console.error(err);
+    toast(err.message || 'Failed to update trip.');
+  }
+}
+
+async function handleDeleteTrip(tripId) {
+  try {
+    await deleteTrip(tripId);
+    closeModal();
+    STATE.view = 'list';
+    STATE.viewTripId = null;
+    await loadTrips();
+    toast('Trip deleted.');
+  } catch (err) {
+    console.error(err);
+    toast(err.message || 'Failed to delete trip.');
+  }
+}
+
+async function handleCreateStage(tripId) {
+  const trip = STATE.trips.find((t) => t.id === tripId);
+  try {
+    const fields = readStageForm();
+    validateStageFormAgainstTrip(fields, trip || {});
+    await createStage(tripId, fields);
+    closeModal();
+    await loadStagesForTrip(tripId);
+    toast('Stage added.');
+  } catch (err) {
+    console.error(err);
+    toast(err.message || 'Failed to add stage.');
+  }
+}
+
+async function handleUpdateStage(stageId) {
+  const trip = currentTrip();
+  try {
+    const fields = readStageForm();
+    validateStageFormAgainstTrip(fields, trip || {});
+    await updateStage(stageId, fields);
+    closeModal();
+    if (trip) await loadStagesForTrip(trip.id);
+    toast('Stage updated.');
+  } catch (err) {
+    console.error(err);
+    toast(err.message || 'Failed to update stage.');
+  }
+}
+
+async function handleDeleteStage(stageId) {
+  const trip = currentTrip();
+  try {
+    await deleteStage(stageId);
+    closeModal();
+    STATE.expandedStages.delete(stageId);
+    STATE.expandedSummaryStages.delete(stageId);
+    delete STATE.entriesByStage[stageId];
+    if (trip) await loadStagesForTrip(trip.id);
+    toast('Stage deleted.');
+  } catch (err) {
+    console.error(err);
+    toast(err.message || 'Failed to delete stage.');
+  }
+}
+
+async function handleMoveStage(stageId, direction) {
+  const trip = currentTrip();
+  if (!trip) return;
+  const stages = STATE.stagesByTrip[trip.id] || [];
+  const index = stages.findIndex((s) => s.id === stageId);
+  const targetIndex = direction === 'up' ? index - 1 : index + 1;
+  if (index < 0 || targetIndex < 0 || targetIndex >= stages.length) return;
+
+  try {
+    await swapStageOrder(stages[index], stages[targetIndex]);
+    await loadStagesForTrip(trip.id);
+  } catch (err) {
+    console.error(err);
+    toast(err.message || 'Failed to reorder stages.');
+  }
+}
+
+async function handleCreateEntry(stageId) {
+  try {
+    await createEntry(stageId, readEntryForm());
+    closeModal();
+    await loadEntriesForStage(stageId, { quiet: true });
+    toast('Entry added.');
+  } catch (err) {
+    console.error(err);
+    toast(err.message || 'Failed to add entry.');
+  }
+}
+
+async function handleUpdateEntry(stageId, entryId) {
+  try {
+    await updateEntry(entryId, readEntryForm());
+    closeModal();
+    await loadEntriesForStage(stageId, { quiet: true });
+    toast('Entry updated.');
+  } catch (err) {
+    console.error(err);
+    toast(err.message || 'Failed to update entry.');
+  }
+}
+
+async function handleDeleteEntry(stageId, entryId) {
+  try {
+    await deleteEntry(entryId);
+    closeModal();
+    await loadEntriesForStage(stageId, { quiet: true });
+    toast('Entry deleted.');
+  } catch (err) {
+    console.error(err);
+    toast(err.message || 'Failed to delete entry.');
+  }
+}
+
+// ---------- Rendering / event binding ----------
+function renderAll() {
+  renderHeader();
+  renderNav();
+  renderTab();
+}
+
 function renderTab() {
   const content = $('content');
-  if (STATE.view === 'detail') {
+  if (!content) return;
+
+  if (STATE.tab === 'account') {
+    content.innerHTML = renderAccount();
+  } else if (STATE.view === 'detail') {
     content.innerHTML = renderTripDetail();
+  } else if (STATE.view === 'summary') {
+    content.innerHTML = renderTripSummary();
+  } else if (STATE.tab === 'archive') {
+    content.innerHTML = renderArchive();
   } else {
-    const fn = SCREENS[STATE.tab] || renderTrips;
-    content.innerHTML = fn();
+    content.innerHTML = renderTrips();
   }
-  wireScreenButtons();
+
+  bindContentEvents(content);
 }
 
-function wireScreenButtons() {
-  $('googleSignInBtn')?.addEventListener('click', handleSignIn);
-  $('signOutBtn')?.addEventListener('click', handleSignOut);
-
-  $('newTripBtn')?.addEventListener('click', showNewTripModal);
-  $('retryTripsBtn')?.addEventListener('click', loadTrips);
-  document.querySelectorAll('.trip-card').forEach((el) => {
-    el.addEventListener('click', () => goToDetail(el.dataset.id));
+function bindContentEvents(content) {
+  content.querySelector('#emptySignInBtn')?.addEventListener('click', handleSignIn);
+  content.querySelector('#accountSignInBtn')?.addEventListener('click', handleSignIn);
+  content.querySelector('#signOutBtn')?.addEventListener('click', handleSignOut);
+  content.querySelector('#retryTripsBtn')?.addEventListener('click', loadTrips);
+  content.querySelector('#retryStagesBtn')?.addEventListener('click', () => {
+    if (STATE.viewTripId) loadStagesForTrip(STATE.viewTripId);
+  });
+  content.querySelector('#newTripBtn')?.addEventListener('click', showNewTripModal);
+  content.querySelector('#backToTripsBtn')?.addEventListener('click', () => {
+    STATE.view = 'list';
+    STATE.viewTripId = null;
+    renderAll();
+  });
+  content.querySelector('#backToDetailBtn')?.addEventListener('click', () => {
+    STATE.view = 'detail';
+    renderAll();
+  });
+  content.querySelector('#summaryTripBtn')?.addEventListener('click', async () => {
+    STATE.view = 'summary';
+    renderAll();
+  });
+  content.querySelector('#editTripBtn')?.addEventListener('click', () => {
+    const trip = currentTrip();
+    if (trip) showEditTripModal(trip);
+  });
+  content.querySelector('#deleteTripBtn')?.addEventListener('click', () => {
+    const trip = currentTrip();
+    if (trip) showDeleteTripConfirm(trip);
+  });
+  content.querySelector('#addStageBtn')?.addEventListener('click', () => {
+    const trip = currentTrip();
+    if (trip) showNewStageModal(trip);
   });
 
-  $('backToTripsBtn')?.addEventListener('click', () => goTo(STATE.tab));
-  const trip = STATE.trips.find((t) => t.id === STATE.viewTripId);
-  if (trip) {
-    $('editTripBtn')?.addEventListener('click', () => showEditTripModal(trip));
-    $('deleteTripBtn')?.addEventListener('click', () => showDeleteTripConfirm(trip));
+  content.querySelectorAll('[data-trip-id]').forEach((btn) => {
+    btn.addEventListener('click', () => openTrip(btn.dataset.tripId));
+  });
 
-    $('addStageBtn')?.addEventListener('click', () => showNewStageModal(trip));
-    $('retryStagesBtn')?.addEventListener('click', () => loadStagesForTrip(trip.id));
+  content.querySelectorAll('[data-stage-action]').forEach((btn) => {
+    btn.addEventListener('click', () => {
+      const action = btn.dataset.stageAction;
+      const id = btn.dataset.id;
+      const trip = currentTrip();
+      const stage = (trip ? (STATE.stagesByTrip[trip.id] || []) : []).find((s) => s.id === id);
+      if (!stage && action !== 'up' && action !== 'down') return;
+      if (action === 'up' || action === 'down') handleMoveStage(id, action);
+      if (action === 'edit') showEditStageModal(stage, trip);
+      if (action === 'delete') showDeleteStageConfirm(stage);
+    });
+  });
 
-    document.querySelectorAll('[data-action="up"], [data-action="down"]').forEach((btn) => {
-      btn.addEventListener('click', () => handleMoveStage(btn.dataset.id, btn.dataset.action));
-    });
-    document.querySelectorAll('.stage-actions [data-action="edit"]').forEach((btn) => {
-      btn.addEventListener('click', () => {
-        const stages = STATE.stagesByTrip[trip.id] || [];
-        const stage = stages.find((s) => s.id === btn.dataset.id);
-        if (stage) showEditStageModal(stage);
-      });
-    });
-    document.querySelectorAll('.stage-actions [data-action="delete"]').forEach((btn) => {
-      btn.addEventListener('click', () => {
-        const stages = STATE.stagesByTrip[trip.id] || [];
-        const stage = stages.find((s) => s.id === btn.dataset.id);
-        if (stage) showDeleteStageConfirm(stage);
-      });
-    });
+  content.querySelectorAll('[data-stage-id]').forEach((btn) => {
+    btn.addEventListener('click', () => toggleStageJournal(btn.dataset.stageId));
+  });
 
-    // Journal toggles
-    document.querySelectorAll('.journal-toggle').forEach((btn) => {
-      btn.addEventListener('click', () => toggleStageJournal(btn.dataset.stageId));
+  content.querySelectorAll('[data-stage-add-entry]').forEach((btn) => {
+    btn.addEventListener('click', () => showNewEntryModal(btn.dataset.stageAddEntry));
+  });
+
+  content.querySelectorAll('[data-entry-action]').forEach((btn) => {
+    btn.addEventListener('click', () => {
+      const entryId = btn.dataset.id;
+      const { stageId, entry } = findEntry(entryId);
+      if (!entry) return;
+      if (btn.dataset.entryAction === 'edit') showEditEntryModal(stageId, entry);
+      if (btn.dataset.entryAction === 'delete') showDeleteEntryConfirm(stageId, entry);
     });
-    // Journal add-entry buttons
-    document.querySelectorAll('[data-stage-add-entry]').forEach((btn) => {
-      btn.addEventListener('click', () => showNewEntryModal(btn.dataset.stageAddEntry));
-    });
-    // Journal entry edit / delete
-    document.querySelectorAll('[data-entry-action]').forEach((btn) => {
-      btn.addEventListener('click', () => {
-        const id = btn.dataset.id;
-        const action = btn.dataset.entryAction;
-        // Find the entry across all expanded stages
-        let entry = null;
-        for (const sid of Object.keys(STATE.entriesByStage)) {
-          const list = STATE.entriesByStage[sid];
-          if (!Array.isArray(list)) continue;
-          const found = list.find((e) => e.id === id);
-          if (found) { entry = found; break; }
+  });
+
+  content.querySelectorAll('[data-summary-stage-id]').forEach((btn) => {
+    btn.addEventListener('click', () => {
+      const stageId = btn.dataset.summaryStageId;
+      if (STATE.expandedSummaryStages.has(stageId)) {
+        STATE.expandedSummaryStages.delete(stageId);
+      } else {
+        STATE.expandedSummaryStages.add(stageId);
+        if (!STATE.entriesByStage[stageId] || STATE.entriesByStage[stageId] === 'loading') {
+          loadEntriesForStage(stageId, { quiet: true });
         }
-        if (!entry) return;
-        if (action === 'edit') showEditEntryModal(entry);
-        else if (action === 'delete') showDeleteEntryConfirm(entry);
-      });
+      }
+      renderAll();
     });
+  });
+}
+
+function toggleStageJournal(stageId) {
+  if (STATE.expandedStages.has(stageId)) {
+    STATE.expandedStages.delete(stageId);
+    renderAll();
+    return;
+  }
+
+  STATE.expandedStages.add(stageId);
+  if (!STATE.entriesByStage[stageId] || STATE.entriesByStage[stageId] === 'loading') {
+    loadEntriesForStage(stageId);
+  } else {
+    renderAll();
   }
 }
 
-// ---------- Auth handlers ----------
-async function handleSignIn() {
-  try { await signInWithGoogle(); } catch { toast('Sign-in failed. Check console.'); }
-}
-async function handleSignOut() {
-  try { await signOut(); toast('Signed out.'); } catch { toast('Sign-out failed.'); }
+function findEntry(entryId) {
+  for (const [stageId, entries] of Object.entries(STATE.entriesByStage)) {
+    if (!Array.isArray(entries)) continue;
+    const entry = entries.find((e) => e.id === entryId);
+    if (entry) return { stageId, entry };
+  }
+  return { stageId: null, entry: null };
 }
 
-// ---------- Init ----------
 async function init() {
-  document.querySelectorAll('.nav-btn').forEach((b) => {
-    b.addEventListener('click', () => goTo(b.dataset.tab));
-  });
-
-  const d = new Date();
-  $('hdrSub').textContent = d.toLocaleDateString(undefined, {
-    weekday: 'long', day: 'numeric', month: 'long',
-  });
-
   STATE.user = await getCurrentUser();
+  bindNav();
+  renderAll();
+
+  if (STATE.user) await loadTrips();
 
   onAuthChange(async (user) => {
-    const wasSignedIn = !!STATE.user;
     STATE.user = user;
-    renderHeader();
-    if (user && !wasSignedIn) {
-      toast(`Welcome, ${userDisplayName(user).split(' ')[0]}!`);
-      await loadTrips();
-    } else if (!user) {
-      STATE.trips = [];
-      STATE.stagesByTrip = {};
-      STATE.forecastsByStage = {};
-      STATE.entriesByStage = {};
-      STATE.expandedStages = new Set();
-      STATE.view = 'list';
-      STATE.viewTripId = null;
-      renderTab();
-    }
+    STATE.trips = [];
+    STATE.stagesByTrip = {};
+    STATE.entriesByStage = {};
+    STATE.forecastsByStage = {};
+    STATE.expandedStages.clear();
+    STATE.expandedSummaryStages.clear();
+    STATE.view = 'list';
+    STATE.viewTripId = null;
+    renderAll();
+    if (STATE.user) await loadTrips();
   });
 
-  renderHeader();
-  renderTab();
-
-  if (STATE.user) loadTrips();
-
   if ('serviceWorker' in navigator) {
-    window.addEventListener('load', () => {
-      navigator.serviceWorker.register('./sw.js').catch((err) => {
-        console.warn('Service worker registration failed:', err);
-      });
+    navigator.serviceWorker.register('./sw.js').catch((err) => {
+      console.warn('Service worker registration failed:', err);
     });
   }
 }
 
-init();
+init().catch((err) => {
+  console.error(err);
+  toast(err.message || 'App failed to start.');
+});

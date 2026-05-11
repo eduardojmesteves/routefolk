@@ -48,7 +48,7 @@ Within the app, all signed-in users can edit and delete each other's trips, stag
 | Weather | Open-Meteo forecast API | Free, no key, 16-day forecast |
 | Photos | External album links | Defers photo storage entirely |
 | PWA | Hand-written service worker | No plugin |
-| Icons | Inline SVGs | No icon library |
+| Icons | Inline SVGs + emoji labels | No icon library |
 
 ### Stack things deliberately not used
 
@@ -86,7 +86,7 @@ Managed by Supabase Auth.
 | title | text | |
 | start_location / end_location | text | human-readable city names |
 | start_lat / start_lng / end_lat / end_lng | double precision | auto-filled via geocoding |
-| planned_date | date | |
+| planned_date | date | constrained in the UI by trip start/end dates |
 | gmaps_url | text | auto-built from start/end |
 | custom_route_url | text | optional user-pasted Maps URL |
 | distance_km | double precision | |
@@ -100,8 +100,10 @@ Managed by Supabase Auth.
 | author_id | uuid | auto-set on INSERT; preserved on UPDATE |
 | entry_type | text | `stop` / `meal` / `lodging` / `note` / `drink` / `other` |
 | title / description / location | text | |
+| location_url | text | optional Google Maps URL; `https` + Google Maps host allowlist |
+| info_url | text | optional generic website URL; `https` only |
 | timestamp | timestamptz | when it happened (not when entered) |
-| photo_album_url | text | optional, https-only |
+| photo_album_url | text | optional external album URL; `https` only |
 
 ### `expenses`
 Per-user, no splits.
@@ -123,7 +125,9 @@ A track may belong to a stage OR a whole trip.
 
 ### Google Maps (intent links + user-pasted)
 
-Custom URLs take priority over auto-generated ones. Validated `https` + allowlisted hosts.
+Custom stage URLs take priority over auto-generated route URLs. Stage custom URLs and journal location URLs are validated with `https` + allowlisted Google Maps hosts.
+
+Journal `info_url` is deliberately looser: any `https` URL is accepted because it can point to Booking.com, a restaurant website, a pub page, TripAdvisor, Instagram, a blog post, or any other useful reference.
 
 ---
 
@@ -136,6 +140,7 @@ Full current schema in `schema.sql` (idempotent). Incremental changes are tracke
 | Migration | Description |
 |---|---|
 | `001_custom_route_url.sql` | Adds `custom_route_url` to stages, plus `updated_by`/`updated_at` audit columns + triggers on trips and stages |
+| `002_journal_links.sql` | Adds `location_url` and `info_url` to journal entries |
 
 ---
 
@@ -152,11 +157,15 @@ Full current schema in `schema.sql` (idempotent). Incremental changes are tracke
 **Trips**
 - [x] Create / list / view / edit / delete
 - [x] Archive tab for completed and cancelled trips
+- [x] Trip metrics strip: days, stages, distance, entries, authors, average distance per stage
+- [x] Trip summary table with expandable stage rows
 
 **Stages**
 - [x] Add / edit / reorder / delete
 - [x] Google Maps Navigate button
 - [x] Custom Maps URL override
+- [x] Planned date constrained by trip start/end dates in the UI
+- [x] Soft warning when an existing stage date falls outside the trip range
 
 **Weather**
 - [x] Auto-geocode city names
@@ -168,8 +177,11 @@ Full current schema in `schema.sql` (idempotent). Incremental changes are tracke
 - [x] Entry types with icons
 - [x] Author shown on each entry
 - [x] Optional external photo album link
+- [x] Optional Google Maps location link
+- [x] Optional generic website link
 
 **Polish**
+- [x] Dark-mode date picker icon visibility fix
 - [x] Bottom nav (mobile) / sidebar (desktop) responsive
 - [ ] Loading states and error messages — refined as features land
 - [ ] Online-only with clear "you're offline" message when applicable
@@ -184,7 +196,6 @@ Full current schema in `schema.sql` (idempotent). Incremental changes are tracke
 - [ ] Leaflet world map with completed trips
 - [ ] Drill-down: world → country → trip → stage → journal entries
 - [ ] Past trips list view as alternative to map
-- [ ] Basic stats per trip
 - [ ] Upload + parse GPX files
 - [ ] Display GPX track on the trip's map view
 
@@ -215,6 +226,18 @@ Lower-priority items captured so they're not forgotten.
 - **Display "last edited by … at …" on trips and stages.** Data is being captured in `updated_by` / `updated_at`. Display requires a `profiles` table mirroring user names. Same table will let journal entries show the author's real name instead of just initials/"Friend."
 - **Geocoder ambiguity hints.** Show country alongside ambiguous city names.
 - **Long-range weather outlook** beyond the 16-day Open-Meteo forecast.
+
+---
+
+## Design ideas parked
+
+Visual directions considered but intentionally deferred. The current palette stays in place for now.
+
+| Direction | Notes | Risk |
+|---|---|---|
+| Warm dusk | Sunset oranges and warm browns; more travel-memory feeling | Could become too lifestyle/blog-like |
+| Forest | Greens and earth tones; outdoorsy and calm | Could feel more like a hiking app than a motorcycle trip app |
+| Pure neutral | Greys with subtle accents only on status | Timeless, but less distinctive |
 
 ---
 
@@ -253,7 +276,7 @@ routefolk/
 │   ├── stages.js           # Stage CRUD with auto-geocoding & custom-URL validation
 │   ├── geocoding.js        # Open-Meteo geocoding wrapper + cache
 │   ├── weather.js          # Open-Meteo forecast wrapper + cache
-│   └── journal.js          # Journal entry CRUD
+│   └── journal.js          # Journal entry CRUD + journal URL validation
 ├── sw.js                   # Service worker (bump CACHE on shell changes)
 ├── manifest.json           # PWA manifest
 ├── icons/
@@ -261,7 +284,8 @@ routefolk/
 │   └── icon-512.png
 ├── schema.sql              # Full current database schema (idempotent)
 ├── migrations/             # Incremental schema changes, run in order
-│   └── 001_custom_route_url.sql
+│   ├── 001_custom_route_url.sql
+│   └── 002_journal_links.sql
 └── README.md               # This file
 ```
 
@@ -271,6 +295,11 @@ routefolk/
 
 A running list of decisions made and why. New entries go at the top.
 
+- **2026-05: Journal entries use two optional URL fields beyond photo albums.** `location_url` is for Google Maps links; `info_url` is for generic HTTPS websites such as Booking.com, restaurants, pubs, TripAdvisor, blogs, or other useful references. This avoids type-specific fields and keeps the form simple.
+- **2026-05: Stage planned dates are constrained by trip dates in the UI.** If a trip has date bounds, stage date inputs receive `min` / `max`. If the trip has no dates, the stage date field is disabled with explanatory help text.
+- **2026-05: Existing out-of-range stage dates use soft warnings, not hard blocking.** Changing trip dates should not trap the user mid-edit. The app warns and lets the group fix stage dates later.
+- **2026-05: Trip summary uses expandable stage rows.** One row per stage keeps the summary scannable; journal entries are revealed only when needed.
+- **2026-05: Current colour palette stays.** Alternative palettes are parked, not implemented.
 - **2026-05: Journal entries are editable by anyone, but `author_id` is preserved.** Small trusted group; ability to fix someone else's typo outweighs the "protect against malicious edits" angle. The original author is always displayed.
 - **2026-05: Journal section collapsed by default per stage.** Reduces visual noise on the trip detail page; one tap to expand.
 - **2026-05: Photo album URL: `https` only, no host allowlist.** Photos can come from Google Photos, iCloud, Nextcloud, Flickr, etc. — we just enforce shape, not provider.
