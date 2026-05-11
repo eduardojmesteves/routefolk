@@ -4,7 +4,7 @@
 // for static assets. Bump CACHE when shell assets change.
 // ============================================================
 
-const CACHE = 'routefolk-shell-v13';
+const CACHE = 'routefolk-shell-v14';
 
 const SHELL_ASSETS = [
   './',
@@ -24,6 +24,8 @@ const SHELL_ASSETS = [
   './lib/expenses.js',
   './icons/icon-192.png',
   './icons/icon-512.png',
+  './style.css?v=20260511-phase25-filters',
+  './app.js?v=20260511-phase25-filters',
 ];
 
 self.addEventListener('install', (event) => {
