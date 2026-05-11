@@ -89,9 +89,7 @@ a:hover { text-decoration: underline; }
   z-index: 50;
 }
 
-#nav-inner {
-  display: flex;
-}
+#nav-inner { display: flex; }
 
 .nav-btn {
   flex: 1;
@@ -203,6 +201,13 @@ a:hover { text-decoration: underline; }
   font-size: 12px;
   font-weight: 600;
   color: #6b7a93;
+}
+
+.form-help {
+  font-size: 11px;
+  color: #6b7a93;
+  line-height: 1.4;
+  margin-top: 2px;
 }
 
 .form-details {
@@ -584,8 +589,140 @@ a:hover { text-decoration: underline; }
   margin-top: 6px;
 }
 
-.wx-attribution a {
+.wx-attribution a { color: #6b7a93; }
+
+/* ---------- Journal section on stage card ---------- */
+.journal-section {
+  margin-top: 10px;
+  padding-top: 10px;
+  border-top: 1px solid #2a3142;
+}
+
+.journal-toggle {
+  width: 100%;
+  text-align: left;
+  background: transparent;
+  color: #6da9ff;
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  padding: 4px 0;
+}
+
+.journal-toggle:hover { color: #93bfff; }
+
+.journal-body {
+  margin-top: 8px;
+}
+
+.entry-list {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.entry-card {
+  background: #142036;
+  border: 1px solid #1f3458;
+  border-radius: 8px;
+  padding: 10px;
+}
+
+.entry-head {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+}
+
+.entry-type-icon {
+  font-size: 20px;
+  line-height: 1.2;
+  flex-shrink: 0;
+}
+
+.entry-head-text {
+  flex: 1;
+  min-width: 0;
+}
+
+.entry-title {
+  font-size: 14px;
+  font-weight: 700;
+  color: #e8edf5;
+  line-height: 1.3;
+  word-break: break-word;
+}
+
+.entry-title-muted {
+  color: #a8b3c8;
+  font-weight: 600;
+}
+
+.entry-meta {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+  margin-top: 4px;
+  font-size: 11px;
   color: #6b7a93;
+}
+
+.entry-author {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 22px;
+  height: 22px;
+  padding: 0 6px;
+  border-radius: 999px;
+  background: #2a3142;
+  border: 1px solid #3a4458;
+  color: #93bfff;
+  font-weight: 700;
+  font-size: 10px;
+}
+
+.entry-actions {
+  display: flex;
+  gap: 4px;
+  flex-shrink: 0;
+}
+
+.entry-icon-btn {
+  width: 28px;
+  height: 28px;
+  border-radius: 6px;
+  background: #2a3142;
+  color: #c5d0e0;
+  font-size: 13px;
+  border: 1px solid #3a4458;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.entry-icon-btn:hover { background: #323a4d; }
+.entry-icon-danger { color: #ef6262; border-color: #4a1818; background: #2a0e0e; }
+.entry-icon-danger:hover { background: #3a1414; }
+
+.entry-desc {
+  margin-top: 8px;
+  font-size: 13px;
+  color: #c5d0e0;
+  line-height: 1.4;
+  white-space: pre-wrap;
+}
+
+.entry-album {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  margin-top: 8px;
+  font-size: 12px;
+  font-weight: 600;
+  color: #6da9ff;
 }
 
 /* ---------- Modal ---------- */

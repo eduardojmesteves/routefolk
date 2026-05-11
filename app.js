@@ -1,13 +1,13 @@
 // ============================================================
 // routefolk — app.js
-// Phase 1, step 6.5: custom Maps URL on stages.
-// Navigate button uses custom_route_url if set, else gmaps_url.
+// Phase 1, step 7: journal entries on each stage.
 // ============================================================
 
 import { signInWithGoogle, signOut, getCurrentUser, onAuthChange } from './lib/auth.js';
 import { listTrips, createTrip, updateTrip, deleteTrip } from './lib/trips.js';
 import { listStages, createStage, updateStage, deleteStage, swapStageOrder } from './lib/stages.js';
 import { fetchStageForecasts } from './lib/weather.js';
+import { listEntriesForStage, createEntry, updateEntry, deleteEntry } from './lib/journal.js';
 
 const STATE = {
   tab: 'trips',
@@ -21,6 +21,8 @@ const STATE = {
   stagesLoading: false,
   stagesError: null,
   forecastsByStage: {},
+  entriesByStage: {},        // stageId -> array of entries OR 'loading'
+  expandedStages: new Set(), // stageIds whose journal section is open
 };
 
 const STATUS_META = {
@@ -28,6 +30,15 @@ const STATUS_META = {
   active:    { label: 'Active',    cls: 'status-active'    },
   completed: { label: 'Completed', cls: 'status-completed' },
   cancelled: { label: 'Cancelled', cls: 'status-cancelled' },
+};
+
+const ENTRY_TYPE_META = {
+  stop:    { label: 'Stop',    icon: '🛑' },
+  meal:    { label: 'Meal',    icon: '🍽️' },
+  lodging: { label: 'Lodging', icon: '🏨' },
+  note:    { label: 'Note',    icon: '💬' },
+  drink:   { label: 'Drink',   icon: '🍺' },
+  other:   { label: 'Other',   icon: '📌' },
 };
 
 // ---------- DOM helpers ----------
@@ -100,6 +111,21 @@ function userAvatarUrl(user) {
   return user?.user_metadata?.avatar_url || user?.user_metadata?.picture || '';
 }
 
+/** Initials for an author_id when we don't yet have a profiles table.
+ *  If the entry was authored by the current user, use their initials.
+ *  Otherwise, use a short slice of the UUID. Placeholder until profiles land. */
+function authorInitials(authorId) {
+  if (STATE.user && authorId === STATE.user.id) return userInitials(STATE.user);
+  if (!authorId) return '?';
+  return authorId.slice(0, 2).toUpperCase();
+}
+
+function authorLabel(authorId) {
+  if (STATE.user && authorId === STATE.user.id) return 'You';
+  // Future: look up profiles table for the friend's name
+  return 'Friend';
+}
+
 // ---------- Date helpers ----------
 function fmtDate(iso) {
   if (!iso) return '';
@@ -114,6 +140,37 @@ function fmtDateRange(start, end) {
   if (!start && end) return `Until ${fmtDate(end)}`;
   if (start === end) return fmtDate(start);
   return `${fmtDate(start)} → ${fmtDate(end)}`;
+}
+
+function fmtDateTime(iso) {
+  if (!iso) return '';
+  const d = new Date(iso);
+  if (Number.isNaN(d.getTime())) return iso;
+  return d.toLocaleString(undefined, {
+    day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit',
+  });
+}
+
+/** Convert an ISO timestamp to the value expected by <input type="datetime-local">,
+ *  in the user's local timezone. */
+function isoToDatetimeLocal(iso) {
+  if (!iso) return '';
+  const d = new Date(iso);
+  if (Number.isNaN(d.getTime())) return '';
+  const pad = (n) => String(n).padStart(2, '0');
+  return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(d.getMinutes())}`;
+}
+
+/** Convert a datetime-local value (local time) back to a UTC ISO string. */
+function datetimeLocalToIso(value) {
+  if (!value) return null;
+  const d = new Date(value);
+  if (Number.isNaN(d.getTime())) return null;
+  return d.toISOString();
+}
+
+function nowAsDatetimeLocal() {
+  return isoToDatetimeLocal(new Date().toISOString());
 }
 
 // ---------- Header ----------
@@ -184,6 +241,34 @@ async function loadForecastForStage(stage) {
     STATE.forecastsByStage[stage.id] = [];
   }
   if (STATE.view === 'detail' && STATE.viewTripId === stage.trip_id) {
+    renderTab();
+  }
+}
+
+async function loadEntriesForStage(stageId) {
+  STATE.entriesByStage[stageId] = 'loading';
+  renderTab();
+  try {
+    const entries = await listEntriesForStage(stageId);
+    STATE.entriesByStage[stageId] = entries;
+  } catch (err) {
+    console.error(err);
+    STATE.entriesByStage[stageId] = [];
+    toast('Failed to load journal entries.');
+  }
+  renderTab();
+}
+
+function toggleStageJournal(stageId) {
+  if (STATE.expandedStages.has(stageId)) {
+    STATE.expandedStages.delete(stageId);
+    renderTab();
+    return;
+  }
+  STATE.expandedStages.add(stageId);
+  if (!STATE.entriesByStage[stageId] || STATE.entriesByStage[stageId] === 'loading') {
+    loadEntriesForStage(stageId);
+  } else {
     renderTab();
   }
 }
@@ -341,9 +426,65 @@ function weatherStripHtml(stage) {
   `;
 }
 
+// ---------- Journal rendering ----------
+function entryCardHtml(entry) {
+  const meta = ENTRY_TYPE_META[entry.entry_type] || ENTRY_TYPE_META.note;
+  return `
+    <div class="entry-card">
+      <div class="entry-head">
+        <div class="entry-type-icon" title="${esc(meta.label)}">${meta.icon}</div>
+        <div class="entry-head-text">
+          ${entry.title ? `<div class="entry-title">${esc(entry.title)}</div>` : `<div class="entry-title entry-title-muted">${esc(meta.label)}</div>`}
+          <div class="entry-meta">
+            <span class="entry-author" title="${esc(authorLabel(entry.author_id))}">${esc(authorInitials(entry.author_id))}</span>
+            ${entry.timestamp ? `<span>${esc(fmtDateTime(entry.timestamp))}</span>` : ''}
+            ${entry.location ? `<span>📍 ${esc(entry.location)}</span>` : ''}
+          </div>
+        </div>
+        <div class="entry-actions">
+          <button class="entry-icon-btn" data-entry-action="edit" data-id="${esc(entry.id)}" title="Edit">✎</button>
+          <button class="entry-icon-btn entry-icon-danger" data-entry-action="delete" data-id="${esc(entry.id)}" title="Delete">✕</button>
+        </div>
+      </div>
+      ${entry.description ? `<div class="entry-desc">${esc(entry.description)}</div>` : ''}
+      ${entry.photo_album_url ? `<a class="entry-album" href="${esc(entry.photo_album_url)}" target="_blank" rel="noopener">📷 View photo album</a>` : ''}
+    </div>
+  `;
+}
+
+function journalSectionHtml(stage) {
+  const expanded = STATE.expandedStages.has(stage.id);
+  const entries = STATE.entriesByStage[stage.id];
+  const count = Array.isArray(entries) ? entries.length : null;
+
+  const summary = `
+    <button class="journal-toggle" data-stage-id="${esc(stage.id)}">
+      <span>${expanded ? '▾' : '▸'} Journal${count !== null ? ` (${count})` : ''}</span>
+    </button>
+  `;
+
+  if (!expanded) return summary;
+
+  let body;
+  if (entries === 'loading' || entries === undefined) {
+    body = `<div class="empty-sub" style="padding:8px 0;">Loading entries…</div>`;
+  } else if (!entries.length) {
+    body = `<div class="empty-sub" style="padding:8px 0;">No entries yet.</div>`;
+  } else {
+    body = `<div class="entry-list">${entries.map(entryCardHtml).join('')}</div>`;
+  }
+
+  return `
+    ${summary}
+    <div class="journal-body">
+      ${body}
+      <button class="btn btn-secondary btn-sm btn-block" data-stage-add-entry="${esc(stage.id)}" style="margin-top:8px;">+ Add entry</button>
+    </div>
+  `;
+}
+
 // ---------- Trip detail ----------
 function stageNavigateUrl(stage) {
-  // Custom takes precedence; fall back to auto-generated.
   return stage.custom_route_url || stage.gmaps_url || null;
 }
 
@@ -374,6 +515,9 @@ function stageCardHtml(stage, index, total) {
         ${navUrl ? `<a class="btn btn-secondary btn-sm" href="${esc(navUrl)}" target="_blank" rel="noopener">Navigate</a>` : ''}
         <button class="btn btn-secondary btn-sm" data-action="edit" data-id="${esc(stage.id)}">Edit</button>
         <button class="btn btn-danger btn-sm" data-action="delete" data-id="${esc(stage.id)}">Delete</button>
+      </div>
+      <div class="journal-section">
+        ${journalSectionHtml(stage)}
       </div>
     </div>
   `;
@@ -621,6 +765,85 @@ function showDeleteStageConfirm(stage) {
     ]);
 }
 
+// ---------- Journal forms ----------
+function entryFormHtml(entry = {}) {
+  const currentType = entry.entry_type || 'note';
+  const tsValue = entry.timestamp ? isoToDatetimeLocal(entry.timestamp) : nowAsDatetimeLocal();
+  return `
+    <div class="form-row">
+      <label class="form-label" for="efType">Type</label>
+      <select class="sel" id="efType">
+        ${Object.entries(ENTRY_TYPE_META).map(([key, m]) =>
+          `<option value="${esc(key)}" ${currentType === key ? 'selected' : ''}>${m.icon} ${esc(m.label)}</option>`
+        ).join('')}
+      </select>
+    </div>
+    <div class="form-row">
+      <label class="form-label" for="efTitle">Title</label>
+      <input class="inp" id="efTitle" maxlength="120" value="${esc(entry.title || '')}" placeholder="e.g. Coffee at Pico do Arieiro">
+    </div>
+    <div class="form-row">
+      <label class="form-label" for="efDesc">Description</label>
+      <textarea class="txt" id="efDesc" maxlength="2000" placeholder="What happened, how was it, anything memorable">${esc(entry.description || '')}</textarea>
+    </div>
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;">
+      <div class="form-row">
+        <label class="form-label" for="efTime">When</label>
+        <input class="inp" id="efTime" type="datetime-local" value="${esc(tsValue)}">
+      </div>
+      <div class="form-row">
+        <label class="form-label" for="efLoc">Location</label>
+        <input class="inp" id="efLoc" maxlength="120" value="${esc(entry.location || '')}" placeholder="optional">
+      </div>
+    </div>
+    <div class="form-row">
+      <label class="form-label" for="efAlbum">Photo album URL (optional)</label>
+      <input class="inp" id="efAlbum" value="${esc(entry.photo_album_url || '')}" placeholder="https://photos.app.goo.gl/...">
+      <div class="form-help">
+        Paste a link to a Google Photos / iCloud / Nextcloud / similar shared album. Must start with https://.
+      </div>
+    </div>
+  `;
+}
+
+function readEntryForm() {
+  return {
+    entry_type: $('efType')?.value || 'note',
+    title: $('efTitle')?.value || '',
+    description: $('efDesc')?.value || '',
+    location: $('efLoc')?.value || '',
+    timestamp: datetimeLocalToIso($('efTime')?.value),
+    photo_album_url: $('efAlbum')?.value || '',
+  };
+}
+
+function showNewEntryModal(stageId) {
+  showModal('New journal entry', entryFormHtml(), [
+    { label: 'Add entry', cls: 'btn-primary', fn: () => handleCreateEntry(stageId) },
+    { label: 'Cancel', cls: 'btn-secondary', fn: closeModal },
+  ]);
+  setTimeout(() => $('efTitle')?.focus(), 50);
+}
+
+function showEditEntryModal(entry) {
+  showModal('Edit journal entry', entryFormHtml(entry), [
+    { label: 'Save', cls: 'btn-primary', fn: () => handleUpdateEntry(entry.id, entry.stage_id) },
+    { label: 'Cancel', cls: 'btn-secondary', fn: closeModal },
+  ]);
+}
+
+function showDeleteEntryConfirm(entry) {
+  const label = entry.title || ENTRY_TYPE_META[entry.entry_type]?.label || 'this entry';
+  showModal('Delete entry',
+    `<div style="font-size:14px;line-height:1.5;color:#c5d0e0;">
+      Delete <strong>${esc(label)}</strong>?
+    </div>`,
+    [
+      { label: 'Delete', cls: 'btn-danger', fn: () => handleDeleteEntry(entry.id, entry.stage_id) },
+      { label: 'Cancel', cls: 'btn-secondary', fn: closeModal },
+    ]);
+}
+
 // ---------- Trip handlers ----------
 async function handleCreateTrip() {
   const form = readTripForm();
@@ -712,6 +935,8 @@ async function handleDeleteStage(id) {
     await deleteStage(id);
     STATE.stagesByTrip[tripId] = (STATE.stagesByTrip[tripId] || []).filter((s) => s.id !== id);
     delete STATE.forecastsByStage[id];
+    delete STATE.entriesByStage[id];
+    STATE.expandedStages.delete(id);
     closeModal();
     toast('Stage deleted.');
     renderTab();
@@ -743,6 +968,62 @@ async function handleMoveStage(id, direction) {
     console.error(err);
     toast('Reorder failed; reloading…');
     await loadStagesForTrip(tripId);
+  }
+}
+
+// ---------- Journal handlers ----------
+async function handleCreateEntry(stageId) {
+  const form = readEntryForm();
+  try {
+    const entry = await createEntry(stageId, form);
+    const existing = Array.isArray(STATE.entriesByStage[stageId]) ? STATE.entriesByStage[stageId] : [];
+    const next = [...existing, entry].sort((a, b) => {
+      const ta = a.timestamp || a.created_at;
+      const tb = b.timestamp || b.created_at;
+      return new Date(ta) - new Date(tb);
+    });
+    STATE.entriesByStage[stageId] = next;
+    STATE.expandedStages.add(stageId);
+    closeModal();
+    toast('Entry added.');
+    renderTab();
+  } catch (err) {
+    console.error(err);
+    toast(err.message || 'Failed to add entry.');
+  }
+}
+
+async function handleUpdateEntry(id, stageId) {
+  const form = readEntryForm();
+  try {
+    const updated = await updateEntry(id, form);
+    const list = Array.isArray(STATE.entriesByStage[stageId]) ? STATE.entriesByStage[stageId] : [];
+    const next = list.map((e) => (e.id === id ? updated : e)).sort((a, b) => {
+      const ta = a.timestamp || a.created_at;
+      const tb = b.timestamp || b.created_at;
+      return new Date(ta) - new Date(tb);
+    });
+    STATE.entriesByStage[stageId] = next;
+    closeModal();
+    toast('Entry updated.');
+    renderTab();
+  } catch (err) {
+    console.error(err);
+    toast(err.message || 'Failed to update entry.');
+  }
+}
+
+async function handleDeleteEntry(id, stageId) {
+  try {
+    await deleteEntry(id);
+    const list = Array.isArray(STATE.entriesByStage[stageId]) ? STATE.entriesByStage[stageId] : [];
+    STATE.entriesByStage[stageId] = list.filter((e) => e.id !== id);
+    closeModal();
+    toast('Entry deleted.');
+    renderTab();
+  } catch (err) {
+    console.error(err);
+    toast(err.message || 'Failed to delete entry.');
   }
 }
 
@@ -862,6 +1143,33 @@ function wireScreenButtons() {
         if (stage) showDeleteStageConfirm(stage);
       });
     });
+
+    // Journal toggles
+    document.querySelectorAll('.journal-toggle').forEach((btn) => {
+      btn.addEventListener('click', () => toggleStageJournal(btn.dataset.stageId));
+    });
+    // Journal add-entry buttons
+    document.querySelectorAll('[data-stage-add-entry]').forEach((btn) => {
+      btn.addEventListener('click', () => showNewEntryModal(btn.dataset.stageAddEntry));
+    });
+    // Journal entry edit / delete
+    document.querySelectorAll('[data-entry-action]').forEach((btn) => {
+      btn.addEventListener('click', () => {
+        const id = btn.dataset.id;
+        const action = btn.dataset.entryAction;
+        // Find the entry across all expanded stages
+        let entry = null;
+        for (const sid of Object.keys(STATE.entriesByStage)) {
+          const list = STATE.entriesByStage[sid];
+          if (!Array.isArray(list)) continue;
+          const found = list.find((e) => e.id === id);
+          if (found) { entry = found; break; }
+        }
+        if (!entry) return;
+        if (action === 'edit') showEditEntryModal(entry);
+        else if (action === 'delete') showDeleteEntryConfirm(entry);
+      });
+    });
   }
 }
 
@@ -897,6 +1205,8 @@ async function init() {
       STATE.trips = [];
       STATE.stagesByTrip = {};
       STATE.forecastsByStage = {};
+      STATE.entriesByStage = {};
+      STATE.expandedStages = new Set();
       STATE.view = 'list';
       STATE.viewTripId = null;
       renderTab();

@@ -4,7 +4,7 @@
 // for static assets. Bump CACHE when shell assets change.
 // ============================================================
 
-const CACHE = 'routefolk-shell-v6';
+const CACHE = 'routefolk-shell-v7';
 
 const SHELL_ASSETS = [
   './',
@@ -19,6 +19,7 @@ const SHELL_ASSETS = [
   './lib/stages.js',
   './lib/geocoding.js',
   './lib/weather.js',
+  './lib/journal.js',
   './icons/icon-192.png',
   './icons/icon-512.png',
 ];
@@ -46,7 +47,6 @@ self.addEventListener('fetch', (event) => {
   if (req.method !== 'GET') return;
 
   const url = new URL(req.url);
-
   if (url.origin !== self.location.origin) return;
 
   if (req.mode === 'navigate') {
