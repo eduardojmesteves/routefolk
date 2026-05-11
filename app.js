@@ -1,6 +1,6 @@
 // ============================================================
 // routefolk — app.js
-// Phase 1: trips, stages, weather, journal, metrics, summary.
+// Phase 2.5: reliability polish, trip filters, audit display.
 // ============================================================
 
 import { signInWithGoogle, signOut, getCurrentUser, onAuthChange } from './lib/auth.js';
@@ -33,6 +33,9 @@ const STATE = {
   expensesByTrip: {},       // tripId -> array of expenses OR 'loading'
   expensesLoading: false,
   expensesError: null,
+  tripSearch: '',
+  tripStatusFilter: 'all',
+  isOnline: typeof navigator === 'undefined' ? true : navigator.onLine !== false,
 };
 
 const STATUS_META = {
@@ -193,6 +196,20 @@ function canDeleteTrip(trip) {
   return Boolean(STATE.user?.id && trip?.created_by === STATE.user.id);
 }
 
+function canWrite() {
+  return STATE.isOnline !== false;
+}
+
+function writeDisabledAttr() {
+  return canWrite() ? '' : ' disabled';
+}
+
+function ensureOnline(message = 'You are offline. Reconnect before making changes.') {
+  if (canWrite()) return true;
+  toast(message);
+  return false;
+}
+
 // ---------- Date helpers ----------
 function fmtDate(iso) {
   if (!iso) return '';
@@ -216,6 +233,12 @@ function fmtDateTime(iso) {
   return d.toLocaleString(undefined, {
     day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit',
   });
+}
+
+function auditLineHtml(record, label = 'Last edited') {
+  if (!record?.updated_by || !record?.updated_at) return '';
+  const who = displayNameForUserId(record.updated_by);
+  return `<div class="audit-line">${esc(label)} by ${esc(who)} · ${esc(fmtDateTime(record.updated_at))}</div>`;
 }
 
 function isoToDatetimeLocal(iso) {
@@ -285,6 +308,16 @@ function isExpenseDateOutsideTrip(expense, trip) {
   if (trip.start_date && expense.date < trip.start_date) return true;
   if (trip.end_date && expense.date > trip.end_date) return true;
   return false;
+}
+
+// ---------- Online/offline ----------
+function offlineBannerHtml() {
+  if (STATE.isOnline !== false) return '';
+  return `
+    <div class="offline-banner" role="status">
+      You are offline. You can view cached content, but changes are disabled until you reconnect.
+    </div>
+  `;
 }
 
 // ---------- Header/nav ----------
@@ -491,6 +524,61 @@ function tripCardHtml(trip) {
   `;
 }
 
+function tripFiltersHtml() {
+  return `
+    <div class="trip-controls">
+      <div class="trip-search-wrap">
+        <label class="form-label" for="tripSearchInput">Search trips</label>
+        <input class="inp" id="tripSearchInput" type="search" value="${esc(STATE.tripSearch)}" placeholder="Search by trip title">
+      </div>
+      <div class="trip-status-wrap">
+        <label class="form-label" for="tripStatusFilter">Status</label>
+        <select class="sel" id="tripStatusFilter">
+          <option value="all" ${STATE.tripStatusFilter === 'all' ? 'selected' : ''}>All</option>
+          ${Object.entries(STATUS_META).map(([key, meta]) => `<option value="${esc(key)}" ${STATE.tripStatusFilter === key ? 'selected' : ''}>${esc(meta.label)}</option>`).join('')}
+        </select>
+      </div>
+    </div>
+  `;
+}
+
+function filteredTripsForTripsScreen() {
+  const query = STATE.tripSearch.trim().toLowerCase();
+  return STATE.trips.filter((trip) => {
+    const matchesStatus = STATE.tripStatusFilter === 'all' || trip.status === STATE.tripStatusFilter;
+    const matchesSearch = !query || String(trip.title || '').toLowerCase().includes(query);
+    return matchesStatus && matchesSearch;
+  });
+}
+
+function tripResultsHtml() {
+  const trips = filteredTripsForTripsScreen();
+  const hasFilters = STATE.tripSearch.trim() || STATE.tripStatusFilter !== 'all';
+
+  if (!STATE.trips.length) {
+    return `
+      <div class="empty-state">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
+          <path d="M3 6h18M3 12h18M3 18h12"/>
+        </svg>
+        <div class="empty-title">No trips</div>
+        <div class="empty-sub">Tap "+ New trip" to plan one.</div>
+      </div>
+    `;
+  }
+
+  if (!trips.length) {
+    return `
+      <div class="empty-state">
+        <div class="empty-title">No matching trips</div>
+        <div class="empty-sub">${hasFilters ? 'Adjust the search or status filter.' : 'No trips to show.'}</div>
+      </div>
+    `;
+  }
+
+  return `<div class="trip-list">${trips.map(tripCardHtml).join('')}</div>`;
+}
+
 function renderTrips() {
   if (!STATE.user) return signedOutState('Sign in to see trips', 'Trips are shared with everyone signed in.');
 
@@ -500,30 +588,14 @@ function renderTrips() {
 
   if (STATE.tripsError) return errorCard(STATE.tripsError, 'retryTripsBtn');
 
-  const active = STATE.trips.filter((t) => t.status === 'planning' || t.status === 'active');
-
-  let html = `
+  return `
     <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px;gap:8px;">
       <div class="section-label" style="margin-bottom:0;">Trips</div>
-      <button class="btn btn-primary btn-sm" id="newTripBtn">+ New trip</button>
+      <button class="btn btn-primary btn-sm" id="newTripBtn"${writeDisabledAttr()}>+ New trip</button>
     </div>
+    ${tripFiltersHtml()}
+    <div id="tripResults">${tripResultsHtml()}</div>
   `;
-
-  if (!active.length) {
-    html += `
-      <div class="empty-state">
-        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
-          <path d="M3 6h18M3 12h18M3 18h12"/>
-        </svg>
-        <div class="empty-title">No active trips</div>
-        <div class="empty-sub">Tap "+ New trip" to plan one.</div>
-      </div>
-    `;
-  } else {
-    html += `<div class="trip-list">${active.map(tripCardHtml).join('')}</div>`;
-  }
-
-  return html;
 }
 
 function renderArchive() {
@@ -576,6 +648,18 @@ function errorCard(message, retryId) {
       <button class="btn btn-secondary btn-block" style="margin-top:12px;" id="${esc(retryId)}">Retry</button>
     </div>
   `;
+}
+
+function friendlyError(action, err) {
+  const msg = String(err?.message || '').toLowerCase();
+  if (!canWrite()) return 'You are offline. Reconnect and try again.';
+  if (msg.includes('permission') || msg.includes('policy') || msg.includes('rls') || msg.includes('not allowed')) {
+    return `Could not ${action}. You may not have permission.`;
+  }
+  if (msg.includes('failed to fetch') || msg.includes('network') || msg.includes('timeout')) {
+    return `Could not ${action}. Check your connection and try again.`;
+  }
+  return `Could not ${action}. Please try again.`;
 }
 
 // ---------- Weather rendering ----------
@@ -640,8 +724,8 @@ function entryCardHtml(entry) {
           </div>
         </div>
         <div class="entry-actions">
-          <button class="entry-icon-btn" data-entry-action="edit" data-id="${esc(entry.id)}" title="Edit">✎</button>
-          <button class="entry-icon-btn entry-icon-danger" data-entry-action="delete" data-id="${esc(entry.id)}" title="Delete">✕</button>
+          <button class="entry-icon-btn" data-entry-action="edit" data-id="${esc(entry.id)}" title="Edit"${writeDisabledAttr()}>✎</button>
+          <button class="entry-icon-btn entry-icon-danger" data-entry-action="delete" data-id="${esc(entry.id)}" title="Delete"${writeDisabledAttr()}>✕</button>
         </div>
       </div>
       ${entry.description ? `<div class="entry-desc">${esc(entry.description)}</div>` : ''}
@@ -683,7 +767,7 @@ function journalSectionHtml(stage) {
     ${summary}
     <div class="journal-body">
       ${body}
-      <button class="btn btn-secondary btn-sm btn-block" data-stage-add-entry="${esc(stage.id)}" style="margin-top:8px;">+ Add entry</button>
+      <button class="btn btn-secondary btn-sm btn-block" data-stage-add-entry="${esc(stage.id)}" style="margin-top:8px;"${writeDisabledAttr()}>+ Add entry</button>
     </div>
   `;
 }
@@ -733,13 +817,14 @@ function stageCardHtml(stage, trip, index, total) {
     <div class="stage-card">
       <div class="stage-card-row">
         <div class="stage-order">
-          <button class="stage-order-btn" data-stage-action="up" data-id="${esc(stage.id)}" ${index === 0 ? 'disabled' : ''} title="Move up">↑</button>
-          <button class="stage-order-btn" data-stage-action="down" data-id="${esc(stage.id)}" ${index === total - 1 ? 'disabled' : ''} title="Move down">↓</button>
+          <button class="stage-order-btn" data-stage-action="up" data-id="${esc(stage.id)}" ${index === 0 || !canWrite() ? 'disabled' : ''} title="Move up">↑</button>
+          <button class="stage-order-btn" data-stage-action="down" data-id="${esc(stage.id)}" ${index === total - 1 || !canWrite() ? 'disabled' : ''} title="Move down">↓</button>
         </div>
         <div class="stage-body">
           <div class="stage-title">${esc(route)}</div>
           ${meta.length ? `<div class="stage-meta">${esc(meta.join(' · '))}</div>` : ''}
           ${stage.notes ? `<div class="stage-notes">${esc(stage.notes)}</div>` : ''}
+          ${auditLineHtml(stage, 'Edited')}
           ${stageDateWarningHtml(stage, trip)}
           ${!hasCoords ? `<div class="stage-warn">No coordinates — type a city name and we'll look it up automatically.</div>` : ''}
         </div>
@@ -747,8 +832,8 @@ function stageCardHtml(stage, trip, index, total) {
       ${weatherStripHtml(stage)}
       <div class="stage-actions">
         ${navUrl ? `<a class="btn btn-secondary btn-sm" href="${esc(navUrl)}" target="_blank" rel="noopener">Navigate</a>` : ''}
-        <button class="btn btn-secondary btn-sm" data-stage-action="edit" data-id="${esc(stage.id)}">Edit</button>
-        <button class="btn btn-danger btn-sm" data-stage-action="delete" data-id="${esc(stage.id)}">Delete</button>
+        <button class="btn btn-secondary btn-sm" data-stage-action="edit" data-id="${esc(stage.id)}"${writeDisabledAttr()}>Edit</button>
+        <button class="btn btn-danger btn-sm" data-stage-action="delete" data-id="${esc(stage.id)}"${writeDisabledAttr()}>Delete</button>
       </div>
       <div class="journal-section">
         ${journalSectionHtml(stage)}
@@ -766,7 +851,7 @@ function renderStagesSection(trip) {
   if (!stages || !stages.length) {
     return `
       <div class="empty-sub" style="margin-bottom:12px;">No stages yet. Add one to start planning the route.</div>
-      <button class="btn btn-primary btn-block" id="addStageBtn">+ Add stage</button>
+      <button class="btn btn-primary btn-block" id="addStageBtn"${writeDisabledAttr()}>+ Add stage</button>
     `;
   }
 
@@ -774,7 +859,7 @@ function renderStagesSection(trip) {
     <div class="stage-list">
       ${stages.map((s, i) => stageCardHtml(s, trip, i, stages.length)).join('')}
     </div>
-    <button class="btn btn-primary btn-block" style="margin-top:12px;" id="addStageBtn">+ Add stage</button>
+    <button class="btn btn-primary btn-block" style="margin-top:12px;" id="addStageBtn"${writeDisabledAttr()}>+ Add stage</button>
   `;
 }
 
@@ -796,11 +881,12 @@ function renderTripDetail() {
       </div>
       <div class="trip-detail-dates">${esc(fmtDateRange(trip.start_date, trip.end_date))}</div>
       ${trip.description ? `<div class="trip-detail-desc">${esc(trip.description)}</div>` : ''}
+      ${auditLineHtml(trip)}
       ${tripStatsStripHtml(trip)}
       <div class="trip-detail-actions">
         <button class="btn btn-secondary btn-sm" id="summaryTripBtn">Summary</button>
-        <button class="btn btn-secondary btn-sm" id="editTripBtn">Edit</button>
-        ${canDeleteTrip(trip) ? '<button class="btn btn-danger btn-sm" id="deleteTripBtn">Delete</button>' : ''}
+        <button class="btn btn-secondary btn-sm" id="editTripBtn"${writeDisabledAttr()}>Edit</button>
+        ${canDeleteTrip(trip) ? `<button class="btn btn-danger btn-sm" id="deleteTripBtn"${writeDisabledAttr()}>Delete</button>` : ''}
       </div>
     </div>
 
@@ -1381,7 +1467,7 @@ function renderExpensesSection(trip) {
 
   return `
     ${expenseTotalsHtml(totals)}
-    <button class="btn btn-primary btn-block" id="addExpenseBtn" style="margin:12px 0;">+ Add expense</button>
+    <button class="btn btn-primary btn-block" id="addExpenseBtn" style="margin:12px 0;"${writeDisabledAttr()}>+ Add expense</button>
     ${expenses.length ? `<div class="expense-list">${expenses.map((e) => expenseCardHtml(e)).join('')}</div>` : '<div class="empty-sub">No expenses yet. Add the first cost for this trip.</div>'}
   `;
 }
@@ -1478,8 +1564,8 @@ function expenseCardHtml(expense) {
           </div>
         </div>
         <div class="expense-actions">
-          <button class="entry-icon-btn" data-expense-action="edit" data-id="${esc(expense.id)}" title="Edit">✎</button>
-          <button class="entry-icon-btn entry-icon-danger" data-expense-action="delete" data-id="${esc(expense.id)}" title="Delete">✕</button>
+          <button class="entry-icon-btn" data-expense-action="edit" data-id="${esc(expense.id)}" title="Edit"${writeDisabledAttr()}>✎</button>
+          <button class="entry-icon-btn entry-icon-danger" data-expense-action="delete" data-id="${esc(expense.id)}" title="Delete"${writeDisabledAttr()}>✕</button>
         </div>
       </div>
       ${expense.description ? `<div class="expense-desc">${esc(expense.description)}</div>` : ''}
@@ -1706,6 +1792,7 @@ async function handleSignOut() {
 }
 
 async function handleCreateTrip() {
+  if (!ensureOnline()) return;
   try {
     const trip = await createTrip(readTripForm());
     closeModal();
@@ -1714,11 +1801,12 @@ async function handleCreateTrip() {
     toast('Trip created.');
   } catch (err) {
     console.error(err);
-    toast(err.message || 'Failed to create trip.');
+    toast(friendlyError('save trip', err));
   }
 }
 
 async function handleUpdateTrip(tripId) {
+  if (!ensureOnline()) return;
   try {
     await updateTrip(tripId, readTripForm());
     closeModal();
@@ -1727,11 +1815,12 @@ async function handleUpdateTrip(tripId) {
     toast('Trip updated.');
   } catch (err) {
     console.error(err);
-    toast(err.message || 'Failed to update trip.');
+    toast(friendlyError('save trip', err));
   }
 }
 
 async function handleDeleteTrip(tripId) {
+  if (!ensureOnline()) return;
   const trip = STATE.trips.find((t) => t.id === tripId);
   if (trip && !canDeleteTrip(trip)) {
     toast('Only the trip creator can delete this trip.');
@@ -1747,11 +1836,12 @@ async function handleDeleteTrip(tripId) {
     toast('Trip deleted.');
   } catch (err) {
     console.error(err);
-    toast(err.message || 'Failed to delete trip.');
+    toast(friendlyError('delete trip', err));
   }
 }
 
 async function handleCreateStage(tripId) {
+  if (!ensureOnline()) return;
   const trip = STATE.trips.find((t) => t.id === tripId);
   try {
     const fields = readStageForm();
@@ -1762,11 +1852,12 @@ async function handleCreateStage(tripId) {
     toast('Stage added.');
   } catch (err) {
     console.error(err);
-    toast(err.message || 'Failed to add stage.');
+    toast(friendlyError('save stage', err));
   }
 }
 
 async function handleUpdateStage(stageId) {
+  if (!ensureOnline()) return;
   const trip = currentTrip();
   try {
     const fields = readStageForm();
@@ -1777,11 +1868,12 @@ async function handleUpdateStage(stageId) {
     toast('Stage updated.');
   } catch (err) {
     console.error(err);
-    toast(err.message || 'Failed to update stage.');
+    toast(friendlyError('save stage', err));
   }
 }
 
 async function handleDeleteStage(stageId) {
+  if (!ensureOnline()) return;
   const trip = currentTrip();
   try {
     await deleteStage(stageId);
@@ -1793,11 +1885,12 @@ async function handleDeleteStage(stageId) {
     toast('Stage deleted.');
   } catch (err) {
     console.error(err);
-    toast(err.message || 'Failed to delete stage.');
+    toast(friendlyError('delete stage', err));
   }
 }
 
 async function handleMoveStage(stageId, direction) {
+  if (!ensureOnline()) return;
   const trip = currentTrip();
   if (!trip) return;
   const stages = STATE.stagesByTrip[trip.id] || [];
@@ -1810,11 +1903,12 @@ async function handleMoveStage(stageId, direction) {
     await loadStagesForTrip(trip.id);
   } catch (err) {
     console.error(err);
-    toast(err.message || 'Failed to reorder stages.');
+    toast(friendlyError('reorder stages', err));
   }
 }
 
 async function handleCreateEntry(stageId) {
+  if (!ensureOnline()) return;
   try {
     await createEntry(stageId, readEntryForm());
     closeModal();
@@ -1822,11 +1916,12 @@ async function handleCreateEntry(stageId) {
     toast('Entry added.');
   } catch (err) {
     console.error(err);
-    toast(err.message || 'Failed to add entry.');
+    toast(friendlyError('save journal entry', err));
   }
 }
 
 async function handleUpdateEntry(stageId, entryId) {
+  if (!ensureOnline()) return;
   try {
     await updateEntry(entryId, readEntryForm());
     closeModal();
@@ -1834,11 +1929,12 @@ async function handleUpdateEntry(stageId, entryId) {
     toast('Entry updated.');
   } catch (err) {
     console.error(err);
-    toast(err.message || 'Failed to update entry.');
+    toast(friendlyError('save journal entry', err));
   }
 }
 
 async function handleDeleteEntry(stageId, entryId) {
+  if (!ensureOnline()) return;
   try {
     await deleteEntry(entryId);
     closeModal();
@@ -1846,12 +1942,13 @@ async function handleDeleteEntry(stageId, entryId) {
     toast('Entry deleted.');
   } catch (err) {
     console.error(err);
-    toast(err.message || 'Failed to delete entry.');
+    toast(friendlyError('delete journal entry', err));
   }
 }
 
 
 async function handleCreateExpense(tripId) {
+  if (!ensureOnline()) return;
   const trip = STATE.trips.find((t) => t.id === tripId);
   if (!trip) return;
   try {
@@ -1861,11 +1958,12 @@ async function handleCreateExpense(tripId) {
     toast('Expense added.');
   } catch (err) {
     console.error(err);
-    toast(err.message || 'Failed to add expense.');
+    toast(friendlyError('save expense', err));
   }
 }
 
 async function handleUpdateExpense(tripId, expenseId) {
+  if (!ensureOnline()) return;
   const trip = STATE.trips.find((t) => t.id === tripId);
   if (!trip) return;
   try {
@@ -1875,11 +1973,12 @@ async function handleUpdateExpense(tripId, expenseId) {
     toast('Expense updated.');
   } catch (err) {
     console.error(err);
-    toast(err.message || 'Failed to update expense.');
+    toast(friendlyError('save expense', err));
   }
 }
 
 async function handleDeleteExpense(tripId, expenseId) {
+  if (!ensureOnline()) return;
   try {
     await deleteExpense(expenseId);
     closeModal();
@@ -1887,7 +1986,7 @@ async function handleDeleteExpense(tripId, expenseId) {
     toast('Expense deleted.');
   } catch (err) {
     console.error(err);
-    toast(err.message || 'Failed to delete expense.');
+    toast(friendlyError('delete expense', err));
   }
 }
 
@@ -1903,18 +2002,24 @@ function renderTab() {
   if (!content) return;
 
   if (STATE.tab === 'account') {
-    content.innerHTML = renderAccount();
+    content.innerHTML = offlineBannerHtml() + renderAccount();
   } else if (STATE.view === 'detail') {
-    content.innerHTML = renderTripDetail();
+    content.innerHTML = offlineBannerHtml() + renderTripDetail();
   } else if (STATE.view === 'summary') {
-    content.innerHTML = renderTripSummary();
+    content.innerHTML = offlineBannerHtml() + renderTripSummary();
   } else if (STATE.tab === 'archive') {
-    content.innerHTML = renderArchive();
+    content.innerHTML = offlineBannerHtml() + renderArchive();
   } else {
-    content.innerHTML = renderTrips();
+    content.innerHTML = offlineBannerHtml() + renderTrips();
   }
 
   bindContentEvents(content);
+}
+
+function bindTripCards(root) {
+  root.querySelectorAll('[data-trip-id]').forEach((btn) => {
+    btn.addEventListener('click', () => openTrip(btn.dataset.tripId));
+  });
 }
 
 function bindContentEvents(content) {
@@ -1928,7 +2033,25 @@ function bindContentEvents(content) {
   content.querySelector('#retryExpensesBtn')?.addEventListener('click', () => {
     if (STATE.viewTripId) loadExpensesForTrip(STATE.viewTripId);
   });
-  content.querySelector('#newTripBtn')?.addEventListener('click', showNewTripModal);
+  content.querySelector('#tripSearchInput')?.addEventListener('input', (e) => {
+    STATE.tripSearch = e.target.value || '';
+    const results = content.querySelector('#tripResults');
+    if (results) {
+      results.innerHTML = tripResultsHtml();
+      bindTripCards(results);
+    }
+  });
+  content.querySelector('#tripStatusFilter')?.addEventListener('change', (e) => {
+    STATE.tripStatusFilter = e.target.value || 'all';
+    const results = content.querySelector('#tripResults');
+    if (results) {
+      results.innerHTML = tripResultsHtml();
+      bindTripCards(results);
+    }
+  });
+  content.querySelector('#newTripBtn')?.addEventListener('click', () => {
+    if (ensureOnline()) showNewTripModal();
+  });
   content.querySelector('#backToTripsBtn')?.addEventListener('click', () => {
     STATE.view = 'list';
     STATE.viewTripId = null;
@@ -1943,25 +2066,27 @@ function bindContentEvents(content) {
     renderAll();
   });
   content.querySelector('#editTripBtn')?.addEventListener('click', () => {
+    if (!ensureOnline()) return;
     const trip = currentTrip();
     if (trip) showEditTripModal(trip);
   });
   content.querySelector('#deleteTripBtn')?.addEventListener('click', () => {
+    if (!ensureOnline()) return;
     const trip = currentTrip();
     if (trip) showDeleteTripConfirm(trip);
   });
   content.querySelector('#addStageBtn')?.addEventListener('click', () => {
+    if (!ensureOnline()) return;
     const trip = currentTrip();
     if (trip) showNewStageModal(trip);
   });
   content.querySelector('#addExpenseBtn')?.addEventListener('click', () => {
+    if (!ensureOnline()) return;
     const trip = currentTrip();
     if (trip) showNewExpenseModal(trip);
   });
 
-  content.querySelectorAll('[data-trip-id]').forEach((btn) => {
-    btn.addEventListener('click', () => openTrip(btn.dataset.tripId));
-  });
+  bindTripCards(content);
 
   content.querySelectorAll('[data-stage-action]').forEach((btn) => {
     btn.addEventListener('click', () => {
@@ -1970,6 +2095,7 @@ function bindContentEvents(content) {
       const trip = currentTrip();
       const stage = (trip ? (STATE.stagesByTrip[trip.id] || []) : []).find((s) => s.id === id);
       if (!stage && action !== 'up' && action !== 'down') return;
+      if (!ensureOnline()) return;
       if (action === 'up' || action === 'down') handleMoveStage(id, action);
       if (action === 'edit') showEditStageModal(stage, trip);
       if (action === 'delete') showDeleteStageConfirm(stage);
@@ -1981,7 +2107,7 @@ function bindContentEvents(content) {
   });
 
   content.querySelectorAll('[data-stage-add-entry]').forEach((btn) => {
-    btn.addEventListener('click', () => showNewEntryModal(btn.dataset.stageAddEntry));
+    btn.addEventListener('click', () => { if (ensureOnline()) showNewEntryModal(btn.dataset.stageAddEntry); });
   });
 
   content.querySelectorAll('[data-entry-action]').forEach((btn) => {
@@ -1989,6 +2115,7 @@ function bindContentEvents(content) {
       const entryId = btn.dataset.id;
       const { stageId, entry } = findEntry(entryId);
       if (!entry) return;
+      if (!ensureOnline()) return;
       if (btn.dataset.entryAction === 'edit') showEditEntryModal(stageId, entry);
       if (btn.dataset.entryAction === 'delete') showDeleteEntryConfirm(stageId, entry);
     });
@@ -2001,6 +2128,7 @@ function bindContentEvents(content) {
       if (!trip) return;
       const expense = expensesForTrip(trip.id).find((e) => e.id === btn.dataset.id);
       if (!expense) return;
+      if (!ensureOnline()) return;
       if (btn.dataset.expenseAction === 'edit') showEditExpenseModal(trip, expense);
       if (btn.dataset.expenseAction === 'delete') showDeleteExpenseConfirm(trip, expense);
     });
@@ -2049,6 +2177,16 @@ function findEntry(entryId) {
 async function init() {
   STATE.user = await getCurrentUser();
   bindNav();
+  window.addEventListener('online', () => {
+    STATE.isOnline = true;
+    renderAll();
+    toast('Back online.');
+  });
+  window.addEventListener('offline', () => {
+    STATE.isOnline = false;
+    renderAll();
+    toast('You are offline. Changes are disabled.');
+  });
   renderAll();
 
   if (STATE.user) await loadSignedInData();

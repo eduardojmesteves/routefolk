@@ -1281,3 +1281,41 @@ a:hover { text-decoration: underline; }
     grid-template-columns: 1.2fr 0.8fr;
   }
 }
+
+/* ---------- Phase 2.5 polish ---------- */
+.offline-banner {
+  background: #3a2b12;
+  border: 1px solid #7c5c1d;
+  color: #f5d48a;
+  border-radius: 10px;
+  padding: 10px 12px;
+  font-size: 13px;
+  line-height: 1.4;
+  margin-bottom: 12px;
+}
+
+.trip-controls {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 10px;
+  margin-bottom: 12px;
+}
+
+.trip-search-wrap,
+.trip-status-wrap {
+  min-width: 0;
+}
+
+.audit-line {
+  font-size: 11px;
+  color: #6b7a93;
+  margin-top: 6px;
+  line-height: 1.35;
+}
+
+@media (min-width: 640px) {
+  .trip-controls {
+    grid-template-columns: minmax(0, 1fr) 180px;
+    align-items: end;
+  }
+}

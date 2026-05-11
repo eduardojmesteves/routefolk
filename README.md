@@ -220,8 +220,8 @@ Full current schema in `schema.sql` (idempotent). Incremental changes are tracke
 **Polish**
 - [x] Dark-mode date picker icon visibility fix
 - [x] Bottom nav (mobile) / sidebar (desktop) responsive
-- [ ] Loading states and error messages — refined as features land
-- [ ] Online-only with clear "you're offline" message when applicable
+- [x] Loading states and error messages — refined as features land
+- [x] Online-only with clear "you're offline" message when applicable
 
 ### Phase 1.5 — People + simple visibility ✅
 
@@ -253,6 +253,17 @@ Full current schema in `schema.sql` (idempotent). Incremental changes are tracke
 - [x] Show unassigned expenses as trip-level expenses
 - [x] Constrain expense date inputs by trip date range
 - [x] Keep Summary Review read-only for expenses
+
+### Phase 2.5 — Reliability and usability polish ✅
+
+- [x] Offline banner for installed PWA / browser use
+- [x] Disable write actions while offline
+- [x] Action-specific error messages for common save/delete failures
+- [x] Simple loading states kept consistent across major sections
+- [x] Show last edited by / at on trip detail and stage cards
+- [x] Hide whole-trip delete action for non-creators
+- [x] Trip title search on the Trips screen
+- [x] Trip status filter: All / Planning / Active / Completed / Cancelled
 
 ### Phase 3 — Archive + tracks
 
@@ -286,7 +297,6 @@ Full current schema in `schema.sql` (idempotent). Incremental changes are tracke
 
 Lower-priority items captured so they're not forgotten.
 
-- **Display "last edited by … at …" on trips and stages.** Data is being captured in `updated_by` / `updated_at`; profiles now exist, so this is mostly a UI job later.
 - **Multiple groups / selected group visibility.** Future Option B: replace the single Friends group with user-defined groups such as "Motorcycle friends" and "Family", using `groups` and `group_members`. Defer until there is a real need for separate groups.
 - **Expense receipt URL.** Optional external receipt/photo link per expense. Deferred because the Phase 2 goal is total trip cost, not receipt management.
 - **Expense settlement hints.** Who owes whom, reimbursements, settled status, and split logic are deliberately deferred. This app tracks trip cost, not debts.
@@ -315,9 +325,14 @@ If the visibility selector appears but private trips still save as group trips, 
 
 ---
 
+## PWA update notes
+
+After deploying changes that touch `app.js`, `style.css`, or `sw.js`, close and reopen the installed PWA. On iOS, if the Home Screen app remains stale, open the site in Safari, refresh it, then close and reopen the Home Screen app. The last-resort fix is removing and reinstalling the Home Screen app.
+
+---
+
 ## Things to revisit
 
-- **iOS bottom nav padding feels too tall.** Visual balance tuning.
 - **Site URL in Supabase is currently `http://localhost:8000`** for dev convenience. Move to production URL once daily development slows down.
 - **Weather attribution** is a small per-strip line; could move to a global "Data sources" entry on Account screen.
 
@@ -341,7 +356,7 @@ The human is a capable engineer new to this specific stack — explanations shou
 routefolk/
 ├── index.html              # App shell
 ├── style.css               # All styles
-├── app.js                  # Main app logic and state
+├── app.js                  # Main app logic, state, filters, and offline-aware UI
 ├── lib/
 │   ├── config.js           # Supabase URL + anon key
 │   ├── supabase.js         # Supabase client setup
@@ -374,6 +389,10 @@ routefolk/
 ## Decisions log
 
 A running list of decisions made and why. New entries go at the top.
+
+- **2026-05: Phase 2.5 keeps polish practical.** The app shows a clear offline banner, disables write actions while offline, improves common error messages, and avoids implementing an offline write queue until there is a real need.
+- **2026-05: Trips screen uses search + status filter, not Kanban.** Title search and a status filter solve the immediate navigation problem without adding a second view mode or mobile Kanban complexity.
+- **2026-05: Last edited display is limited to trip detail and stage cards.** This gives useful audit context without cluttering trip lists or Summary Review.
 
 - **2026-05: Phase 2B adds optional expense stage assignment.** Expenses always belong to a trip and may optionally be assigned to one stage. Stage assignment is explicit, not guessed from date. Deleting a stage keeps the expense and clears the assignment.
 - **2026-05: Summary remains a review surface.** Trip Summary Review shows stage journal entries and expenses, but expense editing stays in the trip detail Expenses section.
