@@ -5,6 +5,7 @@
 
 import { signInWithGoogle, signOut, getCurrentUser, onAuthChange } from './lib/auth.js';
 import { listTrips, createTrip, updateTrip, deleteTrip } from './lib/trips.js?v=20260511-visibility-fix';
+import { listExpensesForTrip, createExpense, updateExpense, deleteExpense } from './lib/expenses.js?v=20260511-expenses-phase2';
 import { listStages, createStage, updateStage, deleteStage, swapStageOrder } from './lib/stages.js';
 import { fetchStageForecasts } from './lib/weather.js';
 import { listEntriesForStage, createEntry, updateEntry, deleteEntry } from './lib/journal.js';
@@ -29,6 +30,9 @@ const STATE = {
   profilesById: {},
   profilesLoading: false,
   profilesError: null,
+  expensesByTrip: {},       // tripId -> array of expenses OR 'loading'
+  expensesLoading: false,
+  expensesError: null,
 };
 
 const STATUS_META = {
@@ -51,6 +55,16 @@ const ENTRY_TYPE_META = {
   note:    { label: 'Note',    icon: '💬' },
   drink:   { label: 'Drink',   icon: '🍺' },
   other:   { label: 'Other',   icon: '📌' },
+};
+
+
+const EXPENSE_CATEGORY_META = {
+  fuel:         { label: 'Fuel',          icon: '⛽' },
+  food_drinks:  { label: 'Food & drinks', icon: '🍽️' },
+  lodging:      { label: 'Lodging',       icon: '🏨' },
+  tolls:        { label: 'Tolls',         icon: '🛣️' },
+  parking:      { label: 'Parking',       icon: '🅿️' },
+  other:        { label: 'Other',         icon: '📌' },
 };
 
 // ---------- DOM helpers ----------
@@ -221,6 +235,33 @@ function datetimeLocalToIso(value) {
 
 function nowAsDatetimeLocal() {
   return isoToDatetimeLocal(new Date().toISOString());
+}
+
+
+function todayIsoDate() {
+  const d = new Date();
+  const pad = (n) => String(n).padStart(2, '0');
+  return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`;
+}
+
+function fmtEuro(value, options = {}) {
+  const n = Number(value);
+  if (!Number.isFinite(n)) return options.empty || '—';
+  const maximumFractionDigits = options.compact ? 0 : 2;
+  const minimumFractionDigits = options.compact ? 0 : 2;
+  return new Intl.NumberFormat(undefined, {
+    style: 'currency',
+    currency: 'EUR',
+    minimumFractionDigits,
+    maximumFractionDigits,
+  }).format(n);
+}
+
+function parseAmount(value) {
+  const raw = String(value ?? '').trim().replace(',', '.');
+  if (!raw) return null;
+  const n = Number(raw);
+  return Number.isFinite(n) ? n : null;
 }
 
 function inclusiveDays(start, end) {
@@ -395,11 +436,34 @@ async function loadEntriesForStage(stageId, options = {}) {
   renderAll();
 }
 
+
+
+async function loadExpensesForTrip(tripId, options = {}) {
+  STATE.expensesLoading = true;
+  STATE.expensesError = null;
+  STATE.expensesByTrip[tripId] = STATE.expensesByTrip[tripId] || 'loading';
+  if (!options.quiet) renderAll();
+
+  try {
+    const expenses = await listExpensesForTrip(tripId);
+    STATE.expensesByTrip[tripId] = expenses;
+  } catch (err) {
+    console.error(err);
+    STATE.expensesByTrip[tripId] = [];
+    STATE.expensesError = err.message || 'Failed to load expenses.';
+    if (!options.quiet) toast('Failed to load expenses.');
+  } finally {
+    STATE.expensesLoading = false;
+    renderAll();
+  }
+}
+
 async function openTrip(tripId, view = 'detail') {
   STATE.viewTripId = tripId;
   STATE.view = view;
   renderAll();
   if (!STATE.stagesByTrip[tripId]) await loadStagesForTrip(tripId);
+  if (!Array.isArray(STATE.expensesByTrip[tripId])) await loadExpensesForTrip(tripId, { quiet: true });
 }
 
 // ---------- Trip cards / list ----------
@@ -718,6 +782,11 @@ function renderTripDetail() {
       <div class="card-title">Stages</div>
       ${renderStagesSection(trip)}
     </div>
+
+    <div class="card">
+      <div class="card-title">Expenses</div>
+      ${renderExpensesSection(trip)}
+    </div>
   `;
 }
 
@@ -747,6 +816,9 @@ function tripStats(trip) {
     : [];
   const authors = new Set(entries.map((e) => e.author_id).filter(Boolean));
   const avg = stages.length && totalDistance ? totalDistance / stages.length : null;
+  const expenses = STATE.expensesByTrip[trip.id];
+  const expensesLoaded = Array.isArray(expenses);
+  const totalCost = expensesLoaded ? expenses.reduce((sum, e) => sum + (Number(e.amount) || 0), 0) : null;
 
   return {
     days: inclusiveDays(trip.start_date, trip.end_date),
@@ -755,6 +827,8 @@ function tripStats(trip) {
     entries: allEntriesLoaded ? entries.length : null,
     authors: allEntriesLoaded ? authors.size : null,
     avg,
+    cost: expensesLoaded ? totalCost : null,
+    costLoading: !expensesLoaded,
     entriesLoading: !allEntriesLoaded && stages.length > 0,
   };
 }
@@ -771,6 +845,7 @@ function tripStatsStripHtml(trip) {
       ${statItemHtml('Entries', entryValue)}
       ${statItemHtml('Authors', authorValue)}
       ${statItemHtml('Avg/stage', s.avg ? `${Math.round(s.avg)} km` : '—')}
+      ${statItemHtml('Cost', s.costLoading ? '…' : (s.cost ? fmtEuro(s.cost, { compact: true }) : '—'))}
     </div>
   `;
 }
@@ -1199,6 +1274,217 @@ function showDeleteEntryConfirm(stageId, entry) {
     ]);
 }
 
+
+// ---------- Expenses ----------
+function expensesForTrip(tripId) {
+  const expenses = STATE.expensesByTrip[tripId];
+  return Array.isArray(expenses) ? expenses : [];
+}
+
+function renderExpensesSection(trip) {
+  const raw = STATE.expensesByTrip[trip.id];
+
+  if (raw === 'loading' || (STATE.expensesLoading && raw === undefined)) {
+    return `<div class="empty-sub">Loading expenses…</div>`;
+  }
+
+  if (STATE.expensesError) {
+    return `
+      <div class="stage-warn" style="margin-bottom:8px;">${esc(STATE.expensesError)}</div>
+      <button class="btn btn-secondary btn-sm" id="retryExpensesBtn">Retry</button>
+    `;
+  }
+
+  const expenses = expensesForTrip(trip.id);
+  const totals = expenseTotals(expenses);
+
+  return `
+    ${expenseTotalsHtml(totals)}
+    <button class="btn btn-primary btn-block" id="addExpenseBtn" style="margin:12px 0;">+ Add expense</button>
+    ${expenses.length ? `<div class="expense-list">${expenses.map((e) => expenseCardHtml(e)).join('')}</div>` : '<div class="empty-sub">No expenses yet. Add the first cost for this trip.</div>'}
+  `;
+}
+
+function expenseTotals(expenses) {
+  const byCategory = new Map();
+  const byPayer = new Map();
+  let total = 0;
+
+  expenses.forEach((expense) => {
+    const amount = Number(expense.amount) || 0;
+    total += amount;
+    byCategory.set(expense.category, (byCategory.get(expense.category) || 0) + amount);
+    byPayer.set(expense.user_id, (byPayer.get(expense.user_id) || 0) + amount);
+  });
+
+  return { total, byCategory, byPayer };
+}
+
+function expenseTotalsHtml(totals) {
+  if (!totals.total) {
+    return `
+      <div class="expense-total-box">
+        <div class="expense-total-label">Total trip cost</div>
+        <div class="expense-total-value">€0.00</div>
+      </div>
+    `;
+  }
+
+  const categoryRows = [...totals.byCategory.entries()]
+    .filter(([, amount]) => amount > 0)
+    .sort((a, b) => b[1] - a[1])
+    .map(([category, amount]) => {
+      const meta = EXPENSE_CATEGORY_META[category] || EXPENSE_CATEGORY_META.other;
+      return breakdownRowHtml(meta.label, amount, meta.icon);
+    }).join('');
+
+  const payerRows = [...totals.byPayer.entries()]
+    .filter(([, amount]) => amount > 0)
+    .sort((a, b) => b[1] - a[1])
+    .map(([userId, amount]) => breakdownRowHtml(displayNameForUserId(userId), amount, '👤'))
+    .join('');
+
+  return `
+    <div class="expense-total-box">
+      <div class="expense-total-label">Total trip cost</div>
+      <div class="expense-total-value">${esc(fmtEuro(totals.total))}</div>
+    </div>
+    <div class="expense-breakdowns">
+      <div class="expense-breakdown">
+        <div class="expense-breakdown-title">By category</div>
+        ${categoryRows || '<div class="empty-sub">No category totals yet.</div>'}
+      </div>
+      <div class="expense-breakdown">
+        <div class="expense-breakdown-title">By payer</div>
+        ${payerRows || '<div class="empty-sub">No payer totals yet.</div>'}
+      </div>
+    </div>
+  `;
+}
+
+function breakdownRowHtml(label, amount, icon = '') {
+  return `
+    <div class="expense-breakdown-row">
+      <span>${icon ? `${esc(icon)} ` : ''}${esc(label)}</span>
+      <strong>${esc(fmtEuro(amount))}</strong>
+    </div>
+  `;
+}
+
+function expenseCardHtml(expense) {
+  const meta = EXPENSE_CATEGORY_META[expense.category] || EXPENSE_CATEGORY_META.other;
+  const payer = displayNameForUserId(expense.user_id);
+  return `
+    <div class="expense-card">
+      <div class="expense-card-head">
+        <div>
+          <div class="expense-title">${esc(meta.icon)} ${esc(meta.label)} · ${esc(fmtEuro(expense.amount))}</div>
+          <div class="expense-meta">Paid by ${esc(payer)}${expense.date ? ` · ${esc(fmtDate(expense.date))}` : ''}</div>
+        </div>
+        <div class="expense-actions">
+          <button class="entry-icon-btn" data-expense-action="edit" data-id="${esc(expense.id)}" title="Edit">✎</button>
+          <button class="entry-icon-btn entry-icon-danger" data-expense-action="delete" data-id="${esc(expense.id)}" title="Delete">✕</button>
+        </div>
+      </div>
+      ${expense.description ? `<div class="expense-desc">${esc(expense.description)}</div>` : ''}
+    </div>
+  `;
+}
+
+function payerOptionsHtml(trip, selectedUserId) {
+  const selected = selectedUserId || STATE.user?.id || '';
+  if (tripVisibility(trip) === 'private') {
+    return `<option value="${esc(STATE.user?.id || '')}" selected>${esc(userDisplayName(STATE.user))}</option>`;
+  }
+
+  const profiles = [...STATE.profiles];
+  if (STATE.user && !profiles.some((p) => p.id === STATE.user.id)) {
+    profiles.unshift({
+      id: STATE.user.id,
+      email: STATE.user.email,
+      full_name: userDisplayName(STATE.user),
+      avatar_url: userAvatarUrl(STATE.user),
+    });
+  }
+
+  return profiles.map((profile) => {
+    const label = profile.full_name || profile.email || 'Unknown';
+    return `<option value="${esc(profile.id)}" ${profile.id === selected ? 'selected' : ''}>${esc(label)}</option>`;
+  }).join('');
+}
+
+function expenseFormHtml(trip, expense = {}) {
+  const isPrivate = tripVisibility(trip) === 'private';
+  const amount = expense.amount != null ? String(expense.amount) : '';
+  return `
+    <div class="form-row">
+      <label class="form-label" for="efPayer">Paid by</label>
+      <select class="sel" id="efPayer"${boolAttr('disabled', isPrivate)}>
+        ${payerOptionsHtml(trip, expense.user_id)}
+      </select>
+      ${isPrivate ? '<div class="form-help">Private trip expenses can only be paid by you.</div>' : ''}
+    </div>
+    <div class="form-row">
+      <label class="form-label" for="efCategory">Category</label>
+      <select class="sel" id="efCategory">
+        ${Object.entries(EXPENSE_CATEGORY_META).map(([key, meta]) => `<option value="${esc(key)}" ${(expense.category || 'food_drinks') === key ? 'selected' : ''}>${esc(meta.label)}</option>`).join('')}
+      </select>
+    </div>
+    <div class="form-row">
+      <label class="form-label" for="efAmount">Amount (€)</label>
+      <input class="inp" id="efAmount" type="text" inputmode="decimal" autocomplete="off" value="${esc(amount)}" placeholder="0.00">
+      <div class="form-help">Use decimals for cents. The app stores all expenses in Euro.</div>
+    </div>
+    <div class="form-row">
+      <label class="form-label" for="efDate">Date</label>
+      <input class="inp" id="efDate" type="date" value="${esc(expense.date || todayIsoDate())}">
+    </div>
+    <div class="form-row">
+      <label class="form-label" for="efDesc">Description (optional)</label>
+      <textarea class="txt" id="efDesc" maxlength="1000" placeholder="e.g. Dinner in Ávila">${esc(expense.description || '')}</textarea>
+    </div>
+  `;
+}
+
+function readExpenseForm(trip) {
+  const amount = parseAmount($('efAmount')?.value);
+  return {
+    user_id: tripVisibility(trip) === 'private' ? STATE.user?.id : ($('efPayer')?.value || STATE.user?.id),
+    category: $('efCategory')?.value || 'food_drinks',
+    amount,
+    date: $('efDate')?.value || todayIsoDate(),
+    description: $('efDesc')?.value.trim() || '',
+    currency: 'EUR',
+  };
+}
+
+function showNewExpenseModal(trip) {
+  showModal('New expense', expenseFormHtml(trip, { user_id: STATE.user?.id, category: 'food_drinks', date: todayIsoDate() }), [
+    { label: 'Add expense', cls: 'btn-primary', fn: () => handleCreateExpense(trip.id) },
+    { label: 'Cancel', cls: 'btn-secondary', fn: closeModal },
+  ]);
+  setTimeout(() => $('efAmount')?.focus(), 50);
+}
+
+function showEditExpenseModal(trip, expense) {
+  showModal('Edit expense', expenseFormHtml(trip, expense), [
+    { label: 'Save', cls: 'btn-primary', fn: () => handleUpdateExpense(trip.id, expense.id) },
+    { label: 'Cancel', cls: 'btn-secondary', fn: closeModal },
+  ]);
+}
+
+function showDeleteExpenseConfirm(trip, expense) {
+  const meta = EXPENSE_CATEGORY_META[expense.category] || EXPENSE_CATEGORY_META.other;
+  showModal('Delete expense',
+    `<div style="font-size:14px;line-height:1.5;color:#c5d0e0;">
+      Delete <strong>${esc(meta.label)} · ${esc(fmtEuro(expense.amount))}</strong>?
+    </div>`,
+    [
+      { label: 'Delete', cls: 'btn-danger', fn: () => handleDeleteExpense(trip.id, expense.id) },
+      { label: 'Cancel', cls: 'btn-secondary', fn: closeModal },
+    ]);
+}
+
 // ---------- Account ----------
 function renderAccount() {
   if (!STATE.user) {
@@ -1432,6 +1718,47 @@ async function handleDeleteEntry(stageId, entryId) {
   }
 }
 
+
+async function handleCreateExpense(tripId) {
+  const trip = STATE.trips.find((t) => t.id === tripId);
+  if (!trip) return;
+  try {
+    await createExpense(tripId, readExpenseForm(trip));
+    closeModal();
+    await loadExpensesForTrip(tripId, { quiet: true });
+    toast('Expense added.');
+  } catch (err) {
+    console.error(err);
+    toast(err.message || 'Failed to add expense.');
+  }
+}
+
+async function handleUpdateExpense(tripId, expenseId) {
+  const trip = STATE.trips.find((t) => t.id === tripId);
+  if (!trip) return;
+  try {
+    await updateExpense(expenseId, readExpenseForm(trip));
+    closeModal();
+    await loadExpensesForTrip(tripId, { quiet: true });
+    toast('Expense updated.');
+  } catch (err) {
+    console.error(err);
+    toast(err.message || 'Failed to update expense.');
+  }
+}
+
+async function handleDeleteExpense(tripId, expenseId) {
+  try {
+    await deleteExpense(expenseId);
+    closeModal();
+    await loadExpensesForTrip(tripId, { quiet: true });
+    toast('Expense deleted.');
+  } catch (err) {
+    console.error(err);
+    toast(err.message || 'Failed to delete expense.');
+  }
+}
+
 // ---------- Rendering / event binding ----------
 function renderAll() {
   renderHeader();
@@ -1466,6 +1793,9 @@ function bindContentEvents(content) {
   content.querySelector('#retryStagesBtn')?.addEventListener('click', () => {
     if (STATE.viewTripId) loadStagesForTrip(STATE.viewTripId);
   });
+  content.querySelector('#retryExpensesBtn')?.addEventListener('click', () => {
+    if (STATE.viewTripId) loadExpensesForTrip(STATE.viewTripId);
+  });
   content.querySelector('#newTripBtn')?.addEventListener('click', showNewTripModal);
   content.querySelector('#backToTripsBtn')?.addEventListener('click', () => {
     STATE.view = 'list';
@@ -1491,6 +1821,10 @@ function bindContentEvents(content) {
   content.querySelector('#addStageBtn')?.addEventListener('click', () => {
     const trip = currentTrip();
     if (trip) showNewStageModal(trip);
+  });
+  content.querySelector('#addExpenseBtn')?.addEventListener('click', () => {
+    const trip = currentTrip();
+    if (trip) showNewExpenseModal(trip);
   });
 
   content.querySelectorAll('[data-trip-id]').forEach((btn) => {
@@ -1525,6 +1859,18 @@ function bindContentEvents(content) {
       if (!entry) return;
       if (btn.dataset.entryAction === 'edit') showEditEntryModal(stageId, entry);
       if (btn.dataset.entryAction === 'delete') showDeleteEntryConfirm(stageId, entry);
+    });
+  });
+
+
+  content.querySelectorAll('[data-expense-action]').forEach((btn) => {
+    btn.addEventListener('click', () => {
+      const trip = currentTrip();
+      if (!trip) return;
+      const expense = expensesForTrip(trip.id).find((e) => e.id === btn.dataset.id);
+      if (!expense) return;
+      if (btn.dataset.expenseAction === 'edit') showEditExpenseModal(trip, expense);
+      if (btn.dataset.expenseAction === 'delete') showDeleteExpenseConfirm(trip, expense);
     });
   });
 
@@ -1584,6 +1930,8 @@ async function init() {
     STATE.profiles = [];
     STATE.profilesById = {};
     STATE.profilesError = null;
+    STATE.expensesByTrip = {};
+    STATE.expensesError = null;
     STATE.expandedStages.clear();
     STATE.expandedSummaryStages.clear();
     STATE.view = 'list';

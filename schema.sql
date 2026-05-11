@@ -112,18 +112,24 @@ CREATE INDEX IF NOT EXISTS journal_entries_stage_id_idx ON public.journal_entrie
 CREATE TABLE IF NOT EXISTS public.expenses (
   id          uuid PRIMARY KEY DEFAULT gen_random_uuid(),
   trip_id     uuid NOT NULL REFERENCES public.trips(id) ON DELETE CASCADE,
-  user_id     uuid NOT NULL REFERENCES auth.users(id) ON DELETE SET NULL,
+  user_id     uuid NOT NULL REFERENCES auth.users(id) ON DELETE SET NULL, -- payer
+  created_by  uuid REFERENCES auth.users(id) ON DELETE SET NULL,          -- who entered it
   category    text NOT NULL DEFAULT 'other'
-                CHECK (category IN ('fuel', 'food', 'lodging', 'tolls', 'other')),
-  amount      numeric(12, 2) NOT NULL,
-  currency    text NOT NULL DEFAULT 'EUR',
+                CHECK (category IN ('fuel', 'food_drinks', 'lodging', 'tolls', 'parking', 'other')),
+  amount      numeric(12, 2) NOT NULL CHECK (amount > 0),
+  currency    text NOT NULL DEFAULT 'EUR' CHECK (currency = 'EUR'),
   description text,
-  date        date,
-  created_at  timestamptz NOT NULL DEFAULT now()
+  date        date DEFAULT CURRENT_DATE,
+  created_at  timestamptz NOT NULL DEFAULT now(),
+  updated_by  uuid REFERENCES auth.users(id) ON DELETE SET NULL,
+  updated_at  timestamptz NOT NULL DEFAULT now()
 );
 
-CREATE INDEX IF NOT EXISTS expenses_trip_id_idx ON public.expenses(trip_id);
-CREATE INDEX IF NOT EXISTS expenses_user_id_idx ON public.expenses(user_id);
+CREATE INDEX IF NOT EXISTS expenses_trip_id_idx    ON public.expenses(trip_id);
+CREATE INDEX IF NOT EXISTS expenses_user_id_idx    ON public.expenses(user_id);
+CREATE INDEX IF NOT EXISTS expenses_created_by_idx ON public.expenses(created_by);
+CREATE INDEX IF NOT EXISTS expenses_category_idx   ON public.expenses(category);
+CREATE INDEX IF NOT EXISTS expenses_date_idx       ON public.expenses(date);
 
 
 -- ------------------------------------------------------------
@@ -209,19 +215,45 @@ CREATE TRIGGER journal_set_author
   FOR EACH ROW EXECUTE FUNCTION public.set_journal_author();
 
 
--- Expenses: user_id from auth.uid() on INSERT
-CREATE OR REPLACE FUNCTION public.set_expense_user()
+-- Expenses: user_id is the selected payer; created_by is the user entering it.
+CREATE OR REPLACE FUNCTION public.prepare_expense_insert()
 RETURNS trigger LANGUAGE plpgsql AS $$
 BEGIN
-  NEW.user_id := auth.uid();
+  IF NEW.user_id IS NULL THEN
+    NEW.user_id := auth.uid();
+  END IF;
+  NEW.created_by := auth.uid();
+  NEW.updated_by := auth.uid();
+  NEW.updated_at := now();
+  NEW.currency := 'EUR';
+  IF NEW.date IS NULL THEN
+    NEW.date := CURRENT_DATE;
+  END IF;
+  RETURN NEW;
+END;
+$$;
+
+CREATE OR REPLACE FUNCTION public.touch_expense_audit()
+RETURNS trigger LANGUAGE plpgsql AS $$
+BEGIN
+  NEW.created_by := OLD.created_by;
+  NEW.updated_by := auth.uid();
+  NEW.updated_at := now();
+  NEW.currency := 'EUR';
   RETURN NEW;
 END;
 $$;
 
 DROP TRIGGER IF EXISTS expenses_set_user ON public.expenses;
-CREATE TRIGGER expenses_set_user
+DROP TRIGGER IF EXISTS expenses_prepare_insert ON public.expenses;
+CREATE TRIGGER expenses_prepare_insert
   BEFORE INSERT ON public.expenses
-  FOR EACH ROW EXECUTE FUNCTION public.set_expense_user();
+  FOR EACH ROW EXECUTE FUNCTION public.prepare_expense_insert();
+
+DROP TRIGGER IF EXISTS expenses_touch_audit ON public.expenses;
+CREATE TRIGGER expenses_touch_audit
+  BEFORE UPDATE ON public.expenses
+  FOR EACH ROW EXECUTE FUNCTION public.touch_expense_audit();
 
 
 -- video_notes: keep updated_at fresh on every UPDATE
@@ -301,6 +333,24 @@ AS $$
 $$;
 
 
+CREATE OR REPLACE FUNCTION public.can_choose_expense_payer(p_trip_id uuid, p_payer_id uuid)
+RETURNS boolean
+LANGUAGE sql
+SECURITY DEFINER
+SET search_path = public
+AS $$
+  SELECT EXISTS (
+    SELECT 1
+    FROM public.trips t
+    WHERE t.id = p_trip_id
+      AND (
+        t.visibility = 'group'
+        OR (t.visibility = 'private' AND t.created_by = auth.uid() AND p_payer_id = auth.uid())
+      )
+  );
+$$;
+
+
 -- ============================================================
 -- Row-Level Security
 -- ============================================================
@@ -353,13 +403,13 @@ CREATE POLICY journal_update ON public.journal_entries FOR UPDATE TO authenticat
 DROP POLICY IF EXISTS journal_delete ON public.journal_entries;
 CREATE POLICY journal_delete ON public.journal_entries FOR DELETE TO authenticated USING (public.can_access_stage(stage_id));
 
--- expenses inherit access from the parent trip
+-- expenses inherit access from the parent trip and enforce private-trip payer rules
 DROP POLICY IF EXISTS expenses_select ON public.expenses;
 CREATE POLICY expenses_select ON public.expenses FOR SELECT TO authenticated USING (public.can_access_trip(trip_id));
 DROP POLICY IF EXISTS expenses_insert ON public.expenses;
-CREATE POLICY expenses_insert ON public.expenses FOR INSERT TO authenticated WITH CHECK (public.can_access_trip(trip_id));
+CREATE POLICY expenses_insert ON public.expenses FOR INSERT TO authenticated WITH CHECK (public.can_access_trip(trip_id) AND public.can_choose_expense_payer(trip_id, user_id));
 DROP POLICY IF EXISTS expenses_update ON public.expenses;
-CREATE POLICY expenses_update ON public.expenses FOR UPDATE TO authenticated USING (public.can_access_trip(trip_id)) WITH CHECK (public.can_access_trip(trip_id));
+CREATE POLICY expenses_update ON public.expenses FOR UPDATE TO authenticated USING (public.can_access_trip(trip_id)) WITH CHECK (public.can_access_trip(trip_id) AND public.can_choose_expense_payer(trip_id, user_id));
 DROP POLICY IF EXISTS expenses_delete ON public.expenses;
 CREATE POLICY expenses_delete ON public.expenses FOR DELETE TO authenticated USING (public.can_access_trip(trip_id));
 

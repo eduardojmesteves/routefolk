@@ -1109,3 +1109,122 @@ a:hover { text-decoration: underline; }
   font-weight: 700;
   vertical-align: middle;
 }
+
+/* ---------- Expenses ---------- */
+.expense-total-box {
+  background: #142036;
+  border: 1px solid #1f3458;
+  border-radius: 10px;
+  padding: 12px;
+  margin-bottom: 12px;
+}
+
+.expense-total-label {
+  font-size: 11px;
+  font-weight: 700;
+  color: #6b7a93;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  margin-bottom: 4px;
+}
+
+.expense-total-value {
+  font-size: 26px;
+  font-weight: 800;
+  color: #e8edf5;
+  letter-spacing: -0.03em;
+}
+
+.expense-breakdowns {
+  display: grid;
+  gap: 10px;
+  margin-bottom: 12px;
+}
+
+.expense-breakdown {
+  background: #0f1420;
+  border: 1px solid #2a3142;
+  border-radius: 10px;
+  padding: 10px;
+}
+
+.expense-breakdown-title {
+  font-size: 11px;
+  font-weight: 700;
+  color: #6da9ff;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  margin-bottom: 8px;
+}
+
+.expense-breakdown-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 10px;
+  font-size: 13px;
+  color: #c5d0e0;
+  padding: 5px 0;
+  border-bottom: 1px solid #1f2636;
+}
+
+.expense-breakdown-row:last-child { border-bottom: none; }
+
+.expense-breakdown-row strong {
+  color: #e8edf5;
+  font-weight: 700;
+  white-space: nowrap;
+}
+
+.expense-list {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.expense-card {
+  background: #142036;
+  border: 1px solid #1f3458;
+  border-radius: 8px;
+  padding: 10px;
+}
+
+.expense-card-head {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 10px;
+}
+
+.expense-title {
+  font-size: 14px;
+  font-weight: 700;
+  color: #e8edf5;
+  line-height: 1.3;
+}
+
+.expense-meta {
+  font-size: 11px;
+  color: #6b7a93;
+  margin-top: 4px;
+}
+
+.expense-actions {
+  display: flex;
+  gap: 4px;
+  flex-shrink: 0;
+}
+
+.expense-desc {
+  margin-top: 8px;
+  font-size: 13px;
+  color: #c5d0e0;
+  line-height: 1.4;
+  white-space: pre-wrap;
+}
+
+@media (min-width: 640px) {
+  .expense-breakdowns {
+    grid-template-columns: 1fr 1fr;
+  }
+}
