@@ -33,11 +33,21 @@ CREATE INDEX IF NOT EXISTS profiles_email_idx ON public.profiles(email);
 
 
 -- ------------------------------------------------------------
+-- app_meta
+-- ------------------------------------------------------------
+CREATE TABLE IF NOT EXISTS public.app_meta (
+  key        text PRIMARY KEY,
+  value      text NOT NULL,
+  updated_at timestamptz NOT NULL DEFAULT now()
+);
+
+
+-- ------------------------------------------------------------
 -- trips
 -- ------------------------------------------------------------
 CREATE TABLE IF NOT EXISTS public.trips (
   id              uuid PRIMARY KEY DEFAULT gen_random_uuid(),
-  created_by      uuid NOT NULL REFERENCES auth.users(id) ON DELETE SET NULL,
+  created_by      uuid NOT NULL REFERENCES auth.users(id) ON DELETE RESTRICT,
   title           text NOT NULL,
   description     text,
   start_date      date,
@@ -49,7 +59,9 @@ CREATE TABLE IF NOT EXISTS public.trips (
                     CHECK (visibility IN ('private', 'group')),
   created_at      timestamptz NOT NULL DEFAULT now(),
   updated_by      uuid REFERENCES auth.users(id) ON DELETE SET NULL,
-  updated_at      timestamptz NOT NULL DEFAULT now()
+  updated_at      timestamptz NOT NULL DEFAULT now(),
+  CONSTRAINT trips_date_order_check
+    CHECK (start_date IS NULL OR end_date IS NULL OR start_date <= end_date)
 );
 
 CREATE INDEX IF NOT EXISTS trips_created_by_idx ON public.trips(created_by);
@@ -63,22 +75,24 @@ CREATE INDEX IF NOT EXISTS trips_visibility_idx ON public.trips(visibility);
 CREATE TABLE IF NOT EXISTS public.stages (
   id               uuid PRIMARY KEY DEFAULT gen_random_uuid(),
   trip_id          uuid NOT NULL REFERENCES public.trips(id) ON DELETE CASCADE,
-  order_index      int  NOT NULL DEFAULT 0,
+  order_index      int  NOT NULL DEFAULT 0 CHECK (order_index >= 0),
   title            text,
   start_location   text,
-  start_lat        double precision,
-  start_lng        double precision,
+  start_lat        double precision CHECK (start_lat IS NULL OR (start_lat >= -90 AND start_lat <= 90)),
+  start_lng        double precision CHECK (start_lng IS NULL OR (start_lng >= -180 AND start_lng <= 180)),
   end_location     text,
-  end_lat          double precision,
-  end_lng          double precision,
+  end_lat          double precision CHECK (end_lat IS NULL OR (end_lat >= -90 AND end_lat <= 90)),
+  end_lng          double precision CHECK (end_lng IS NULL OR (end_lng >= -180 AND end_lng <= 180)),
   planned_date     date,
   gmaps_url        text,
   custom_route_url text,
-  distance_km      double precision,
+  distance_km      double precision CHECK (distance_km IS NULL OR distance_km >= 0),
   notes            text,
   created_at       timestamptz NOT NULL DEFAULT now(),
   updated_by       uuid REFERENCES auth.users(id) ON DELETE SET NULL,
-  updated_at       timestamptz NOT NULL DEFAULT now()
+  updated_at       timestamptz NOT NULL DEFAULT now(),
+  CONSTRAINT stages_trip_order_unique
+    UNIQUE (trip_id, order_index) DEFERRABLE INITIALLY DEFERRED
 );
 
 CREATE INDEX IF NOT EXISTS stages_trip_id_idx ON public.stages(trip_id);
@@ -90,7 +104,7 @@ CREATE INDEX IF NOT EXISTS stages_trip_id_idx ON public.stages(trip_id);
 CREATE TABLE IF NOT EXISTS public.journal_entries (
   id              uuid PRIMARY KEY DEFAULT gen_random_uuid(),
   stage_id        uuid NOT NULL REFERENCES public.stages(id) ON DELETE CASCADE,
-  author_id       uuid NOT NULL REFERENCES auth.users(id) ON DELETE SET NULL,
+  author_id       uuid REFERENCES auth.users(id) ON DELETE SET NULL,
   entry_type      text NOT NULL DEFAULT 'note'
                     CHECK (entry_type IN ('stop', 'meal', 'lodging', 'note', 'drink', 'other')),
   title           text,
@@ -113,7 +127,7 @@ CREATE TABLE IF NOT EXISTS public.expenses (
   id          uuid PRIMARY KEY DEFAULT gen_random_uuid(),
   trip_id     uuid NOT NULL REFERENCES public.trips(id) ON DELETE CASCADE,
   stage_id    uuid REFERENCES public.stages(id) ON DELETE SET NULL,
-  user_id     uuid NOT NULL REFERENCES auth.users(id) ON DELETE SET NULL, -- payer
+  user_id     uuid NOT NULL REFERENCES auth.users(id) ON DELETE RESTRICT, -- payer
   created_by  uuid REFERENCES auth.users(id) ON DELETE SET NULL,          -- who entered it
   category    text NOT NULL DEFAULT 'other'
                 CHECK (category IN ('fuel', 'food_drinks', 'lodging', 'tolls', 'parking', 'other')),
@@ -157,8 +171,8 @@ CREATE TABLE IF NOT EXISTS public.gpx_tracks (
   trip_id          uuid NOT NULL REFERENCES public.trips(id) ON DELETE CASCADE,
   stage_id         uuid REFERENCES public.stages(id) ON DELETE SET NULL,
   file_path        text NOT NULL,
-  distance_km      double precision,
-  duration_seconds int,
+  distance_km      double precision CHECK (distance_km IS NULL OR distance_km >= 0),
+  duration_seconds int CHECK (duration_seconds IS NULL OR duration_seconds >= 0),
   uploaded_at      timestamptz NOT NULL DEFAULT now(),
   created_at       timestamptz NOT NULL DEFAULT now()
 );
@@ -293,6 +307,11 @@ BEGIN
 END;
 $$;
 
+DROP TRIGGER IF EXISTS app_meta_touch_updated ON public.app_meta;
+CREATE TRIGGER app_meta_touch_updated
+  BEFORE UPDATE ON public.app_meta
+  FOR EACH ROW EXECUTE FUNCTION public.touch_updated_at();
+
 DROP TRIGGER IF EXISTS profiles_touch_updated ON public.profiles;
 CREATE TRIGGER profiles_touch_updated
   BEFORE UPDATE ON public.profiles
@@ -383,6 +402,7 @@ $$;
 -- Row-Level Security
 -- ============================================================
 
+ALTER TABLE public.app_meta        ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.profiles        ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.trips           ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.stages          ENABLE ROW LEVEL SECURITY;
@@ -390,6 +410,16 @@ ALTER TABLE public.journal_entries ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.expenses        ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.video_notes     ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.gpx_tracks      ENABLE ROW LEVEL SECURITY;
+
+-- app_meta
+DROP POLICY IF EXISTS app_meta_select ON public.app_meta;
+CREATE POLICY app_meta_select ON public.app_meta FOR SELECT TO authenticated USING (true);
+DROP POLICY IF EXISTS app_meta_insert ON public.app_meta;
+CREATE POLICY app_meta_insert ON public.app_meta FOR INSERT TO authenticated WITH CHECK (false);
+DROP POLICY IF EXISTS app_meta_update ON public.app_meta;
+CREATE POLICY app_meta_update ON public.app_meta FOR UPDATE TO authenticated USING (false) WITH CHECK (false);
+DROP POLICY IF EXISTS app_meta_delete ON public.app_meta;
+CREATE POLICY app_meta_delete ON public.app_meta FOR DELETE TO authenticated USING (false);
 
 -- profiles
 DROP POLICY IF EXISTS profiles_select ON public.profiles;
@@ -460,6 +490,12 @@ DROP POLICY IF EXISTS gpx_update ON public.gpx_tracks;
 CREATE POLICY gpx_update ON public.gpx_tracks FOR UPDATE TO authenticated USING (public.can_access_trip(trip_id)) WITH CHECK (public.can_access_trip(trip_id));
 DROP POLICY IF EXISTS gpx_delete ON public.gpx_tracks;
 CREATE POLICY gpx_delete ON public.gpx_tracks FOR DELETE TO authenticated USING (public.can_access_trip(trip_id));
+
+-- schema compatibility marker
+INSERT INTO public.app_meta(key, value)
+VALUES ('schema_version', '007')
+ON CONFLICT (key)
+DO UPDATE SET value = EXCLUDED.value, updated_at = now();
 
 -- ============================================================
 -- Done.

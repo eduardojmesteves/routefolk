@@ -77,6 +77,15 @@ Tables live in Supabase Postgres. All tables have `id` (UUID) and `created_at` u
 ### `users`
 Managed by Supabase Auth.
 
+### `app_meta`
+Small schema/app metadata table.
+
+| Field | Type | Notes |
+|---|---|---|
+| key | text | primary key, e.g. `schema_version` |
+| value | text | current value, e.g. `007` |
+| updated_at | timestamptz | refreshed when metadata changes |
+
 ### `profiles`
 | Field | Type | Notes |
 |---|---|---|
@@ -89,7 +98,7 @@ Managed by Supabase Auth.
 ### `trips`
 | Field | Type | Notes |
 |---|---|---|
-| created_by | uuid | auto-set on INSERT |
+| created_by | uuid | auto-set on INSERT; NOT NULL; auth user deletion restricted while they own trips |
 | title | text | NOT NULL |
 | description | text | |
 | start_date / end_date | date | |
@@ -102,14 +111,14 @@ Managed by Supabase Auth.
 | Field | Type | Notes |
 |---|---|---|
 | trip_id | uuid | ON DELETE CASCADE |
-| order_index | int | for ordering |
+| order_index | int | for ordering; non-negative; unique per trip |
 | title | text | |
 | start_location / end_location | text | human-readable city names |
 | start_lat / start_lng / end_lat / end_lng | double precision | auto-filled via geocoding |
 | planned_date | date | constrained in the UI by trip start/end dates |
 | gmaps_url | text | auto-built from start/end |
 | custom_route_url | text | optional user-pasted Maps URL |
-| distance_km | double precision | |
+| distance_km | double precision | optional; non-negative when set |
 | notes | text | |
 | updated_by / updated_at | | auto-set on UPDATE |
 
@@ -117,7 +126,7 @@ Managed by Supabase Auth.
 | Field | Type | Notes |
 |---|---|---|
 | stage_id | uuid | ON DELETE CASCADE |
-| author_id | uuid | auto-set on INSERT; preserved on UPDATE |
+| author_id | uuid | auto-set on INSERT; preserved on UPDATE; nullable if auth user is removed |
 | entry_type | text | `stop` / `meal` / `lodging` / `note` / `drink` / `other` |
 | title / description / location | text | |
 | location_url | text | optional Google Maps URL; `https` + Google Maps host allowlist |
@@ -132,7 +141,7 @@ Phase 2A trip cost tracking. Expenses are EUR-only and record the payer, not spl
 |---|---|---|
 | trip_id | uuid | ON DELETE CASCADE |
 | stage_id | uuid | optional stage assignment; ON DELETE SET NULL |
-| user_id | uuid | payer; selectable for group trips, current user only for private trips |
+| user_id | uuid | payer; selectable for group trips, current user only for private trips; NOT NULL; auth user deletion restricted while referenced |
 | created_by | uuid | user who entered the record |
 | category | text | `fuel` / `food_drinks` / `lodging` / `tolls` / `parking` / `other` |
 | amount | numeric | positive EUR amount |
@@ -145,7 +154,7 @@ Phase 2A trip cost tracking. Expenses are EUR-only and record the payer, not spl
 One row per trip.
 
 ### `gpx_tracks`
-A track may belong to a stage OR a whole trip.
+A track may belong to a stage OR a whole trip. Distance and duration are optional but must be non-negative when set.
 
 ---
 
@@ -178,6 +187,7 @@ Full current schema in `schema.sql` (idempotent). Incremental changes are tracke
 | `004_visibility_rls_hardening.sql` | Re-applies/hardens visibility RLS and cache-related troubleshooting support |
 | `005_expenses_phase2.sql` | Adds Phase 2A expenses: selectable payer, EUR-only costs, categories, audit fields, and expense RLS hardening |
 | `006_expense_stage_assignment.sql` | Adds optional expense stage assignment with same-trip validation |
+| `007_schema_safety_pack.sql` | Fixes FK/nullability consistency, adds core DB constraints, normalizes/protects stage ordering, and sets `app_meta.schema_version = 007` |
 
 ---
 
@@ -265,6 +275,24 @@ Full current schema in `schema.sql` (idempotent). Incremental changes are tracke
 - [x] Trip title search on the Trips screen
 - [x] Trip status filter: All / Planning / Active / Completed / Cancelled
 
+### Phase 2.6 — Safety and operational hardening
+
+**Phase 2.6A — Schema safety pack ✅**
+- [x] Fix FK/nullability consistency for core auth-user references
+- [x] Restrict auth-user deletion while a user owns trips or is referenced as an expense payer
+- [x] Allow journal authorship to degrade to unknown/null if an auth user is removed
+- [x] Add DB-level trip date, stage distance/order/coordinate, and GPX distance/duration constraints
+- [x] Normalize existing stage order values per trip
+- [x] Add deferrable uniqueness for `stages(trip_id, order_index)`
+- [x] Add lightweight `app_meta.schema_version = 007` marker
+
+**Phase 2.6B — Atomic stage reorder**
+- [ ] Replace the two-client-update stage swap with a transactional Supabase RPC
+
+**Phase 2.6C — Release/cache hardening**
+- [ ] Standardize app-shell/module cache invalidation
+- [ ] Add schema-version startup sanity check
+
 ### Phase 3 — Archive + tracks
 
 - [ ] Leaflet world map with completed trips
@@ -322,6 +350,19 @@ Visual directions considered but intentionally deferred. The current palette sta
 ## Visibility troubleshooting
 
 If the visibility selector appears but private trips still save as group trips, the most likely cause is stale PWA/service-worker cache serving an old `lib/trips.js`. The app imports `trips.js` with a cache-busting query string from Phase 1.5.1 onward, and `lib/trips.js` also verifies that Supabase returned the requested visibility.
+
+---
+
+## Deployment checklist
+
+For every release that includes a database migration:
+
+1. Run the new migration in the Supabase SQL Editor.
+2. Confirm the migration completes without errors.
+3. Confirm `public.app_meta` has the expected `schema_version` value when the migration changes the schema marker.
+4. Deploy the code from GitHub / Cloudflare Pages.
+5. Open the app in a browser and run a short smoke test: sign in, list trips, open a trip, save one harmless edit if appropriate, then undo it.
+6. For installed PWAs, close and reopen the app; on iOS, refresh the site once in Safari if the Home Screen app appears stale.
 
 ---
 
@@ -389,6 +430,10 @@ routefolk/
 ## Decisions log
 
 A running list of decisions made and why. New entries go at the top.
+
+- **2026-05: Phase 2.6A hardens schema invariants before Phase 3.** Foreign-key/nullability mismatches are fixed, core date/distance/order/coordinate constraints are added, and stage order is protected with a deferrable unique constraint.
+- **2026-05: Auth-user deletion is restricted for ownership and payer fields.** `trips.created_by` and `expenses.user_id` are semantically important and must not silently become null. Journal authorship is less critical, so `journal_entries.author_id` may become null if an auth user is removed.
+- **2026-05: Schema compatibility marker starts at version 007.** `public.app_meta` stores `schema_version` so future code can detect database/code drift instead of failing later with missing-column or missing-function errors.
 
 - **2026-05: Phase 2.5 keeps polish practical.** The app shows a clear offline banner, disables write actions while offline, improves common error messages, and avoids implementing an offline write queue until there is a real need.
 - **2026-05: Trips screen uses search + status filter, not Kanban.** Title search and a status filter solve the immediate navigation problem without adding a second view mode or mobile Kanban complexity.
