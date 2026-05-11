@@ -18,6 +18,21 @@ CREATE EXTENSION IF NOT EXISTS pgcrypto;
 -- ============================================================
 
 -- ------------------------------------------------------------
+-- profiles
+-- ------------------------------------------------------------
+CREATE TABLE IF NOT EXISTS public.profiles (
+  id         uuid PRIMARY KEY REFERENCES auth.users(id) ON DELETE CASCADE,
+  email      text,
+  full_name  text,
+  avatar_url text,
+  created_at timestamptz NOT NULL DEFAULT now(),
+  updated_at timestamptz NOT NULL DEFAULT now()
+);
+
+CREATE INDEX IF NOT EXISTS profiles_email_idx ON public.profiles(email);
+
+
+-- ------------------------------------------------------------
 -- trips
 -- ------------------------------------------------------------
 CREATE TABLE IF NOT EXISTS public.trips (
@@ -30,6 +45,8 @@ CREATE TABLE IF NOT EXISTS public.trips (
   cover_photo_url text,
   status          text NOT NULL DEFAULT 'planning'
                     CHECK (status IN ('planning', 'active', 'completed', 'cancelled')),
+  visibility      text NOT NULL DEFAULT 'group'
+                    CHECK (visibility IN ('private', 'group')),
   created_at      timestamptz NOT NULL DEFAULT now(),
   updated_by      uuid REFERENCES auth.users(id) ON DELETE SET NULL,
   updated_at      timestamptz NOT NULL DEFAULT now()
@@ -37,6 +54,7 @@ CREATE TABLE IF NOT EXISTS public.trips (
 
 CREATE INDEX IF NOT EXISTS trips_created_by_idx ON public.trips(created_by);
 CREATE INDEX IF NOT EXISTS trips_status_idx     ON public.trips(status);
+CREATE INDEX IF NOT EXISTS trips_visibility_idx ON public.trips(visibility);
 
 
 -- ------------------------------------------------------------
@@ -169,6 +187,22 @@ BEGIN
 END;
 $$;
 
+
+-- Trips: preserve created_by on UPDATE so clients cannot take ownership
+CREATE OR REPLACE FUNCTION public.preserve_trip_created_by()
+RETURNS trigger LANGUAGE plpgsql AS $$
+BEGIN
+  NEW.created_by := OLD.created_by;
+  RETURN NEW;
+END;
+$$;
+
+DROP TRIGGER IF EXISTS trips_preserve_created_by ON public.trips;
+CREATE TRIGGER trips_preserve_created_by
+  BEFORE UPDATE ON public.trips
+  FOR EACH ROW EXECUTE FUNCTION public.preserve_trip_created_by();
+
+
 DROP TRIGGER IF EXISTS journal_set_author ON public.journal_entries;
 CREATE TRIGGER journal_set_author
   BEFORE INSERT ON public.journal_entries
@@ -199,6 +233,11 @@ BEGIN
 END;
 $$;
 
+DROP TRIGGER IF EXISTS profiles_touch_updated ON public.profiles;
+CREATE TRIGGER profiles_touch_updated
+  BEFORE UPDATE ON public.profiles
+  FOR EACH ROW EXECUTE FUNCTION public.touch_updated_at();
+
 DROP TRIGGER IF EXISTS video_notes_touch_updated ON public.video_notes;
 CREATE TRIGGER video_notes_touch_updated
   BEFORE UPDATE ON public.video_notes
@@ -227,9 +266,46 @@ CREATE TRIGGER stages_touch_audit
 
 
 -- ============================================================
+-- Access helpers for RLS
+-- ============================================================
+
+CREATE OR REPLACE FUNCTION public.can_access_trip(p_trip_id uuid)
+RETURNS boolean
+LANGUAGE sql
+SECURITY DEFINER
+SET search_path = public
+AS $$
+  SELECT EXISTS (
+    SELECT 1
+    FROM public.trips t
+    WHERE t.id = p_trip_id
+      AND (
+        t.visibility = 'group'
+        OR t.created_by = auth.uid()
+      )
+  );
+$$;
+
+CREATE OR REPLACE FUNCTION public.can_access_stage(p_stage_id uuid)
+RETURNS boolean
+LANGUAGE sql
+SECURITY DEFINER
+SET search_path = public
+AS $$
+  SELECT EXISTS (
+    SELECT 1
+    FROM public.stages s
+    WHERE s.id = p_stage_id
+      AND public.can_access_trip(s.trip_id)
+  );
+$$;
+
+
+-- ============================================================
 -- Row-Level Security
 -- ============================================================
 
+ALTER TABLE public.profiles        ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.trips           ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.stages          ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.journal_entries ENABLE ROW LEVEL SECURITY;
@@ -237,66 +313,75 @@ ALTER TABLE public.expenses        ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.video_notes     ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.gpx_tracks      ENABLE ROW LEVEL SECURITY;
 
+-- profiles
+DROP POLICY IF EXISTS profiles_select ON public.profiles;
+CREATE POLICY profiles_select ON public.profiles FOR SELECT TO authenticated USING (true);
+DROP POLICY IF EXISTS profiles_insert ON public.profiles;
+CREATE POLICY profiles_insert ON public.profiles FOR INSERT TO authenticated WITH CHECK (id = auth.uid());
+DROP POLICY IF EXISTS profiles_update ON public.profiles;
+CREATE POLICY profiles_update ON public.profiles FOR UPDATE TO authenticated USING (id = auth.uid()) WITH CHECK (id = auth.uid());
+DROP POLICY IF EXISTS profiles_delete ON public.profiles;
+CREATE POLICY profiles_delete ON public.profiles FOR DELETE TO authenticated USING (false);
+
 -- trips
 DROP POLICY IF EXISTS trips_select ON public.trips;
-CREATE POLICY trips_select ON public.trips FOR SELECT TO authenticated USING (true);
+CREATE POLICY trips_select ON public.trips FOR SELECT TO authenticated USING (visibility = 'group' OR created_by = auth.uid());
 DROP POLICY IF EXISTS trips_insert ON public.trips;
 CREATE POLICY trips_insert ON public.trips FOR INSERT TO authenticated WITH CHECK (true);
 DROP POLICY IF EXISTS trips_update ON public.trips;
-CREATE POLICY trips_update ON public.trips FOR UPDATE TO authenticated USING (true) WITH CHECK (true);
+CREATE POLICY trips_update ON public.trips FOR UPDATE TO authenticated USING (visibility = 'group' OR created_by = auth.uid()) WITH CHECK (visibility = 'group' OR created_by = auth.uid());
 DROP POLICY IF EXISTS trips_delete ON public.trips;
-CREATE POLICY trips_delete ON public.trips FOR DELETE TO authenticated USING (true);
+CREATE POLICY trips_delete ON public.trips FOR DELETE TO authenticated USING (created_by = auth.uid());
 
--- stages
+-- stages inherit access from the parent trip
 DROP POLICY IF EXISTS stages_select ON public.stages;
-CREATE POLICY stages_select ON public.stages FOR SELECT TO authenticated USING (true);
+CREATE POLICY stages_select ON public.stages FOR SELECT TO authenticated USING (public.can_access_trip(trip_id));
 DROP POLICY IF EXISTS stages_insert ON public.stages;
-CREATE POLICY stages_insert ON public.stages FOR INSERT TO authenticated WITH CHECK (true);
+CREATE POLICY stages_insert ON public.stages FOR INSERT TO authenticated WITH CHECK (public.can_access_trip(trip_id));
 DROP POLICY IF EXISTS stages_update ON public.stages;
-CREATE POLICY stages_update ON public.stages FOR UPDATE TO authenticated USING (true) WITH CHECK (true);
+CREATE POLICY stages_update ON public.stages FOR UPDATE TO authenticated USING (public.can_access_trip(trip_id)) WITH CHECK (public.can_access_trip(trip_id));
 DROP POLICY IF EXISTS stages_delete ON public.stages;
-CREATE POLICY stages_delete ON public.stages FOR DELETE TO authenticated USING (true);
+CREATE POLICY stages_delete ON public.stages FOR DELETE TO authenticated USING (public.can_access_trip(trip_id));
 
--- journal_entries
+-- journal_entries inherit access through stage -> trip
 DROP POLICY IF EXISTS journal_select ON public.journal_entries;
-CREATE POLICY journal_select ON public.journal_entries FOR SELECT TO authenticated USING (true);
+CREATE POLICY journal_select ON public.journal_entries FOR SELECT TO authenticated USING (public.can_access_stage(stage_id));
 DROP POLICY IF EXISTS journal_insert ON public.journal_entries;
-CREATE POLICY journal_insert ON public.journal_entries FOR INSERT TO authenticated WITH CHECK (true);
+CREATE POLICY journal_insert ON public.journal_entries FOR INSERT TO authenticated WITH CHECK (public.can_access_stage(stage_id));
 DROP POLICY IF EXISTS journal_update ON public.journal_entries;
-CREATE POLICY journal_update ON public.journal_entries FOR UPDATE TO authenticated USING (true) WITH CHECK (true);
+CREATE POLICY journal_update ON public.journal_entries FOR UPDATE TO authenticated USING (public.can_access_stage(stage_id)) WITH CHECK (public.can_access_stage(stage_id));
 DROP POLICY IF EXISTS journal_delete ON public.journal_entries;
-CREATE POLICY journal_delete ON public.journal_entries FOR DELETE TO authenticated USING (true);
+CREATE POLICY journal_delete ON public.journal_entries FOR DELETE TO authenticated USING (public.can_access_stage(stage_id));
 
--- expenses
+-- expenses inherit access from the parent trip
 DROP POLICY IF EXISTS expenses_select ON public.expenses;
-CREATE POLICY expenses_select ON public.expenses FOR SELECT TO authenticated USING (true);
+CREATE POLICY expenses_select ON public.expenses FOR SELECT TO authenticated USING (public.can_access_trip(trip_id));
 DROP POLICY IF EXISTS expenses_insert ON public.expenses;
-CREATE POLICY expenses_insert ON public.expenses FOR INSERT TO authenticated WITH CHECK (true);
+CREATE POLICY expenses_insert ON public.expenses FOR INSERT TO authenticated WITH CHECK (public.can_access_trip(trip_id));
 DROP POLICY IF EXISTS expenses_update ON public.expenses;
-CREATE POLICY expenses_update ON public.expenses FOR UPDATE TO authenticated USING (true) WITH CHECK (true);
+CREATE POLICY expenses_update ON public.expenses FOR UPDATE TO authenticated USING (public.can_access_trip(trip_id)) WITH CHECK (public.can_access_trip(trip_id));
 DROP POLICY IF EXISTS expenses_delete ON public.expenses;
-CREATE POLICY expenses_delete ON public.expenses FOR DELETE TO authenticated USING (true);
+CREATE POLICY expenses_delete ON public.expenses FOR DELETE TO authenticated USING (public.can_access_trip(trip_id));
 
--- video_notes
+-- video_notes inherit access from the parent trip
 DROP POLICY IF EXISTS video_notes_select ON public.video_notes;
-CREATE POLICY video_notes_select ON public.video_notes FOR SELECT TO authenticated USING (true);
+CREATE POLICY video_notes_select ON public.video_notes FOR SELECT TO authenticated USING (public.can_access_trip(trip_id));
 DROP POLICY IF EXISTS video_notes_insert ON public.video_notes;
-CREATE POLICY video_notes_insert ON public.video_notes FOR INSERT TO authenticated WITH CHECK (true);
+CREATE POLICY video_notes_insert ON public.video_notes FOR INSERT TO authenticated WITH CHECK (public.can_access_trip(trip_id));
 DROP POLICY IF EXISTS video_notes_update ON public.video_notes;
-CREATE POLICY video_notes_update ON public.video_notes FOR UPDATE TO authenticated USING (true) WITH CHECK (true);
+CREATE POLICY video_notes_update ON public.video_notes FOR UPDATE TO authenticated USING (public.can_access_trip(trip_id)) WITH CHECK (public.can_access_trip(trip_id));
 DROP POLICY IF EXISTS video_notes_delete ON public.video_notes;
-CREATE POLICY video_notes_delete ON public.video_notes FOR DELETE TO authenticated USING (true);
+CREATE POLICY video_notes_delete ON public.video_notes FOR DELETE TO authenticated USING (public.can_access_trip(trip_id));
 
--- gpx_tracks
+-- gpx_tracks inherit access from the parent trip
 DROP POLICY IF EXISTS gpx_select ON public.gpx_tracks;
-CREATE POLICY gpx_select ON public.gpx_tracks FOR SELECT TO authenticated USING (true);
+CREATE POLICY gpx_select ON public.gpx_tracks FOR SELECT TO authenticated USING (public.can_access_trip(trip_id));
 DROP POLICY IF EXISTS gpx_insert ON public.gpx_tracks;
-CREATE POLICY gpx_insert ON public.gpx_tracks FOR INSERT TO authenticated WITH CHECK (true);
+CREATE POLICY gpx_insert ON public.gpx_tracks FOR INSERT TO authenticated WITH CHECK (public.can_access_trip(trip_id));
 DROP POLICY IF EXISTS gpx_update ON public.gpx_tracks;
-CREATE POLICY gpx_update ON public.gpx_tracks FOR UPDATE TO authenticated USING (true) WITH CHECK (true);
+CREATE POLICY gpx_update ON public.gpx_tracks FOR UPDATE TO authenticated USING (public.can_access_trip(trip_id)) WITH CHECK (public.can_access_trip(trip_id));
 DROP POLICY IF EXISTS gpx_delete ON public.gpx_tracks;
-CREATE POLICY gpx_delete ON public.gpx_tracks FOR DELETE TO authenticated USING (true);
-
+CREATE POLICY gpx_delete ON public.gpx_tracks FOR DELETE TO authenticated USING (public.can_access_trip(trip_id));
 
 -- ============================================================
 -- Done.

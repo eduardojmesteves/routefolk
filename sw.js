@@ -4,7 +4,7 @@
 // for static assets. Bump CACHE when shell assets change.
 // ============================================================
 
-const CACHE = 'routefolk-shell-v8';
+const CACHE = 'routefolk-shell-v11';
 
 const SHELL_ASSETS = [
   './',
@@ -20,6 +20,7 @@ const SHELL_ASSETS = [
   './lib/geocoding.js',
   './lib/weather.js',
   './lib/journal.js',
+  './lib/profiles.js',
   './icons/icon-192.png',
   './icons/icon-512.png',
 ];

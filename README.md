@@ -26,13 +26,23 @@ Not a commercial product. Not a startup. Built for ourselves.
 
 ## Access model
 
-The app is for a fixed, trusted group of friends. Anyone who signs in with Google sees all trips. There are no per-trip permissions, no invites, no roles.
+The app is for a fixed, trusted group of friends. Access is still enforced outside the app through the Google OAuth consent screen's **Test users** list — only emails on that list can complete sign-in.
 
-Access is enforced via the Google OAuth consent screen's **Test users** list — only emails on that list can complete sign-in.
+Trips now have simple visibility:
 
-Within the app, all signed-in users can edit and delete each other's trips, stages, and journal entries. The journal entries always show the original author, so credit is preserved.
+| Visibility | Meaning |
+|---|---|
+| `private` | Visible/editable only by the trip creator |
+| `group` | Visible/editable by everyone who can sign in to the app |
+
+There are still no per-trip invites, no roles, no selected-user sharing, and no multiple groups in the active implementation. That keeps the app simple and aligned with the fixed trusted-group model.
+
+Within group trips, signed-in users can collaborate on trips, stages, journal entries, and future expenses. Trip deletion is intentionally creator-only because deleting an entire trip is too destructive for casual group editing.
+
+User display names come from lightweight `profiles` records created/refreshed after Google sign-in. The People list shows users who have signed in at least once; it does not manage access.
 
 ---
+
 
 ## Stack
 
@@ -67,6 +77,15 @@ Tables live in Supabase Postgres. All tables have `id` (UUID) and `created_at` u
 ### `users`
 Managed by Supabase Auth.
 
+### `profiles`
+| Field | Type | Notes |
+|---|---|---|
+| id | uuid | same as `auth.users.id` |
+| email | text | from Google sign-in |
+| full_name | text | from Google sign-in |
+| avatar_url | text | from Google sign-in |
+| updated_at | timestamptz | refreshed on profile update |
+
 ### `trips`
 | Field | Type | Notes |
 |---|---|---|
@@ -76,6 +95,7 @@ Managed by Supabase Auth.
 | start_date / end_date | date | |
 | cover_photo_url | text | external link |
 | status | text | `planning` / `active` / `completed` / `cancelled` |
+| visibility | text | `private` / `group`; existing trips default to `group` |
 | updated_by / updated_at | | auto-set on UPDATE |
 
 ### `stages`
@@ -141,6 +161,7 @@ Full current schema in `schema.sql` (idempotent). Incremental changes are tracke
 |---|---|
 | `001_custom_route_url.sql` | Adds `custom_route_url` to stages, plus `updated_by`/`updated_at` audit columns + triggers on trips and stages |
 | `002_journal_links.sql` | Adds `location_url` and `info_url` to journal entries |
+| `003_profiles_trip_visibility.sql` | Adds profiles, private/group trip visibility, creator-only trip deletion, and visibility-aware RLS policies |
 
 ---
 
@@ -186,6 +207,16 @@ Full current schema in `schema.sql` (idempotent). Incremental changes are tracke
 - [ ] Loading states and error messages — refined as features land
 - [ ] Online-only with clear "you're offline" message when applicable
 
+### Phase 1.5 — People + simple visibility ✅
+
+- [x] Lightweight `profiles` table for names and avatars
+- [x] Profile upsert on sign-in
+- [x] People with access section on Account screen
+- [x] Real profile names for journal authors when available
+- [x] Trip visibility: Private / Friends group
+- [x] Visibility-aware RLS for trips, stages, journal entries, expenses, video notes, and GPX tracks
+- [x] Creator-only trip deletion
+
 ### Phase 2 — Money
 
 - [ ] Add / list / edit / delete expenses
@@ -223,7 +254,8 @@ Full current schema in `schema.sql` (idempotent). Incremental changes are tracke
 
 Lower-priority items captured so they're not forgotten.
 
-- **Display "last edited by … at …" on trips and stages.** Data is being captured in `updated_by` / `updated_at`. Display requires a `profiles` table mirroring user names. Same table will let journal entries show the author's real name instead of just initials/"Friend."
+- **Display "last edited by … at …" on trips and stages.** Data is being captured in `updated_by` / `updated_at`; profiles now exist, so this is mostly a UI job later.
+- **Multiple groups / selected group visibility.** Future Option B: replace the single Friends group with user-defined groups such as "Motorcycle friends" and "Family", using `groups` and `group_members`. Defer until there is a real need for separate groups.
 - **Geocoder ambiguity hints.** Show country alongside ambiguous city names.
 - **Long-range weather outlook** beyond the 16-day Open-Meteo forecast.
 
@@ -238,6 +270,12 @@ Visual directions considered but intentionally deferred. The current palette sta
 | Warm dusk | Sunset oranges and warm browns; more travel-memory feeling | Could become too lifestyle/blog-like |
 | Forest | Greens and earth tones; outdoorsy and calm | Could feel more like a hiking app than a motorcycle trip app |
 | Pure neutral | Greys with subtle accents only on status | Timeless, but less distinctive |
+
+---
+
+## Visibility troubleshooting
+
+If the visibility selector appears but private trips still save as group trips, the most likely cause is stale PWA/service-worker cache serving an old `lib/trips.js`. The app imports `trips.js` with a cache-busting query string from Phase 1.5.1 onward, and `lib/trips.js` also verifies that Supabase returned the requested visibility.
 
 ---
 
@@ -272,11 +310,12 @@ routefolk/
 │   ├── config.js           # Supabase URL + anon key
 │   ├── supabase.js         # Supabase client setup
 │   ├── auth.js             # Sign-in / sign-out / current user
-│   ├── trips.js            # Trip CRUD
+│   ├── trips.js            # Trip CRUD + visibility handling
 │   ├── stages.js           # Stage CRUD with auto-geocoding & custom-URL validation
 │   ├── geocoding.js        # Open-Meteo geocoding wrapper + cache
 │   ├── weather.js          # Open-Meteo forecast wrapper + cache
-│   └── journal.js          # Journal entry CRUD + journal URL validation
+│   ├── journal.js          # Journal entry CRUD + journal URL validation
+│   └── profiles.js         # Profile upsert/list for names and avatars
 ├── sw.js                   # Service worker (bump CACHE on shell changes)
 ├── manifest.json           # PWA manifest
 ├── icons/
@@ -285,7 +324,9 @@ routefolk/
 ├── schema.sql              # Full current database schema (idempotent)
 ├── migrations/             # Incremental schema changes, run in order
 │   ├── 001_custom_route_url.sql
-│   └── 002_journal_links.sql
+│   ├── 002_journal_links.sql
+│   ├── 003_profiles_trip_visibility.sql
+│   └── 004_visibility_rls_hardening.sql
 └── README.md               # This file
 ```
 
@@ -294,6 +335,11 @@ routefolk/
 ## Decisions log
 
 A running list of decisions made and why. New entries go at the top.
+
+- **2026-05: Phase 1.5 uses simple trip visibility, not full sharing.** Trips are either private to the creator or shared with the whole approved friends group. No per-user sharing, no roles, no invite links, and no multiple groups in the active implementation.
+- **2026-05: Profiles are lightweight display records.** The app upserts the signed-in user's email, name, and avatar after Google sign-in so journal entries and future expenses can show real names. Access is still controlled through Google OAuth Test users.
+- **2026-05: Trip deletion is creator-only.** Group members can collaborate on shared trip content, but deleting the whole trip is restricted to the creator because it is too destructive.
+- **2026-05: Multiple groups are parked as a future Option B.** Feasible with `groups` and `group_members`, but deliberately deferred until there is a concrete need for separate groups.
 
 - **2026-05: Journal entries use two optional URL fields beyond photo albums.** `location_url` is for Google Maps links; `info_url` is for generic HTTPS websites such as Booking.com, restaurants, pubs, TripAdvisor, blogs, or other useful references. This avoids type-specific fields and keeps the form simple.
 - **2026-05: Stage planned dates are constrained by trip dates in the UI.** If a trip has date bounds, stage date inputs receive `min` / `max`. If the trip has no dates, the stage date field is disabled with explanatory help text.
@@ -312,7 +358,7 @@ A running list of decisions made and why. New entries go at the top.
 - **2026-05: Skip midpoint forecast when start/end < 50 km apart.**
 - **2026-05: Trips list sorted by start_date DESC, nulls last.**
 - **2026-05: Active list = `planning` + `active`. Archive list = `completed` + `cancelled`.**
-- **2026-05: Hard delete for trips, with confirmation suggesting `cancelled` instead.**
+- **2026-05: Hard delete for trips, with confirmation suggesting `cancelled` instead.** From Phase 1.5 onward, only the trip creator can delete the whole trip.
 - **2026-05: Service worker cache versioning.**
 - **2026-05: Supabase URL and anon key in committed code.** Public by design.
 - **2026-05: Trips have four statuses: `planning`, `active`, `completed`, `cancelled`.**
@@ -330,4 +376,10 @@ A running list of decisions made and why. New entries go at the top.
 
 ## License
 
-To be decided. Likely MIT or CC0 for personal-use simplicity.
+The repository currently uses `LICENSE`: **Routefolk Source-Available License v1.0**.
+
+This is **not** an open-source licence in the OSI sense. It allows personal and non-commercial use, study, and modification, but prohibits commercial use, redistribution, sublicensing, publication of modified versions, hosted/SaaS use, and selling copies or derivatives without prior written permission.
+
+This licence matches the current intent of the project: a personal-use app built for a small trusted group, not a reusable commercial product or community open-source package.
+
+If the intent changes later and the project should become truly open source, replace the custom licence with a standard licence such as MIT or Apache-2.0. Until then, keep the current source-available licence.

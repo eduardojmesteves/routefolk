@@ -4,10 +4,11 @@
 // ============================================================
 
 import { signInWithGoogle, signOut, getCurrentUser, onAuthChange } from './lib/auth.js';
-import { listTrips, createTrip, updateTrip, deleteTrip } from './lib/trips.js';
+import { listTrips, createTrip, updateTrip, deleteTrip } from './lib/trips.js?v=20260511-visibility-fix';
 import { listStages, createStage, updateStage, deleteStage, swapStageOrder } from './lib/stages.js';
 import { fetchStageForecasts } from './lib/weather.js';
 import { listEntriesForStage, createEntry, updateEntry, deleteEntry } from './lib/journal.js';
+import { upsertCurrentProfile, listProfiles } from './lib/profiles.js';
 
 const STATE = {
   tab: 'trips',
@@ -24,6 +25,10 @@ const STATE = {
   entriesByStage: {},          // stageId -> array of entries OR 'loading'
   expandedStages: new Set(),   // journal sections open in trip detail
   expandedSummaryStages: new Set(),
+  profiles: [],                // users who have signed in at least once
+  profilesById: {},
+  profilesLoading: false,
+  profilesError: null,
 };
 
 const STATUS_META = {
@@ -31,6 +36,12 @@ const STATUS_META = {
   active:    { label: 'Active',    cls: 'status-active'    },
   completed: { label: 'Completed', cls: 'status-completed' },
   cancelled: { label: 'Cancelled', cls: 'status-cancelled' },
+};
+
+
+const VISIBILITY_META = {
+  private: { label: 'Private', formLabel: 'Private — only me', cls: 'visibility-private' },
+  group:   { label: 'Group',   formLabel: 'Friends group — everyone with app access', cls: 'visibility-group' },
 };
 
 const ENTRY_TYPE_META = {
@@ -125,15 +136,47 @@ function userAvatarUrl(user) {
   return user?.user_metadata?.avatar_url || user?.user_metadata?.picture || '';
 }
 
+function initialsFromName(name) {
+  return String(name || '?')
+    .trim()
+    .split(/\s+/)
+    .filter(Boolean)
+    .slice(0, 2)
+    .map((w) => w[0]?.toUpperCase() || '')
+    .join('') || '?';
+}
+
+function profileForUserId(userId) {
+  return userId ? STATE.profilesById[userId] || null : null;
+}
+
+function displayNameForUserId(userId) {
+  if (STATE.user && userId === STATE.user.id) return userDisplayName(STATE.user);
+  const profile = profileForUserId(userId);
+  return profile?.full_name || profile?.email || 'Friend';
+}
+
 function authorInitials(authorId) {
-  if (STATE.user && authorId === STATE.user.id) return userInitials(STATE.user);
-  if (!authorId) return '?';
-  return authorId.slice(0, 2).toUpperCase();
+  return initialsFromName(displayNameForUserId(authorId));
 }
 
 function authorLabel(authorId) {
-  if (STATE.user && authorId === STATE.user.id) return 'You';
-  return 'Friend';
+  if (STATE.user && authorId === STATE.user.id) return `You — ${userDisplayName(STATE.user)}`;
+  return displayNameForUserId(authorId);
+}
+
+function tripVisibility(trip) {
+  return trip?.visibility === 'private' ? 'private' : 'group';
+}
+
+function visibilityPillHtml(trip) {
+  const key = tripVisibility(trip);
+  const meta = VISIBILITY_META[key];
+  return `<span class="visibility-pill ${meta.cls}">${esc(meta.label)}</span>`;
+}
+
+function canDeleteTrip(trip) {
+  return Boolean(STATE.user?.id && trip?.created_by === STATE.user.id);
 }
 
 // ---------- Date helpers ----------
@@ -266,6 +309,39 @@ async function loadTrips() {
   }
 }
 
+async function loadProfiles() {
+  if (!STATE.user) return;
+  STATE.profilesLoading = true;
+  STATE.profilesError = null;
+  renderAll();
+
+  try {
+    const profiles = await listProfiles();
+    STATE.profiles = profiles;
+    STATE.profilesById = Object.fromEntries(profiles.map((p) => [p.id, p]));
+  } catch (err) {
+    console.error(err);
+    STATE.profiles = [];
+    STATE.profilesById = {};
+    STATE.profilesError = err.message || 'Failed to load people.';
+  } finally {
+    STATE.profilesLoading = false;
+    renderAll();
+  }
+}
+
+async function loadSignedInData() {
+  if (!STATE.user) return;
+  try {
+    await upsertCurrentProfile(STATE.user);
+  } catch (err) {
+    console.warn('Profile upsert failed:', err);
+    toast('Signed in, but profile sync failed.');
+  }
+  await loadProfiles();
+  await loadTrips();
+}
+
 async function loadStagesForTrip(tripId) {
   STATE.stagesLoading = true;
   STATE.stagesError = null;
@@ -333,7 +409,10 @@ function tripCardHtml(trip) {
     <button class="trip-card" data-trip-id="${esc(trip.id)}">
       <div class="trip-card-head">
         <div class="trip-title">${esc(trip.title)}</div>
-        <span class="status-pill ${meta.cls}">${esc(meta.label)}</span>
+        <div class="trip-card-pills">
+          <span class="status-pill ${meta.cls}">${esc(meta.label)}</span>
+          ${visibilityPillHtml(trip)}
+        </div>
       </div>
       <div class="trip-dates">${esc(fmtDateRange(trip.start_date, trip.end_date))}</div>
       ${trip.description ? `<div class="trip-desc">${esc(trip.description)}</div>` : ''}
@@ -620,7 +699,10 @@ function renderTripDetail() {
     <div class="card">
       <div class="trip-detail-head">
         <h1 class="trip-detail-title">${esc(trip.title)}</h1>
-        <span class="status-pill ${meta.cls}">${esc(meta.label)}</span>
+        <div class="trip-detail-pills">
+          <span class="status-pill ${meta.cls}">${esc(meta.label)}</span>
+          ${visibilityPillHtml(trip)}
+        </div>
       </div>
       <div class="trip-detail-dates">${esc(fmtDateRange(trip.start_date, trip.end_date))}</div>
       ${trip.description ? `<div class="trip-detail-desc">${esc(trip.description)}</div>` : ''}
@@ -628,7 +710,7 @@ function renderTripDetail() {
       <div class="trip-detail-actions">
         <button class="btn btn-secondary btn-sm" id="summaryTripBtn">Summary</button>
         <button class="btn btn-secondary btn-sm" id="editTripBtn">Edit</button>
-        <button class="btn btn-danger btn-sm" id="deleteTripBtn">Delete</button>
+        ${canDeleteTrip(trip) ? '<button class="btn btn-danger btn-sm" id="deleteTripBtn">Delete</button>' : ''}
       </div>
     </div>
 
@@ -714,7 +796,10 @@ function renderTripSummary() {
     <div class="card">
       <div class="trip-detail-head">
         <h1 class="trip-detail-title">${esc(trip.title)}</h1>
-        <span class="status-pill ${(STATUS_META[trip.status] || STATUS_META.planning).cls}">${esc((STATUS_META[trip.status] || STATUS_META.planning).label)}</span>
+        <div class="trip-detail-pills">
+          <span class="status-pill ${(STATUS_META[trip.status] || STATUS_META.planning).cls}">${esc((STATUS_META[trip.status] || STATUS_META.planning).label)}</span>
+          ${visibilityPillHtml(trip)}
+        </div>
       </div>
       <div class="trip-detail-dates">${esc(fmtDateRange(trip.start_date, trip.end_date))}</div>
       ${tripStatsStripHtml(trip)}
@@ -855,21 +940,38 @@ function tripFormHtml(trip = {}) {
         ).join('')}
       </select>
     </div>
+    <div class="form-row">
+      <div class="form-label">Visibility</div>
+      <div class="choice-list" role="radiogroup" aria-label="Trip visibility">
+        ${Object.entries(VISIBILITY_META).map(([key, m]) => `
+          <label class="choice-option">
+            <input type="radio" name="tfVisibility" value="${esc(key)}" ${tripVisibility(trip) === key ? 'checked' : ''}>
+            <span>
+              <strong>${esc(m.formLabel)}</strong>
+              <small>${key === 'private' ? 'Only you can see and edit this trip.' : 'Everyone who can sign in to the app can see and edit this trip.'}</small>
+            </span>
+          </label>
+        `).join('')}
+      </div>
+      <div class="form-help">This is enforced by Supabase RLS, not just hidden in the interface.</div>
+    </div>
   `;
 }
 
 function readTripForm() {
+  const checkedVisibility = document.querySelector('input[name="tfVisibility"]:checked')?.value;
   return {
     title: $('tfTitle')?.value.trim() || '',
     description: $('tfDesc')?.value.trim() || '',
     start_date: $('tfStart')?.value || '',
     end_date: $('tfEnd')?.value || '',
     status: $('tfStatus')?.value || 'planning',
+    visibility: checkedVisibility === 'private' ? 'private' : 'group',
   };
 }
 
 function showNewTripModal() {
-  showModal('New trip', tripFormHtml({ status: 'planning' }), [
+  showModal('New trip', tripFormHtml({ status: 'planning', visibility: 'group' }), [
     { label: 'Create', cls: 'btn-primary', fn: handleCreateTrip },
     { label: 'Cancel', cls: 'btn-secondary', fn: closeModal },
   ]);
@@ -1129,6 +1231,40 @@ function renderAccount() {
       </div>
       <button class="btn btn-secondary btn-block" id="signOutBtn" style="margin-top:12px;">Sign out</button>
     </div>
+
+    <div class="card">
+      <div class="card-title">People with access</div>
+      ${peopleListHtml()}
+      <div class="form-help" style="margin-top:10px;">
+        This list shows users who have signed in at least once. Add or remove access in the Google OAuth Test users list.
+      </div>
+    </div>
+  `;
+}
+
+function peopleListHtml() {
+  if (STATE.profilesLoading && !STATE.profiles.length) return `<div class="empty-sub">Loading people…</div>`;
+  if (STATE.profilesError) return `<div class="stage-warn">${esc(STATE.profilesError)}</div>`;
+  if (!STATE.profiles.length) return `<div class="empty-sub">No profiles yet. People appear here after their first sign-in.</div>`;
+
+  return `
+    <div class="people-list">
+      ${STATE.profiles.map((profile) => {
+        const initials = initialsFromName(profile.full_name || profile.email);
+        const isYou = STATE.user?.id === profile.id;
+        return `
+          <div class="people-row">
+            <div class="account-avatar people-avatar">
+              ${profile.avatar_url ? `<img src="${esc(profile.avatar_url)}" alt="" referrerpolicy="no-referrer">` : esc(initials)}
+            </div>
+            <div class="account-info">
+              <div class="account-name">${esc(profile.full_name || profile.email || 'Unknown')}${isYou ? ' <span class="people-you">You</span>' : ''}</div>
+              <div class="account-email">${esc(profile.email || '')}</div>
+            </div>
+          </div>
+        `;
+      }).join('')}
+    </div>
   `;
 }
 
@@ -1178,6 +1314,12 @@ async function handleUpdateTrip(tripId) {
 }
 
 async function handleDeleteTrip(tripId) {
+  const trip = STATE.trips.find((t) => t.id === tripId);
+  if (trip && !canDeleteTrip(trip)) {
+    toast('Only the trip creator can delete this trip.');
+    closeModal();
+    return;
+  }
   try {
     await deleteTrip(tripId);
     closeModal();
@@ -1431,7 +1573,7 @@ async function init() {
   bindNav();
   renderAll();
 
-  if (STATE.user) await loadTrips();
+  if (STATE.user) await loadSignedInData();
 
   onAuthChange(async (user) => {
     STATE.user = user;
@@ -1439,12 +1581,15 @@ async function init() {
     STATE.stagesByTrip = {};
     STATE.entriesByStage = {};
     STATE.forecastsByStage = {};
+    STATE.profiles = [];
+    STATE.profilesById = {};
+    STATE.profilesError = null;
     STATE.expandedStages.clear();
     STATE.expandedSummaryStages.clear();
     STATE.view = 'list';
     STATE.viewTripId = null;
     renderAll();
-    if (STATE.user) await loadTrips();
+    if (STATE.user) await loadSignedInData();
   });
 
   if ('serviceWorker' in navigator) {
