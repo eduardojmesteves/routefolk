@@ -112,6 +112,7 @@ CREATE INDEX IF NOT EXISTS journal_entries_stage_id_idx ON public.journal_entrie
 CREATE TABLE IF NOT EXISTS public.expenses (
   id          uuid PRIMARY KEY DEFAULT gen_random_uuid(),
   trip_id     uuid NOT NULL REFERENCES public.trips(id) ON DELETE CASCADE,
+  stage_id    uuid REFERENCES public.stages(id) ON DELETE SET NULL,
   user_id     uuid NOT NULL REFERENCES auth.users(id) ON DELETE SET NULL, -- payer
   created_by  uuid REFERENCES auth.users(id) ON DELETE SET NULL,          -- who entered it
   category    text NOT NULL DEFAULT 'other'
@@ -126,6 +127,7 @@ CREATE TABLE IF NOT EXISTS public.expenses (
 );
 
 CREATE INDEX IF NOT EXISTS expenses_trip_id_idx    ON public.expenses(trip_id);
+CREATE INDEX IF NOT EXISTS expenses_stage_id_idx   ON public.expenses(stage_id);
 CREATE INDEX IF NOT EXISTS expenses_user_id_idx    ON public.expenses(user_id);
 CREATE INDEX IF NOT EXISTS expenses_created_by_idx ON public.expenses(created_by);
 CREATE INDEX IF NOT EXISTS expenses_category_idx   ON public.expenses(category);
@@ -254,6 +256,32 @@ DROP TRIGGER IF EXISTS expenses_touch_audit ON public.expenses;
 CREATE TRIGGER expenses_touch_audit
   BEFORE UPDATE ON public.expenses
   FOR EACH ROW EXECUTE FUNCTION public.touch_expense_audit();
+
+-- Expenses: if assigned to a stage, the stage must belong to the same trip.
+CREATE OR REPLACE FUNCTION public.validate_expense_stage_trip()
+RETURNS trigger LANGUAGE plpgsql AS $$
+BEGIN
+  IF NEW.stage_id IS NULL THEN
+    RETURN NEW;
+  END IF;
+
+  IF NOT EXISTS (
+    SELECT 1
+    FROM public.stages s
+    WHERE s.id = NEW.stage_id
+      AND s.trip_id = NEW.trip_id
+  ) THEN
+    RAISE EXCEPTION 'Expense stage must belong to the same trip.';
+  END IF;
+
+  RETURN NEW;
+END;
+$$;
+
+DROP TRIGGER IF EXISTS expenses_validate_stage_trip ON public.expenses;
+CREATE TRIGGER expenses_validate_stage_trip
+  BEFORE INSERT OR UPDATE OF trip_id, stage_id ON public.expenses
+  FOR EACH ROW EXECUTE FUNCTION public.validate_expense_stage_trip();
 
 
 -- video_notes: keep updated_at fresh on every UPDATE

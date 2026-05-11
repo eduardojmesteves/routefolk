@@ -5,7 +5,7 @@
 
 import { signInWithGoogle, signOut, getCurrentUser, onAuthChange } from './lib/auth.js';
 import { listTrips, createTrip, updateTrip, deleteTrip } from './lib/trips.js?v=20260511-visibility-fix';
-import { listExpensesForTrip, createExpense, updateExpense, deleteExpense } from './lib/expenses.js?v=20260511-expenses-phase2';
+import { listExpensesForTrip, createExpense, updateExpense, deleteExpense } from './lib/expenses.js?v=20260511-expense-stage-assignment';
 import { listStages, createStage, updateStage, deleteStage, swapStageOrder } from './lib/stages.js';
 import { fetchStageForecasts } from './lib/weather.js';
 import { listEntriesForStage, createEntry, updateEntry, deleteEntry } from './lib/journal.js';
@@ -280,6 +280,13 @@ function isStageDateOutsideTrip(stage, trip) {
   return false;
 }
 
+function isExpenseDateOutsideTrip(expense, trip) {
+  if (!expense?.date) return false;
+  if (trip.start_date && expense.date < trip.start_date) return true;
+  if (trip.end_date && expense.date > trip.end_date) return true;
+  return false;
+}
+
 // ---------- Header/nav ----------
 function renderHeader() {
   const right = $('hdrRight');
@@ -307,7 +314,7 @@ function renderHeader() {
 function headerSubtitle() {
   if (!STATE.user) return 'Sign in to plan trips';
   if (STATE.tab === 'account') return 'Account';
-  if (STATE.view === 'summary') return 'Trip summary';
+  if (STATE.view === 'summary') return 'Trip summary review';
   if (STATE.view === 'detail') return 'Trip detail';
   if (STATE.tab === 'archive') return 'Archive';
   return 'Trips';
@@ -690,6 +697,25 @@ function stageRouteLabel(stage, index = 0) {
   return [stage.start_location, stage.end_location].filter(Boolean).join(' → ') || stage.title || `Stage ${index + 1}`;
 }
 
+function stageLabelForExpense(stage, index = 0) {
+  if (!stage) return 'Whole trip';
+  const date = stage.planned_date ? fmtDate(stage.planned_date) : 'No date';
+  return `${stageRouteLabel(stage, index)} · ${date}`;
+}
+
+function stageForExpense(expense, trip) {
+  if (!expense?.stage_id || !trip?.id) return null;
+  const stages = STATE.stagesByTrip[trip.id] || [];
+  return stages.find((stage) => stage.id === expense.stage_id) || null;
+}
+
+function expenseStageMeta(expense, trip) {
+  const stages = STATE.stagesByTrip[trip.id] || [];
+  const index = stages.findIndex((stage) => stage.id === expense.stage_id);
+  const stage = index >= 0 ? stages[index] : null;
+  return { stage, index };
+}
+
 function stageDateWarningHtml(stage, trip) {
   if (!isStageDateOutsideTrip(stage, trip)) return '';
   return `<div class="stage-warn">Planned date is outside the trip date range.</div>`;
@@ -865,6 +891,7 @@ function renderTripSummary() {
   if (!trip) return tripNotFoundHtml();
 
   const stages = STATE.stagesByTrip[trip.id] || [];
+  const expenses = expensesForTrip(trip.id);
   return `
     <button class="btn btn-secondary btn-sm" id="backToDetailBtn" style="margin-bottom:12px;">← Back to trip</button>
 
@@ -877,12 +904,19 @@ function renderTripSummary() {
         </div>
       </div>
       <div class="trip-detail-dates">${esc(fmtDateRange(trip.start_date, trip.end_date))}</div>
+      <div class="section-label" style="margin-top:12px;margin-bottom:8px;">Trip Summary Review</div>
       ${tripStatsStripHtml(trip)}
+    </div>
+
+    <div class="card">
+      <div class="card-title">Trip cost</div>
+      ${expenseTotalsHtml(expenseTotals(expenses))}
     </div>
 
     <div class="card">
       <div class="card-title">Summary table</div>
       ${summaryTableHtml(stages, trip)}
+      ${summaryTripLevelExpensesHtml(trip)}
     </div>
   `;
 }
@@ -900,7 +934,7 @@ function summaryTableHtml(stages, trip) {
             <th>From → To</th>
             <th>Distance</th>
             <th>Notes</th>
-            <th>Journal</th>
+            <th>Journal / expenses</th>
           </tr>
         </thead>
         <tbody>
@@ -913,8 +947,10 @@ function summaryTableHtml(stages, trip) {
 
 function summaryStageRowsHtml(stage, trip, index) {
   const entries = STATE.entriesByStage[stage.id];
+  const expenses = expensesForTrip(trip.id).filter((expense) => expense.stage_id === stage.id);
   const expanded = STATE.expandedSummaryStages.has(stage.id);
-  const count = Array.isArray(entries) ? entries.length : (entries === 'loading' ? '…' : 0);
+  const entryCount = Array.isArray(entries) ? entries.length : (entries === 'loading' ? '…' : 0);
+  const expenseCount = expenses.length;
   const warning = isStageDateOutsideTrip(stage, trip) ? `<div class="summary-warning">Outside trip dates</div>` : '';
 
   const main = `
@@ -925,7 +961,7 @@ function summaryStageRowsHtml(stage, trip, index) {
       <td>${stage.notes ? esc(stage.notes) : '—'}</td>
       <td>
         <button class="summary-toggle" data-summary-stage-id="${esc(stage.id)}">
-          ${expanded ? '▾' : '▸'} ${esc(count)}
+          ${expanded ? '▾' : '▸'} ${esc(entryCount)} journal · ${esc(expenseCount)} expenses
         </button>
       </td>
     </tr>
@@ -936,7 +972,16 @@ function summaryStageRowsHtml(stage, trip, index) {
   return main + `
     <tr class="summary-entry-row">
       <td colspan="5">
-        ${summaryEntriesHtml(entries)}
+        <div class="summary-review-grid">
+          <div>
+            <div class="summary-subtitle">Journal entries</div>
+            ${summaryEntriesHtml(entries)}
+          </div>
+          <div>
+            <div class="summary-subtitle">Expenses assigned to this stage</div>
+            ${summaryExpensesHtml(expenses, trip, 'No expenses assigned to this stage.')}
+          </div>
+        </div>
       </td>
     </tr>
   `;
@@ -983,6 +1028,42 @@ function summaryEntryRowHtml(entry) {
       <td>${location}</td>
       <td>${links.length ? links.join(' · ') : '—'}</td>
     </tr>
+  `;
+}
+
+function summaryExpensesHtml(expenses, trip, emptyMessage = 'No expenses.') {
+  if (!expenses.length) return `<div class="empty-sub">${esc(emptyMessage)}</div>`;
+  return `
+    <div class="summary-expense-list">
+      ${expenses.map((expense) => summaryExpenseItemHtml(expense, trip)).join('')}
+    </div>
+  `;
+}
+
+function summaryExpenseItemHtml(expense, trip) {
+  const meta = EXPENSE_CATEGORY_META[expense.category] || EXPENSE_CATEGORY_META.other;
+  const payer = displayNameForUserId(expense.user_id);
+  const warning = isExpenseDateOutsideTrip(expense, trip)
+    ? `<div class="summary-warning">Expense date is outside the trip date range.</div>`
+    : '';
+  return `
+    <div class="summary-expense-item">
+      <div class="summary-expense-title">${esc(meta.icon)} ${esc(meta.label)} · ${esc(fmtEuro(expense.amount))}</div>
+      <div class="summary-expense-meta">Paid by ${esc(payer)}${expense.date ? ` · ${esc(fmtDate(expense.date))}` : ''}</div>
+      ${expense.description ? `<div class="summary-entry-desc">${esc(expense.description)}</div>` : ''}
+      ${warning}
+    </div>
+  `;
+}
+
+function summaryTripLevelExpensesHtml(trip) {
+  const expenses = expensesForTrip(trip.id).filter((expense) => !expense.stage_id);
+  if (!expenses.length) return '';
+  return `
+    <div class="summary-trip-expenses">
+      <div class="summary-subtitle">Trip-level expenses</div>
+      ${summaryExpensesHtml(expenses, trip, 'No trip-level expenses.')}
+    </div>
   `;
 }
 
@@ -1371,7 +1452,20 @@ function breakdownRowHtml(label, amount, icon = '') {
   `;
 }
 
+function expenseStageLineHtml(expense, trip) {
+  if (!expense.stage_id) return '';
+  const { stage, index } = expenseStageMeta(expense, trip);
+  if (!stage) return `<span> · Stage no longer available</span>`;
+  return `<span> · ${esc(stageLabelForExpense(stage, index))}</span>`;
+}
+
+function expenseDateWarningHtml(expense, trip) {
+  if (!isExpenseDateOutsideTrip(expense, trip)) return '';
+  return `<div class="stage-warn">Expense date is outside the trip date range.</div>`;
+}
+
 function expenseCardHtml(expense) {
+  const trip = currentTrip();
   const meta = EXPENSE_CATEGORY_META[expense.category] || EXPENSE_CATEGORY_META.other;
   const payer = displayNameForUserId(expense.user_id);
   return `
@@ -1379,7 +1473,9 @@ function expenseCardHtml(expense) {
       <div class="expense-card-head">
         <div>
           <div class="expense-title">${esc(meta.icon)} ${esc(meta.label)} · ${esc(fmtEuro(expense.amount))}</div>
-          <div class="expense-meta">Paid by ${esc(payer)}${expense.date ? ` · ${esc(fmtDate(expense.date))}` : ''}</div>
+          <div class="expense-meta">
+            Paid by ${esc(payer)}${expense.date ? ` · ${esc(fmtDate(expense.date))}` : ''}${trip ? expenseStageLineHtml(expense, trip) : ''}
+          </div>
         </div>
         <div class="expense-actions">
           <button class="entry-icon-btn" data-expense-action="edit" data-id="${esc(expense.id)}" title="Edit">✎</button>
@@ -1387,8 +1483,35 @@ function expenseCardHtml(expense) {
         </div>
       </div>
       ${expense.description ? `<div class="expense-desc">${esc(expense.description)}</div>` : ''}
+      ${trip ? expenseDateWarningHtml(expense, trip) : ''}
     </div>
   `;
+}
+
+function stageOptionsHtml(trip, selectedStageId) {
+  const stages = STATE.stagesByTrip[trip.id] || [];
+  const selected = selectedStageId || '';
+  const options = [`<option value="" ${!selected ? 'selected' : ''}>Whole trip / no specific stage</option>`];
+  stages.forEach((stage, index) => {
+    options.push(`<option value="${esc(stage.id)}" ${stage.id === selected ? 'selected' : ''}>${esc(stageLabelForExpense(stage, index))}</option>`);
+  });
+  return options.join('');
+}
+
+function expenseDateAttrs(trip) {
+  return `${attr('min', trip.start_date || '')}${attr('max', trip.end_date || '')}`;
+}
+
+function validateExpenseForTrip(trip, fields) {
+  if (fields.date) {
+    if (trip.start_date && fields.date < trip.start_date) throw new Error('Expense date must be on or after the trip start date.');
+    if (trip.end_date && fields.date > trip.end_date) throw new Error('Expense date must be on or before the trip end date.');
+  }
+  if (fields.stage_id) {
+    const stages = STATE.stagesByTrip[trip.id] || [];
+    if (!stages.some((stage) => stage.id === fields.stage_id)) throw new Error('Selected stage does not belong to this trip.');
+  }
+  return fields;
 }
 
 function payerOptionsHtml(trip, selectedUserId) {
@@ -1431,13 +1554,20 @@ function expenseFormHtml(trip, expense = {}) {
       </select>
     </div>
     <div class="form-row">
+      <label class="form-label" for="efStage">Applies to</label>
+      <select class="sel" id="efStage">
+        ${stageOptionsHtml(trip, expense.stage_id)}
+      </select>
+      <div class="form-help">Optional. Use “Whole trip” for costs that do not belong to a specific stage.</div>
+    </div>
+    <div class="form-row">
       <label class="form-label" for="efAmount">Amount (€)</label>
       <input class="inp" id="efAmount" type="text" inputmode="decimal" autocomplete="off" value="${esc(amount)}" placeholder="0.00">
       <div class="form-help">Use decimals for cents. The app stores all expenses in Euro.</div>
     </div>
     <div class="form-row">
       <label class="form-label" for="efDate">Date</label>
-      <input class="inp" id="efDate" type="date" value="${esc(expense.date || todayIsoDate())}">
+      <input class="inp" id="efDate" type="date" value="${esc(expense.date || todayIsoDate())}"${expenseDateAttrs(trip)}>
     </div>
     <div class="form-row">
       <label class="form-label" for="efDesc">Description (optional)</label>
@@ -1448,14 +1578,16 @@ function expenseFormHtml(trip, expense = {}) {
 
 function readExpenseForm(trip) {
   const amount = parseAmount($('efAmount')?.value);
-  return {
+  const fields = {
     user_id: tripVisibility(trip) === 'private' ? STATE.user?.id : ($('efPayer')?.value || STATE.user?.id),
     category: $('efCategory')?.value || 'food_drinks',
+    stage_id: $('efStage')?.value || null,
     amount,
     date: $('efDate')?.value || todayIsoDate(),
     description: $('efDesc')?.value.trim() || '',
     currency: 'EUR',
   };
+  return validateExpenseForTrip(trip, fields);
 }
 
 function showNewExpenseModal(trip) {

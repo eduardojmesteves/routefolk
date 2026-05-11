@@ -1228,3 +1228,56 @@ a:hover { text-decoration: underline; }
     grid-template-columns: 1fr 1fr;
   }
 }
+
+/* ---------- Summary review expense additions ---------- */
+.summary-review-grid {
+  display: grid;
+  gap: 12px;
+}
+
+.summary-subtitle {
+  font-size: 11px;
+  font-weight: 700;
+  color: #6da9ff;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  margin-bottom: 8px;
+}
+
+.summary-expense-list {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.summary-expense-item {
+  background: #142036;
+  border: 1px solid #1f3458;
+  border-radius: 8px;
+  padding: 9px 10px;
+}
+
+.summary-expense-title {
+  font-size: 13px;
+  font-weight: 700;
+  color: #e8edf5;
+  line-height: 1.3;
+}
+
+.summary-expense-meta {
+  font-size: 11px;
+  color: #6b7a93;
+  margin-top: 4px;
+}
+
+.summary-trip-expenses {
+  margin-top: 14px;
+  padding-top: 14px;
+  border-top: 1px solid #2a3142;
+}
+
+@media (min-width: 760px) {
+  .summary-review-grid {
+    grid-template-columns: 1.2fr 0.8fr;
+  }
+}

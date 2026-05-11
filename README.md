@@ -131,6 +131,7 @@ Phase 2A trip cost tracking. Expenses are EUR-only and record the payer, not spl
 | Field | Type | Notes |
 |---|---|---|
 | trip_id | uuid | ON DELETE CASCADE |
+| stage_id | uuid | optional stage assignment; ON DELETE SET NULL |
 | user_id | uuid | payer; selectable for group trips, current user only for private trips |
 | created_by | uuid | user who entered the record |
 | category | text | `fuel` / `food_drinks` / `lodging` / `tolls` / `parking` / `other` |
@@ -176,6 +177,7 @@ Full current schema in `schema.sql` (idempotent). Incremental changes are tracke
 | `003_profiles_trip_visibility.sql` | Adds profiles, private/group trip visibility, creator-only trip deletion, and visibility-aware RLS policies |
 | `004_visibility_rls_hardening.sql` | Re-applies/hardens visibility RLS and cache-related troubleshooting support |
 | `005_expenses_phase2.sql` | Adds Phase 2A expenses: selectable payer, EUR-only costs, categories, audit fields, and expense RLS hardening |
+| `006_expense_stage_assignment.sql` | Adds optional expense stage assignment with same-trip validation |
 
 ---
 
@@ -244,8 +246,13 @@ Full current schema in `schema.sql` (idempotent). Incremental changes are tracke
 - [x] Breakdown by payer
 - [x] Compact Cost metric in the trip metrics strip
 
-**Phase 2B — Money review / summary integration**
-- [ ] Add expenses to the trip summary table/review view
+**Phase 2B — Trip Summary Review**
+- [x] Add expenses to the trip summary table/review view
+- [x] Add optional stage assignment to expenses
+- [x] Show assigned expenses under each stage in Summary Review
+- [x] Show unassigned expenses as trip-level expenses
+- [x] Constrain expense date inputs by trip date range
+- [x] Keep Summary Review read-only for expenses
 
 ### Phase 3 — Archive + tracks
 
@@ -284,6 +291,7 @@ Lower-priority items captured so they're not forgotten.
 - **Expense receipt URL.** Optional external receipt/photo link per expense. Deferred because the Phase 2 goal is total trip cost, not receipt management.
 - **Expense settlement hints.** Who owes whom, reimbursements, settled status, and split logic are deliberately deferred. This app tracks trip cost, not debts.
 - **Expense export/charts.** Useful later after real trip use proves which summaries matter.
+- **Automatic expense-to-stage suggestions.** Possible later, but Phase 2B keeps assignment explicit and optional to avoid wrong guesses.
 - **Geocoder ambiguity hints.** Show country alongside ambiguous city names.
 - **Long-range weather outlook** beyond the 16-day Open-Meteo forecast.
 
@@ -344,7 +352,7 @@ routefolk/
 │   ├── weather.js          # Open-Meteo forecast wrapper + cache
 │   ├── journal.js          # Journal entry CRUD + journal URL validation
 │   ├── profiles.js         # Profile upsert/list for names and avatars
-│   └── expenses.js         # Expense CRUD + Phase 2A validation
+│   └── expenses.js         # Expense CRUD + Phase 2B stage assignment validation
 ├── sw.js                   # Service worker (bump CACHE on shell changes)
 ├── manifest.json           # PWA manifest
 ├── icons/
@@ -356,7 +364,8 @@ routefolk/
 │   ├── 002_journal_links.sql
 │   ├── 003_profiles_trip_visibility.sql
 │   ├── 004_visibility_rls_hardening.sql
-│   └── 005_expenses_phase2.sql
+│   ├── 005_expenses_phase2.sql
+│   └── 006_expense_stage_assignment.sql
 └── README.md               # This file
 ```
 
@@ -366,6 +375,8 @@ routefolk/
 
 A running list of decisions made and why. New entries go at the top.
 
+- **2026-05: Phase 2B adds optional expense stage assignment.** Expenses always belong to a trip and may optionally be assigned to one stage. Stage assignment is explicit, not guessed from date. Deleting a stage keeps the expense and clears the assignment.
+- **2026-05: Summary remains a review surface.** Trip Summary Review shows stage journal entries and expenses, but expense editing stays in the trip detail Expenses section.
 - **2026-05: Phase 2 tracks trip cost, not debt settlement.** The goal is total trip cost with payer/category breakdowns. Settlement, reimbursements, receipt URLs, exports, charts, and multi-currency support are deferred.
 - **2026-05: Expenses are EUR-only.** The app stores `currency = 'EUR'` and does not expose a currency field in the UI.
 - **2026-05: Expense payer is selectable for group trips.** `expenses.user_id` means payer. `created_by` records who entered the record. Private trips force the current user as payer.
