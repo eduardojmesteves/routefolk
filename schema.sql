@@ -13,6 +13,24 @@
 CREATE EXTENSION IF NOT EXISTS pgcrypto;
 
 
+-- ------------------------------------------------------------
+-- Storage buckets
+-- ------------------------------------------------------------
+INSERT INTO storage.buckets (id, name, public, file_size_limit, allowed_mime_types)
+VALUES (
+  'gpx-tracks',
+  'gpx-tracks',
+  false,
+  8388608,
+  ARRAY['application/gpx+xml', 'application/xml', 'text/xml']::text[]
+)
+ON CONFLICT (id)
+DO UPDATE SET
+  public = false,
+  file_size_limit = 8388608,
+  allowed_mime_types = ARRAY['application/gpx+xml', 'application/xml', 'text/xml']::text[];
+
+
 -- ============================================================
 -- Tables
 -- ============================================================
@@ -169,10 +187,11 @@ CREATE TABLE IF NOT EXISTS public.video_notes (
 CREATE TABLE IF NOT EXISTS public.gpx_tracks (
   id               uuid PRIMARY KEY DEFAULT gen_random_uuid(),
   trip_id          uuid NOT NULL REFERENCES public.trips(id) ON DELETE CASCADE,
-  stage_id         uuid REFERENCES public.stages(id) ON DELETE SET NULL,
+  stage_id         uuid REFERENCES public.stages(id) ON DELETE CASCADE,
   file_path        text NOT NULL,
   distance_km      double precision CHECK (distance_km IS NULL OR distance_km >= 0),
   duration_seconds int CHECK (duration_seconds IS NULL OR duration_seconds >= 0),
+  CONSTRAINT gpx_tracks_stage_required_check CHECK (stage_id IS NOT NULL),
   uploaded_at      timestamptz NOT NULL DEFAULT now(),
   created_at       timestamptz NOT NULL DEFAULT now()
 );
@@ -296,6 +315,32 @@ DROP TRIGGER IF EXISTS expenses_validate_stage_trip ON public.expenses;
 CREATE TRIGGER expenses_validate_stage_trip
   BEFORE INSERT OR UPDATE OF trip_id, stage_id ON public.expenses
   FOR EACH ROW EXECUTE FUNCTION public.validate_expense_stage_trip();
+
+-- GPX tracks: if assigned to a stage, the stage must belong to the same trip.
+CREATE OR REPLACE FUNCTION public.validate_gpx_stage_trip()
+RETURNS trigger LANGUAGE plpgsql AS $$
+BEGIN
+  IF NEW.stage_id IS NULL THEN
+    RAISE EXCEPTION 'GPX tracks must be linked to a stage.';
+  END IF;
+
+  IF NOT EXISTS (
+    SELECT 1
+    FROM public.stages s
+    WHERE s.id = NEW.stage_id
+      AND s.trip_id = NEW.trip_id
+  ) THEN
+    RAISE EXCEPTION 'GPX stage must belong to the same trip.';
+  END IF;
+
+  RETURN NEW;
+END;
+$$;
+
+DROP TRIGGER IF EXISTS gpx_tracks_validate_stage_trip ON public.gpx_tracks;
+CREATE TRIGGER gpx_tracks_validate_stage_trip
+  BEFORE INSERT OR UPDATE OF trip_id, stage_id ON public.gpx_tracks
+  FOR EACH ROW EXECUTE FUNCTION public.validate_gpx_stage_trip();
 
 
 -- video_notes: keep updated_at fresh on every UPDATE
@@ -560,9 +605,31 @@ CREATE POLICY gpx_update ON public.gpx_tracks FOR UPDATE TO authenticated USING 
 DROP POLICY IF EXISTS gpx_delete ON public.gpx_tracks;
 CREATE POLICY gpx_delete ON public.gpx_tracks FOR DELETE TO authenticated USING (public.can_access_trip(trip_id));
 
+-- Storage object policies for GPX files.
+DROP POLICY IF EXISTS gpx_objects_select ON storage.objects;
+CREATE POLICY gpx_objects_select ON storage.objects
+  FOR SELECT TO authenticated
+  USING (bucket_id = 'gpx-tracks' AND public.can_access_trip(((storage.foldername(name))[1])::uuid));
+
+DROP POLICY IF EXISTS gpx_objects_insert ON storage.objects;
+CREATE POLICY gpx_objects_insert ON storage.objects
+  FOR INSERT TO authenticated
+  WITH CHECK (bucket_id = 'gpx-tracks' AND public.can_access_trip(((storage.foldername(name))[1])::uuid));
+
+DROP POLICY IF EXISTS gpx_objects_update ON storage.objects;
+CREATE POLICY gpx_objects_update ON storage.objects
+  FOR UPDATE TO authenticated
+  USING (bucket_id = 'gpx-tracks' AND public.can_access_trip(((storage.foldername(name))[1])::uuid))
+  WITH CHECK (bucket_id = 'gpx-tracks' AND public.can_access_trip(((storage.foldername(name))[1])::uuid));
+
+DROP POLICY IF EXISTS gpx_objects_delete ON storage.objects;
+CREATE POLICY gpx_objects_delete ON storage.objects
+  FOR DELETE TO authenticated
+  USING (bucket_id = 'gpx-tracks' AND public.can_access_trip(((storage.foldername(name))[1])::uuid));
+
 -- schema compatibility marker
 INSERT INTO public.app_meta(key, value)
-VALUES ('schema_version', '008')
+VALUES ('schema_version', '009')
 ON CONFLICT (key)
 DO UPDATE SET value = EXCLUDED.value, updated_at = now();
 

@@ -58,6 +58,7 @@ User display names come from lightweight `profiles` records created/refreshed af
 | Weather | Open-Meteo forecast API | Free, no key, 16-day forecast |
 | Photos | External album links | Defers photo storage entirely |
 | PWA | Hand-written service worker | No plugin |
+| GPX storage | Supabase Storage private bucket `gpx-tracks` | Stage-level GPX files — Phase 3C |
 | Icons | Inline SVGs + emoji labels | No icon library |
 
 ### Stack things deliberately not used
@@ -156,7 +157,22 @@ Phase 2A trip cost tracking. Expenses are EUR-only and record the payer, not spl
 One row per trip.
 
 ### `gpx_tracks`
-A track may belong to a stage OR a whole trip. Distance and duration are optional but must be non-negative when set.
+Stage-level GPX track records. Each GPX file belongs to one stage; trip-level/archive maps combine the stage tracks.
+
+| Field | Type | Notes |
+|---|---|---|
+| trip_id | uuid | parent trip, retained for access/querying |
+| stage_id | uuid | required; GPX files are linked to individual stages |
+| file_path | text | path inside private Supabase Storage bucket `gpx-tracks` |
+| distance_km | double precision | parsed from GPX points when uploaded |
+| duration_seconds | int | parsed from GPX timestamps when available |
+| uploaded_at / created_at | timestamptz | upload timing |
+
+Storage path convention:
+
+```text
+{trip_id}/{stage_id}/{filename}.gpx
+```
 
 ---
 
@@ -175,7 +191,7 @@ Journal `info_url` is deliberately looser: any `https` URL is accepted because i
 
 ### Archive geography overview
 
-The Archive map is a boundary-style overview, not a street map. Phase 3B deliberately does not draw fake straight-line routes from stage start/end coordinates. Route lines require GPX files uploaded to individual stages. Cancelled trips remain visible in the Archive list but are not plotted. Google Maps links remain navigation links and are not parsed as route geometry.
+The Archive map is a boundary-style overview, not a street map. Phase 3B deliberately does not draw fake straight-line routes from stage start/end coordinates. Route lines require GPX files uploaded to individual stages. Cancelled trips remain visible in the Archive list but are not plotted. Google Maps links remain navigation links and are not parsed as route geometry. From Phase 3C onward, uploaded stage GPX tracks feed the archive geography view.
 
 ---
 
@@ -195,6 +211,7 @@ Full current schema in `schema.sql` (idempotent). Incremental changes are tracke
 | `006_expense_stage_assignment.sql` | Adds optional expense stage assignment with same-trip validation |
 | `007_schema_safety_pack.sql` | Fixes FK/nullability consistency, adds core DB constraints, normalizes/protects stage ordering, and sets `app_meta.schema_version = 007` |
 | `008_atomic_stage_reorder.sql` | Adds transactional `swap_stage_order` RPC and sets `app_meta.schema_version = 008` |
+| `009_stage_gpx_upload.sql` | Adds private GPX Storage bucket, enforces stage-level GPX records, and sets `app_meta.schema_version = 009` |
 
 ---
 
@@ -325,14 +342,21 @@ Full current schema in `schema.sql` (idempotent). Incremental changes are tracke
 - [x] Keep cancelled trips listed but not mapped
 - [x] Document that archive route lines are GPX-powered
 
-**Phase 3C — Stage GPX tracks**
-- [ ] Upload + parse GPX files per stage
-- [ ] Store each GPX file against one stage, with trip_id retained for access/querying
-- [ ] Display GPX track on the stage/trip map view
-- [ ] Feed completed-stage GPX tracks into the archive geography/heatmap view
-- [ ] Handle GPX storage limits and mobile upload quirks
+**Phase 3C — Stage GPX upload + archive geography ✅**
+- [x] Upload + parse GPX files per stage
+- [x] Store each GPX file against one stage, with trip_id retained for access/querying
+- [x] Save GPX files in private Supabase Storage bucket `gpx-tracks`
+- [x] Parse distance and duration from GPX where possible
+- [x] Show GPX track metadata on stage cards
+- [x] Feed completed-stage GPX tracks into the archive geography view
+- [x] Keep archive geography GPX-based; no fake straight-line fallback
 
-**Phase 3D — Archive drill-down**
+**Phase 3D — Stage/trip GPX maps**
+- [ ] Display GPX track on the stage map view
+- [ ] Combine stage GPX tracks into a full trip map view
+- [ ] Decide whether the stage/trip map should use road tiles or a minimal map style
+
+**Phase 3E — Archive drill-down**
 - [ ] Drill-down: world → country → trip → stage → journal entries
 - [ ] Past trips list remains the non-map fallback
 
@@ -433,7 +457,7 @@ The human is a capable engineer new to this specific stack — explanations shou
 routefolk/
 ├── index.html              # App shell
 ├── style.css               # All styles
-├── app.js                  # Main app logic, state, GPX-first archive placeholder, schema check, and offline-aware UI
+├── app.js                  # Main app logic, state, GPX upload/archive geography, schema check, and offline-aware UI
 ├── lib/
 │   ├── config.js           # Supabase URL + anon key
 │   ├── supabase.js         # Supabase client setup
@@ -445,7 +469,8 @@ routefolk/
 │   ├── weather.js          # Open-Meteo forecast wrapper + cache
 │   ├── journal.js          # Journal entry CRUD + journal URL validation
 │   ├── profiles.js         # Profile upsert/list for names and avatars
-│   └── expenses.js         # Expense CRUD + Phase 2B stage assignment validation
+│   ├── expenses.js         # Expense CRUD + Phase 2B stage assignment validation
+│   └── gpx.js              # GPX upload, parsing, storage, and track helpers
 ├── sw.js                   # Service worker with network-first handling for app code
 ├── manifest.json           # PWA manifest
 ├── icons/

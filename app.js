@@ -1,6 +1,6 @@
 // ============================================================
 // routefolk — app.js
-// Phase 3B corrected: GPX-first archive geography placeholder, archive baseline, install helper.
+// Phase 3C: stage GPX upload, parsing, and GPX-powered archive geography.
 // ============================================================
 
 import { signInWithGoogle, signOut, getCurrentUser, onAuthChange } from './lib/auth.js';
@@ -11,8 +11,9 @@ import { fetchStageForecasts } from './lib/weather.js';
 import { listEntriesForStage, createEntry, updateEntry, deleteEntry } from './lib/journal.js';
 import { upsertCurrentProfile, listProfiles } from './lib/profiles.js';
 import { getSchemaVersion } from './lib/meta.js';
+import { listGpxTracksForTrip, uploadStageGpx, deleteGpxTrack, downloadAndParseGpxTrack, trackFileName } from './lib/gpx.js';
 
-const EXPECTED_SCHEMA_VERSION = '008';
+const EXPECTED_SCHEMA_VERSION = '009';
 
 const STATE = {
   tab: 'trips',
@@ -37,6 +38,12 @@ const STATE = {
   profilesLoading: false,
   profilesError: null,
   expensesByTrip: {},       // tripId -> array of expenses OR 'loading'
+  gpxByTrip: {},            // tripId -> array of GPX track records OR 'loading'
+  gpxGeometryByTrack: {},   // trackId -> parsed geometry OR 'loading'
+  gpxLoading: false,
+  gpxError: null,
+  archiveGpxLoading: false,
+  archiveGpxError: null,
   expensesLoading: false,
   expensesError: null,
   tripSearch: '',
@@ -45,7 +52,7 @@ const STATE = {
   archiveSearch: '',
   archiveStatusFilter: 'all',
   archiveFiltersOpen: false,
-  archiveViewMode: 'list', // list | map (map is GPX-first placeholder until stage GPX uploads exist)
+  archiveViewMode: 'list', // list | map
   archiveDataLoading: false,
   archiveDataError: null,
   isOnline: typeof navigator === 'undefined' ? true : navigator.onLine !== false,
@@ -292,6 +299,22 @@ function fmtEuro(value, options = {}) {
     minimumFractionDigits,
     maximumFractionDigits,
   }).format(n);
+}
+
+function fmtDuration(seconds) {
+  const n = Number(seconds);
+  if (!Number.isFinite(n) || n <= 0) return '—';
+  const hours = Math.floor(n / 3600);
+  const minutes = Math.round((n % 3600) / 60);
+  if (hours && minutes) return `${hours}h ${minutes}m`;
+  if (hours) return `${hours}h`;
+  return `${minutes}m`;
+}
+
+function fmtKm(value) {
+  const n = Number(value);
+  if (!Number.isFinite(n)) return '—';
+  return `${Math.round(n * 10) / 10} km`;
 }
 
 function parseAmount(value) {
@@ -546,6 +569,70 @@ async function loadExpensesForTrip(tripId, options = {}) {
 }
 
 
+async function loadGpxForTrip(tripId, options = {}) {
+  STATE.gpxLoading = true;
+  STATE.gpxError = null;
+  STATE.gpxByTrip[tripId] = STATE.gpxByTrip[tripId] || 'loading';
+  if (!options.quiet) renderAll();
+
+  try {
+    const tracks = await listGpxTracksForTrip(tripId);
+    STATE.gpxByTrip[tripId] = tracks;
+  } catch (err) {
+    console.error(err);
+    STATE.gpxByTrip[tripId] = [];
+    STATE.gpxError = err.message || 'Failed to load GPX tracks.';
+    if (!options.quiet) toast('Failed to load GPX tracks.');
+  } finally {
+    STATE.gpxLoading = false;
+    renderAll();
+  }
+}
+
+async function ensureGpxGeometry(track) {
+  if (!track?.id) return null;
+  const existing = STATE.gpxGeometryByTrack[track.id];
+  if (existing && existing !== 'loading') return existing;
+  if (existing === 'loading') return null;
+
+  STATE.gpxGeometryByTrack[track.id] = 'loading';
+  try {
+    const geometry = await downloadAndParseGpxTrack(track);
+    STATE.gpxGeometryByTrack[track.id] = geometry;
+    return geometry;
+  } catch (err) {
+    console.warn('GPX parse failed:', err);
+    STATE.gpxGeometryByTrack[track.id] = { points: [], error: err.message || 'Failed to load GPX file.' };
+    return STATE.gpxGeometryByTrack[track.id];
+  }
+}
+
+async function ensureArchiveGpxGeometries() {
+  if (STATE.archiveGpxLoading) return;
+
+  const completed = filteredArchiveTrips().filter((trip) => trip.status === 'completed');
+  const tracks = completed.flatMap((trip) => gpxTracksForTrip(trip.id));
+  const missing = tracks.filter((track) => !STATE.gpxGeometryByTrack[track.id]);
+  if (!missing.length) return;
+
+  STATE.archiveGpxLoading = true;
+  STATE.archiveGpxError = null;
+  renderAll();
+
+  try {
+    for (const track of missing) {
+      await ensureGpxGeometry(track);
+    }
+  } catch (err) {
+    console.error(err);
+    STATE.archiveGpxError = err.message || 'Failed to load GPX geometry.';
+  } finally {
+    STATE.archiveGpxLoading = false;
+    renderAll();
+  }
+}
+
+
 async function ensureArchiveData() {
   if (!STATE.user || STATE.archiveDataLoading) return;
   const archived = STATE.trips.filter((t) => t.status === 'completed' || t.status === 'cancelled');
@@ -555,6 +642,7 @@ async function ensureArchiveData() {
     const stages = STATE.stagesByTrip[trip.id];
     if (!Array.isArray(stages)) return true;
     if (!Array.isArray(STATE.expensesByTrip[trip.id])) return true;
+    if (!Array.isArray(STATE.gpxByTrip[trip.id])) return true;
     return stages.some((stage) => !Array.isArray(STATE.entriesByStage[stage.id]));
   });
   if (!needsWork) return;
@@ -573,6 +661,10 @@ async function ensureArchiveData() {
 
       if (!Array.isArray(STATE.expensesByTrip[trip.id])) {
         STATE.expensesByTrip[trip.id] = await listExpensesForTrip(trip.id);
+      }
+
+      if (!Array.isArray(STATE.gpxByTrip[trip.id])) {
+        STATE.gpxByTrip[trip.id] = await listGpxTracksForTrip(trip.id);
       }
 
       for (const stage of stages) {
@@ -604,6 +696,7 @@ async function openTrip(tripId, view = 'detail') {
     });
   }
   if (!Array.isArray(STATE.expensesByTrip[tripId])) await loadExpensesForTrip(tripId, { quiet: true });
+  if (!Array.isArray(STATE.gpxByTrip[tripId])) await loadGpxForTrip(tripId, { quiet: true });
 }
 
 // ---------- Trip cards / list ----------
@@ -888,27 +981,102 @@ function archiveMapHtml() {
     `;
   }
 
+  const tracks = completed.flatMap((trip) => gpxTracksForTrip(trip.id).map((track) => ({ trip, track })));
+  if (!tracks.length) {
+    return `
+      <div class="archive-map-wrap">
+        <div class="archive-map-heading">
+          <div>
+            <div class="card-title">Archive geography</div>
+            <div class="form-help">GPX-powered overview. Upload GPX files to individual stages to build the map.</div>
+          </div>
+        </div>
+        <div class="archive-map-empty archive-map-empty-tall">
+          <div>
+            <div class="empty-title">No GPX tracks yet</div>
+            <div class="empty-sub">Upload GPX files on each stage. routefolk will use those real tracks for this archive geography view.</div>
+          </div>
+        </div>
+      </div>
+    `;
+  }
+
+  const missing = tracks.filter(({ track }) => !STATE.gpxGeometryByTrack[track.id]);
+  if (missing.length || STATE.archiveGpxLoading) {
+    return `
+      <div class="archive-map-wrap">
+        <div class="archive-map-heading">
+          <div>
+            <div class="card-title">Archive geography</div>
+            <div class="form-help">Loading GPX route geometry…</div>
+          </div>
+        </div>
+        <div class="archive-map-empty archive-map-empty-tall">
+          <div>
+            <div class="empty-title">Loading GPX tracks…</div>
+            <div class="empty-sub">This can take a moment on mobile if several files are attached.</div>
+          </div>
+        </div>
+      </div>
+    `;
+  }
+
+  const records = archiveMapRecordsFromGpx();
+  if (!records.length) {
+    return `
+      <div class="archive-map-wrap">
+        <div class="archive-map-empty archive-map-empty-tall">
+          <div>
+            <div class="empty-title">No usable GPX geometry</div>
+            <div class="empty-sub">GPX files exist, but route points could not be parsed.</div>
+          </div>
+        </div>
+      </div>
+    `;
+  }
+
   return `
     <div class="archive-map-wrap">
       <div class="archive-map-heading">
         <div>
           <div class="card-title">Archive geography</div>
-          <div class="form-help">GPX-powered overview. Route lines are intentionally hidden until GPX files are uploaded for individual stages.</div>
+          <div class="form-help">Real GPX tracks linked to stages. No road tiles; no fake straight-line routes.</div>
         </div>
       </div>
-      <div class="archive-map-empty archive-map-empty-tall">
-        <div>
-          <div class="empty-title">GPX tracks required</div>
-          <div class="empty-sub">
-            The archive geography view will use GPX files linked to each stage. routefolk no longer draws straight-line approximations from stage start/end coordinates because they misrepresent the real ride.
-          </div>
-          <div class="form-help" style="margin-top:12px;">
-            Next step: add GPX upload per stage, then use those tracks for the trip/stage maps and archive heatmap.
-          </div>
-        </div>
-      </div>
+      ${STATE.archiveGpxError ? `<div class="stage-warn" style="margin:8px 0;">${esc(STATE.archiveGpxError)}</div>` : ''}
+      ${archiveGeoMapSvg(records)}
     </div>
   `;
+}
+
+function archiveMapRecordsFromGpx() {
+  const completed = filteredArchiveTrips().filter((trip) => trip.status === 'completed');
+  return completed.map((trip) => {
+    const tracks = gpxTracksForTrip(trip.id);
+    const polylines = tracks.map((track) => {
+      const geometry = STATE.gpxGeometryByTrack[track.id];
+      const points = geometry && geometry !== 'loading' && Array.isArray(geometry.points) ? geometry.points : [];
+      return { track, points: simplifyTrackPoints(points, 420) };
+    }).filter((line) => line.points.length >= 2);
+    return { trip, polylines, point: archivePointFromPolylines(polylines) };
+  }).filter((record) => record.polylines.length);
+}
+
+function simplifyTrackPoints(points, maxPoints = 420) {
+  if (!Array.isArray(points) || points.length <= maxPoints) return points || [];
+  const step = Math.ceil(points.length / maxPoints);
+  const reduced = points.filter((_, index) => index % step === 0);
+  const last = points[points.length - 1];
+  if (last && reduced[reduced.length - 1] !== last) reduced.push(last);
+  return reduced;
+}
+
+function archivePointFromPolylines(polylines) {
+  const points = polylines.flatMap((line) => line.points);
+  if (!points.length) return null;
+  const lat = points.reduce((sum, p) => sum + p.lat, 0) / points.length;
+  const lng = points.reduce((sum, p) => sum + p.lng, 0) / points.length;
+  return { lat, lng };
 }
 
 function archiveGeoMapSvg(records) {
@@ -917,15 +1085,17 @@ function archiveGeoMapSvg(records) {
   const segments = [];
   const centers = [];
 
-  records.forEach(({ trip, point, segments: tripSegments }) => {
+  records.forEach(({ trip, point, polylines }) => {
     const meta = archiveTripMetaText(trip);
-    tripSegments.forEach((segment) => {
-      const a = projectArchivePoint(segment.start, extent);
-      const b = projectArchivePoint(segment.end, extent);
+    polylines.forEach(({ track, points }) => {
+      const d = points.map((point, index) => {
+        const p = projectArchivePoint(point, extent);
+        return `${index === 0 ? 'M' : 'L'} ${p.x} ${p.y}`;
+      }).join(' ');
       segments.push(`
-        <line class="archive-route-line" x1="${a.x}" y1="${a.y}" x2="${b.x}" y2="${b.y}" data-map-trip-id="${esc(trip.id)}">
-          <title>${esc(trip.title)}${segment.stage?.title ? ` — ${segment.stage.title}` : ''}</title>
-        </line>
+        <path class="archive-route-line" d="${esc(d)}" data-map-trip-id="${esc(trip.id)}">
+          <title>${esc(trip.title)} — ${esc(trackFileName(track))}</title>
+        </path>
       `);
     });
     if (point) {
@@ -965,7 +1135,7 @@ function archiveGeoMapSvg(records) {
   ].join('');
 
   return `
-    <svg class="archive-geo-svg" viewBox="0 0 1000 620" role="img" aria-label="Completed trip approximate route overview">
+    <svg class="archive-geo-svg" viewBox="0 0 1000 620" role="img" aria-label="Completed trip GPX route overview">
       <rect class="archive-map-sea" x="0" y="0" width="1000" height="620" rx="14"></rect>
       <rect class="archive-map-land" x="42" y="28" width="916" height="540" rx="10"></rect>
       <g class="archive-grid">${grid}</g>
@@ -980,9 +1150,7 @@ function archiveMapExtent(records) {
   const coords = [];
   records.forEach((record) => {
     if (record.point) coords.push(record.point);
-    record.segments.forEach((segment) => {
-      coords.push(segment.start, segment.end);
-    });
+    (record.polylines || []).forEach((line) => coords.push(...line.points));
   });
 
   let minLat = Math.min(...coords.map((p) => p.lat));
@@ -1313,6 +1481,63 @@ function journalSectionHtml(stage) {
   `;
 }
 
+// ---------- GPX rendering ----------
+function gpxTracksForTrip(tripId) {
+  const tracks = STATE.gpxByTrip[tripId];
+  return Array.isArray(tracks) ? tracks : [];
+}
+
+function gpxTracksForStage(trip, stage) {
+  return gpxTracksForTrip(trip.id).filter((track) => track.stage_id === stage.id);
+}
+
+function gpxTrackMeta(track) {
+  const parts = [];
+  if (track.distance_km != null) parts.push(fmtKm(track.distance_km));
+  if (track.duration_seconds != null) parts.push(fmtDuration(track.duration_seconds));
+  return parts.join(' · ');
+}
+
+function gpxStageSectionHtml(stage, trip) {
+  const tracksRaw = STATE.gpxByTrip[trip.id];
+  const tracks = gpxTracksForStage(trip, stage);
+  let body = '';
+
+  if (tracksRaw === 'loading' || STATE.gpxLoading) {
+    body = `<div class="empty-sub">Loading GPX tracks…</div>`;
+  } else if (!tracks.length) {
+    body = `<div class="empty-sub">No GPX track linked to this stage yet.</div>`;
+  } else {
+    body = `
+      <div class="gpx-track-list">
+        ${tracks.map((track) => `
+          <div class="gpx-track-row">
+            <div class="gpx-track-main">
+              <div class="gpx-track-name">${esc(trackFileName(track))}</div>
+              <div class="gpx-track-meta">${esc(gpxTrackMeta(track) || 'GPX track')}</div>
+            </div>
+            <button class="entry-icon-btn entry-icon-danger" data-gpx-action="delete" data-id="${esc(track.id)}" title="Delete GPX"${writeDisabledAttr()}>✕</button>
+          </div>
+        `).join('')}
+      </div>
+    `;
+  }
+
+  return `
+    <div class="gpx-section">
+      <div class="gpx-section-head">
+        <div>
+          <div class="gpx-section-title">GPX track</div>
+          <div class="form-help">Upload the real ridden route for this stage.</div>
+        </div>
+        <button class="btn btn-secondary btn-sm" data-stage-gpx-upload="${esc(stage.id)}"${writeDisabledAttr()}>Upload GPX</button>
+      </div>
+      ${STATE.gpxError ? `<div class="stage-warn">${esc(STATE.gpxError)}</div>` : ''}
+      ${body}
+    </div>
+  `;
+}
+
 // ---------- Trip detail ----------
 function stageNavigateUrl(stage) {
   return stage.custom_route_url || stage.gmaps_url || null;
@@ -1371,6 +1596,7 @@ function stageCardHtml(stage, trip, index, total) {
         </div>
       </div>
       ${weatherStripHtml(stage)}
+      ${gpxStageSectionHtml(stage, trip)}
       <div class="stage-actions">
         ${navUrl ? `<a class="btn btn-secondary btn-sm" href="${esc(navUrl)}" target="_blank" rel="noopener">Navigate</a>` : ''}
         <button class="btn btn-secondary btn-sm" data-stage-action="edit" data-id="${esc(stage.id)}"${writeDisabledAttr()}>Edit</button>
@@ -2245,6 +2471,38 @@ function showDeleteExpenseConfirm(trip, expense) {
 }
 
 
+function gpxUploadFormHtml(stage) {
+  return `
+    <div style="font-size:14px;line-height:1.5;color:#c5d0e0;margin-bottom:12px;">
+      Upload the GPX file for <strong>${esc(stageRouteLabel(stage))}</strong>. GPX tracks are linked to stages, not directly to whole trips.
+    </div>
+    <div class="form-row">
+      <label class="form-label" for="gpxFileInput">GPX file</label>
+      <input class="inp" id="gpxFileInput" type="file" accept=".gpx,application/gpx+xml,application/xml,text/xml">
+      <div class="form-help">Use the real track exported from your GPS/Wahoo/Intervals/etc. Max 8 MB for now.</div>
+    </div>
+  `;
+}
+
+function showGpxUploadModal(trip, stage) {
+  showModal('Upload GPX', gpxUploadFormHtml(stage), [
+    { label: 'Upload GPX', cls: 'btn-primary', fn: () => handleUploadStageGpx(trip.id, stage.id) },
+    { label: 'Cancel', cls: 'btn-secondary', fn: closeModal },
+  ]);
+}
+
+function showDeleteGpxConfirm(track) {
+  showModal('Delete GPX track',
+    `<div style="font-size:14px;line-height:1.5;color:#c5d0e0;">
+      Delete <strong>${esc(trackFileName(track))}</strong>? This removes the stored GPX file and its track record.
+    </div>`,
+    [
+      { label: 'Delete', cls: 'btn-danger', fn: () => handleDeleteGpx(track) },
+      { label: 'Cancel', cls: 'btn-secondary', fn: closeModal },
+    ]);
+}
+
+
 // ---------- PWA install helper ----------
 function detectedInstallPlatform() {
   const ua = navigator.userAgent || '';
@@ -2556,6 +2814,40 @@ async function handleDeleteEntry(stageId, entryId) {
 }
 
 
+async function handleUploadStageGpx(tripId, stageId) {
+  if (!ensureOnline()) return;
+  const file = $('gpxFileInput')?.files?.[0];
+  if (!file) {
+    toast('Choose a GPX file first.');
+    return;
+  }
+
+  try {
+    const { record, geometry } = await uploadStageGpx({ tripId, stageId, file });
+    STATE.gpxGeometryByTrack[record.id] = geometry;
+    closeModal();
+    await loadGpxForTrip(tripId, { quiet: true });
+    toast('GPX uploaded.');
+  } catch (err) {
+    console.error(err);
+    toast(friendlyError('upload GPX', err));
+  }
+}
+
+async function handleDeleteGpx(track) {
+  if (!ensureOnline()) return;
+  try {
+    await deleteGpxTrack(track);
+    delete STATE.gpxGeometryByTrack[track.id];
+    closeModal();
+    await loadGpxForTrip(track.trip_id, { quiet: true });
+    toast('GPX deleted.');
+  } catch (err) {
+    console.error(err);
+    toast(friendlyError('delete GPX', err));
+  }
+}
+
 async function handleCreateExpense(tripId) {
   if (!ensureOnline()) return;
   const trip = STATE.trips.find((t) => t.id === tripId);
@@ -2628,6 +2920,7 @@ function renderTab() {
 
   bindContentEvents(content);
   bindArchiveMapEvents(content);
+  if (STATE.tab === 'archive' && STATE.archiveViewMode === 'map') ensureArchiveGpxGeometries();
 }
 
 function schemaErrorHtml() {
@@ -2684,6 +2977,7 @@ function bindContentEvents(content) {
     btn.addEventListener('click', () => {
       STATE.archiveViewMode = btn.dataset.archiveView || 'list';
       renderAll();
+      if (STATE.archiveViewMode === 'map') ensureArchiveGpxGeometries();
     });
   });
   content.querySelector('#archiveFiltersToggle')?.addEventListener('click', () => {
@@ -2696,7 +2990,10 @@ function bindContentEvents(content) {
     if (results) {
       results.innerHTML = archiveResultsHtml();
       bindTripCards(results);
-      if (STATE.archiveViewMode === 'map') bindArchiveMapEvents(results);
+      if (STATE.archiveViewMode === 'map') {
+        bindArchiveMapEvents(results);
+        ensureArchiveGpxGeometries();
+      }
     }
   });
   content.querySelector('#archiveStatusFilter')?.addEventListener('change', (e) => {
@@ -2705,7 +3002,10 @@ function bindContentEvents(content) {
     if (results) {
       results.innerHTML = archiveResultsHtml();
       bindTripCards(results);
-      if (STATE.archiveViewMode === 'map') bindArchiveMapEvents(results);
+      if (STATE.archiveViewMode === 'map') {
+        bindArchiveMapEvents(results);
+        ensureArchiveGpxGeometries();
+      }
     }
   });
   content.querySelector('#newTripBtn')?.addEventListener('click', () => {
@@ -2769,6 +3069,15 @@ function bindContentEvents(content) {
     btn.addEventListener('click', () => { if (ensureOnline()) showNewEntryModal(btn.dataset.stageAddEntry); });
   });
 
+  content.querySelectorAll('[data-stage-gpx-upload]').forEach((btn) => {
+    btn.addEventListener('click', () => {
+      if (!ensureOnline()) return;
+      const trip = currentTrip();
+      const stage = (trip ? (STATE.stagesByTrip[trip.id] || []) : []).find((s) => s.id === btn.dataset.stageGpxUpload);
+      if (trip && stage) showGpxUploadModal(trip, stage);
+    });
+  });
+
   content.querySelectorAll('[data-entry-action]').forEach((btn) => {
     btn.addEventListener('click', () => {
       const entryId = btn.dataset.id;
@@ -2780,6 +3089,17 @@ function bindContentEvents(content) {
     });
   });
 
+
+  content.querySelectorAll('[data-gpx-action]').forEach((btn) => {
+    btn.addEventListener('click', () => {
+      const trip = currentTrip();
+      if (!trip) return;
+      const track = gpxTracksForTrip(trip.id).find((t) => t.id === btn.dataset.id);
+      if (!track) return;
+      if (!ensureOnline()) return;
+      if (btn.dataset.gpxAction === 'delete') showDeleteGpxConfirm(track);
+    });
+  });
 
   content.querySelectorAll('[data-expense-action]').forEach((btn) => {
     btn.addEventListener('click', () => {
