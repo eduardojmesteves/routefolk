@@ -822,6 +822,12 @@ a:hover { text-decoration: underline; }
   color: #6da9ff;
 }
 
+.link-host {
+  color: #6b7a93;
+  font-weight: 600;
+  margin-left: 2px;
+}
+
 /* ---------- Summary table ---------- */
 .summary-table-wrap,
 .summary-entry-table-wrap {

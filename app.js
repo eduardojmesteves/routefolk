@@ -142,6 +142,63 @@ function boolAttr(name, condition) {
   return condition ? ` ${name}` : '';
 }
 
+function canonicalHost(value) {
+  if (!value) return '';
+  try {
+    const url = new URL(String(value).trim());
+    let host = url.hostname.toLowerCase();
+    if (host.startsWith('www.')) host = host.slice(4);
+    return host;
+  } catch {
+    return '';
+  }
+}
+
+function linkHostBadgeHtml(value) {
+  const host = canonicalHost(value);
+  return host ? `<span class="link-host">· ${esc(host)}</span>` : '';
+}
+
+function isHttpsUrl(value) {
+  if (!value) return true;
+  try {
+    const url = new URL(String(value).trim());
+    return url.protocol === 'https:';
+  } catch {
+    return false;
+  }
+}
+
+function isGoogleMapsUrl(value) {
+  if (!value) return true;
+  try {
+    const url = new URL(String(value).trim());
+    const host = url.hostname.toLowerCase();
+    const path = url.pathname.toLowerCase();
+    if (host === 'maps.app.goo.gl' || host === 'goo.gl') return true;
+    const isGoogleHost = host === 'google.com'
+      || host === 'www.google.com'
+      || host.startsWith('maps.google.')
+      || /^www\.google\.[a-z.]+$/.test(host)
+      || /^google\.[a-z.]+$/.test(host);
+    return url.protocol === 'https:' && isGoogleHost && (path.startsWith('/maps') || path.includes('/maps/'));
+  } catch {
+    return false;
+  }
+}
+
+function validateEntryUrls(fields) {
+  if (fields.location_url && !isGoogleMapsUrl(fields.location_url)) {
+    throw new Error('Use a valid HTTPS Google Maps link for the Maps URL.');
+  }
+  if (fields.info_url && !isHttpsUrl(fields.info_url)) {
+    throw new Error('Use a valid HTTPS website link.');
+  }
+  if (fields.photo_album_url && !isHttpsUrl(fields.photo_album_url)) {
+    throw new Error('Photo album links must start with https://.');
+  }
+}
+
 // ---------- Toast ----------
 let toastTimer = null;
 function toast(msg) {
@@ -1047,7 +1104,7 @@ function archiveMapHtml() {
         <div class="archive-map-empty archive-map-empty-tall">
           <div>
             <div class="empty-title">No GPX tracks yet</div>
-            <div class="empty-sub">Upload GPX files on each stage. routefolk will use those real tracks for this archive geography view.</div>
+            <div class="empty-sub">Upload GPX files inside each stage. The archive map uses only real GPX tracks, so it stays empty until at least one completed trip has usable stage GPX data.</div>
           </div>
         </div>
       </div>
@@ -1081,7 +1138,7 @@ function archiveMapHtml() {
         <div class="archive-map-empty archive-map-empty-tall">
           <div>
             <div class="empty-title">No usable GPX geometry</div>
-            <div class="empty-sub">GPX files exist, but route points could not be parsed.</div>
+            <div class="empty-sub">GPX files exist, but no usable route points could be parsed. Try replacing the problematic GPX file from the stage GPX section.</div>
           </div>
         </div>
       </div>
@@ -1418,6 +1475,24 @@ function friendlyError(action, err) {
   return `Could not ${action}. Please try again.`;
 }
 
+function friendlyGpxError(action, err) {
+  const msg = String(err?.message || '').toLowerCase();
+  if (!canWrite()) return 'You are offline. Reconnect before changing GPX files.';
+  if (msg.includes('file type') || msg.includes('extension') || msg.includes('.gpx')) {
+    return 'Choose a valid .gpx file.';
+  }
+  if (msg.includes('too large') || msg.includes('size')) {
+    return 'This GPX file is too large. Keep GPX files under 8 MB for now.';
+  }
+  if (msg.includes('empty') || msg.includes('no route') || msg.includes('no track') || msg.includes('track points') || msg.includes('usable')) {
+    return 'Could not read this GPX file. It does not contain usable track points.';
+  }
+  if (msg.includes('storage') || msg.includes('bucket') || msg.includes('object')) {
+    return `Could not ${action}. The GPX storage operation failed. Try again.`;
+  }
+  return friendlyError(action, err);
+}
+
 // ---------- Weather rendering ----------
 function weatherStripHtml(stage) {
   const result = STATE.forecastsByStage[stage.id];
@@ -1425,10 +1500,15 @@ function weatherStripHtml(stage) {
     (typeof stage.start_lat === 'number' && typeof stage.start_lng === 'number') ||
     (typeof stage.end_lat === 'number' && typeof stage.end_lng === 'number');
 
-  if (!hasAnyCoords) return '';
+  if (!hasAnyCoords) {
+    const hasLocationText = Boolean(stage.start_location || stage.end_location);
+    return hasLocationText && stage.planned_date
+      ? `<div class="weather-strip muted">Weather unavailable. Check the stage location names or try again later.</div>`
+      : '';
+  }
   if (!stage.planned_date) return `<div class="weather-strip muted">Set a planned date to see the weather forecast.</div>`;
   if (result === 'loading' || result === undefined) return `<div class="weather-strip muted">Loading weather…</div>`;
-  if (!result.length) return '';
+  if (!result.length) return `<div class="weather-strip muted">Weather unavailable for this stage. Check the location names or try again later.</div>`;
 
   const usable = result.filter((p) => p.forecast);
   if (!usable.length) return `<div class="weather-strip muted">No forecast available for this date (max 16 days ahead).</div>`;
@@ -1464,7 +1544,7 @@ function weatherStripHtml(stage) {
 function entryCardHtml(entry) {
   const meta = ENTRY_TYPE_META[entry.entry_type] || ENTRY_TYPE_META.note;
   const location = entry.location_url
-    ? `<a class="entry-meta-link" href="${esc(entry.location_url)}" target="_blank" rel="noopener">📍 ${esc(entry.location || 'View location')}</a>`
+    ? `<a class="entry-meta-link" href="${esc(entry.location_url)}" target="_blank" rel="noopener">📍 ${esc(entry.location || 'Location')}${linkHostBadgeHtml(entry.location_url)}</a>`
     : (entry.location ? `<span>📍 ${esc(entry.location)}</span>` : '');
 
   return `
@@ -1492,8 +1572,8 @@ function entryCardHtml(entry) {
 
 function entryLinksHtml(entry) {
   const links = [];
-  if (entry.info_url) links.push(`<a class="entry-link" href="${esc(entry.info_url)}" target="_blank" rel="noopener">🔗 Website</a>`);
-  if (entry.photo_album_url) links.push(`<a class="entry-link" href="${esc(entry.photo_album_url)}" target="_blank" rel="noopener">📷 Photo album</a>`);
+  if (entry.info_url) links.push(`<a class="entry-link" href="${esc(entry.info_url)}" target="_blank" rel="noopener">🔗 Website ${linkHostBadgeHtml(entry.info_url)}</a>`);
+  if (entry.photo_album_url) links.push(`<a class="entry-link" href="${esc(entry.photo_album_url)}" target="_blank" rel="noopener">📷 Photo album ${linkHostBadgeHtml(entry.photo_album_url)}</a>`);
   return links.length ? `<div class="entry-links">${links.join('')}</div>` : '';
 }
 
@@ -1939,11 +2019,11 @@ function summaryEntriesHtml(entries) {
 function summaryEntryRowHtml(entry) {
   const meta = ENTRY_TYPE_META[entry.entry_type] || ENTRY_TYPE_META.note;
   const location = entry.location_url
-    ? `<a href="${esc(entry.location_url)}" target="_blank" rel="noopener">${esc(entry.location || 'Map')}</a>`
+    ? `<a href="${esc(entry.location_url)}" target="_blank" rel="noopener">${esc(entry.location || 'Map')} ${linkHostBadgeHtml(entry.location_url)}</a>`
     : esc(entry.location || '—');
   const links = [];
-  if (entry.info_url) links.push(`<a href="${esc(entry.info_url)}" target="_blank" rel="noopener">Website</a>`);
-  if (entry.photo_album_url) links.push(`<a href="${esc(entry.photo_album_url)}" target="_blank" rel="noopener">Album</a>`);
+  if (entry.info_url) links.push(`<a href="${esc(entry.info_url)}" target="_blank" rel="noopener">Website ${linkHostBadgeHtml(entry.info_url)}</a>`);
+  if (entry.photo_album_url) links.push(`<a href="${esc(entry.photo_album_url)}" target="_blank" rel="noopener">Album ${linkHostBadgeHtml(entry.photo_album_url)}</a>`);
 
   return `
     <tr>
@@ -2275,7 +2355,7 @@ function readEntryForm(stageId = null) {
     timestamp = datetimeLocalToIso(rawTime);
   }
 
-  return {
+  const fields = {
     entry_type: $('jfType')?.value || 'stop',
     title: $('jfTitle')?.value.trim() || '',
     description: $('jfDesc')?.value.trim() || '',
@@ -2285,6 +2365,9 @@ function readEntryForm(stageId = null) {
     timestamp,
     photo_album_url: $('jfAlbum')?.value.trim() || '',
   };
+
+  validateEntryUrls(fields);
+  return fields;
 }
 
 function showNewEntryModal(stageId) {
@@ -2930,6 +3013,18 @@ async function handleUploadStageGpx(tripId, stageId) {
     toast('Choose a GPX file first.');
     return;
   }
+  if (!file.name.toLowerCase().endsWith('.gpx')) {
+    toast('Choose a valid .gpx file.');
+    return;
+  }
+  if (file.size <= 0) {
+    toast('This GPX file is empty. Choose another file.');
+    return;
+  }
+  if (file.size > 8 * 1024 * 1024) {
+    toast('This GPX file is too large. Keep GPX files under 8 MB for now.');
+    return;
+  }
 
   try {
     const { record, geometry } = await uploadStageGpx({ tripId, stageId, file });
@@ -2939,7 +3034,7 @@ async function handleUploadStageGpx(tripId, stageId) {
     toast('GPX uploaded.');
   } catch (err) {
     console.error(err);
-    toast(friendlyError('upload GPX', err));
+    toast(friendlyGpxError('upload GPX', err));
   }
 }
 
@@ -2953,7 +3048,7 @@ async function handleDeleteGpx(track) {
     toast('GPX deleted.');
   } catch (err) {
     console.error(err);
-    toast(friendlyError('delete GPX', err));
+    toast(friendlyGpxError('delete GPX', err));
   }
 }
 

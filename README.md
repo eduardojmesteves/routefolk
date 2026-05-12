@@ -374,6 +374,26 @@ Full current schema in `schema.sql` (idempotent). Incremental changes are tracke
 - [x] Each GPX file row has its own delete action
 - [x] Wrong GPX files are replaced by deleting the bad file and uploading the correct one
 
+**Phase 3.6.1 — GPX toggle hotfix ✅**
+- [x] Compact GPX stage rows expand/collapse correctly
+- [x] GPX upload/delete management stays inside the expanded section
+
+**Phase 3.7 — Reliability and validation polish ✅**
+- [x] Show canonical host badges for journal Maps, website, and photo-album links
+- [x] Improve user-facing URL validation messages for journal links
+- [x] Improve GPX upload validation for wrong type, empty file, and oversize file
+- [x] Improve GPX upload/delete failure messages
+- [x] Make weather/geocoding unavailability more explicit on stage cards
+- [x] Improve no-GPX and unusable-GPX archive map guidance
+- [x] Document repository-review findings as handled, deferred, or later
+
+**Phase 3B.2 — Archive heatmap layer (parked)**
+- [ ] Add Heatmap / Hybrid / Routes toggle to Archive Map
+- [ ] Build heatmap from GPX points only, never from fake stage-coordinate lines
+- [ ] Resample GPX points before aggregation to avoid device sampling bias
+- [ ] Use grid aggregation, light smoothing, log scaling, and percentile clipping
+- [ ] Keep route overlays optional for Hybrid / Routes modes
+
 **Phase 3D — Stage/trip GPX maps**
 - [ ] Display GPX track on the stage map view
 - [ ] Combine stage GPX tracks into a full trip map view
@@ -403,6 +423,26 @@ Full current schema in `schema.sql` (idempotent). Incremental changes are tracke
 
 ---
 
+## Repository review status
+
+A later repository review raised several risks. Most high-risk items have already been handled in the active implementation. This section prevents stale review notes from being reintroduced as duplicate work.
+
+| Finding | Status | Notes |
+|---|---|---|
+| FK/nullability mismatch | Handled | Fixed in `007_schema_safety_pack.sql` |
+| Missing DB constraints | Handled | Trip date, stage distance/order/coordinates, GPX distance/duration, expense amount, and stage order uniqueness are protected |
+| Non-atomic stage reorder | Handled | `swap_stage_order()` RPC added in `008_atomic_stage_reorder.sql` |
+| Migration drift risk | Handled enough for now | `app_meta.schema_version` check plus deployment checklist |
+| PWA/cache drift | Handled enough for now | Versioned app shell URLs and network-first JavaScript/CSS service worker strategy |
+| Offline writes | Deferred | App is online-only for writes; offline queue is Phase 4/later |
+| Soft delete / recycle bin | Deferred | Valid concern, but too invasive until real collaboration proves the need |
+| Audit history | Deferred | Current audit metadata is enough for now; full change history is a later data-model feature |
+| URL phishing/shortener blocking | Later | Phase 3.7 adds visible host badges; aggressive blocking is not needed yet |
+| RLS helper performance | Later | Current dataset is small; profile only if real slowness appears |
+| Archive heatmap | Parked | Good idea, but belongs to Phase 3B.2 after reliability polish |
+
+---
+
 ## Nice to do
 
 Lower-priority items captured so they're not forgotten.
@@ -415,6 +455,7 @@ Lower-priority items captured so they're not forgotten.
 - **Geocoder ambiguity hints.** Show country alongside ambiguous city names.
 - **Long-range weather outlook** beyond the 16-day Open-Meteo forecast.
 - **Smarter PWA install prompt timing.** A simple Account helper exists; defer automatic prompts until real use shows where they are helpful rather than annoying.
+- **Archive heatmap layer.** Future Phase 3B.2 should use GPX-derived density with Heatmap / Hybrid / Routes modes. Resample points before aggregation so one device's dense recording does not dominate the heatmap.
 
 ---
 
@@ -480,7 +521,7 @@ The human is a capable engineer new to this specific stack — explanations shou
 routefolk/
 ├── index.html              # App shell
 ├── style.css               # All styles
-├── app.js                  # Main app logic, state, active/archive split, GPX upload/management, archive geography, schema check, and offline-aware UI
+├── app.js                  # Main app logic, state, active/archive split, GPX upload/management, archive geography, validation polish, schema check, and offline-aware UI
 ├── lib/
 │   ├── config.js           # Supabase URL + anon key
 │   ├── supabase.js         # Supabase client setup
@@ -516,6 +557,9 @@ routefolk/
 ---
 
 ## Decisions log
+
+- **2026-05: Phase 3.7 focuses on reliability before more map work.** Host badges, clearer URL validation, better GPX error messages, and explicit weather/geocoding failure states are implemented before adding the archive heatmap or stage/trip GPX maps.
+- **2026-05: Archive heatmap is parked as Phase 3B.2.** The proposed GPX grid heatmap is a good direction, but it must resample GPX points before aggregation to avoid device sampling bias. It should stay separate from the reliability polish phase.
 
 - **2026-05: Phase 3.6 treats multiple GPX files per stage as normal.** A stage can have several GPX files because GPS recording may be stopped during breaks. The compact GPX row expands into a management section with one row per file, per-file delete actions, and an upload-another action. Wrong files are replaced by deleting them and uploading the correct file, not by a special replace workflow.
 - **2026-05: Phase 3.5 separates active work from archive history.** The Trips screen now shows only planning and active trips. Completed and cancelled trips live in Archive, making the app workflow clearer: plan, ride, complete, archive.
