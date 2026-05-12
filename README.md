@@ -351,6 +351,13 @@ Full current schema in `schema.sql` (idempotent). Incremental changes are tracke
 - [x] Feed completed-stage GPX tracks into the archive geography view
 - [x] Keep archive geography GPX-based; no fake straight-line fallback
 
+**Phase 3C.1 — Archive GPX presentation ✅**
+- [x] Add a simplified Europe boundary layer
+- [x] Show country outlines only; no road tiles and no map labels
+- [x] Remove latitude/longitude grid labels from the archive geography view
+- [x] Keep one consistent GPX route style for now
+- [x] Open trip detail when a route or point is clicked
+
 **Phase 3D — Stage/trip GPX maps**
 - [ ] Display GPX track on the stage map view
 - [ ] Combine stage GPX tracks into a full trip map view
@@ -485,13 +492,17 @@ routefolk/
 │   ├── 005_expenses_phase2.sql
 │   ├── 006_expense_stage_assignment.sql
 │   ├── 007_schema_safety_pack.sql
-│   └── 008_atomic_stage_reorder.sql
+│   ├── 008_atomic_stage_reorder.sql
+│   └── 009_stage_gpx_upload.sql
 └── README.md               # This file
 ```
 
 ---
 
 ## Decisions log
+
+- **2026-05: Phase 3C.1 improves Archive GPX presentation.** Archive geography now uses a simple Europe boundary view with country outlines only. Latitude/longitude labels and road tiles are avoided because this view is for ride history, not turn-by-turn navigation.
+- **2026-05: Archive geography uses only real GPX geometry.** Stage start/end coordinates and Google Maps links are not used to draw routes because they would misrepresent the actual ride.
 
 A running list of decisions made and why. New entries go at the top.
 

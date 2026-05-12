@@ -4,8 +4,8 @@
 // Bump CACHE and RELEASE whenever shell assets change.
 // ============================================================
 
-const RELEASE = '20260512-phase3c-gpx-upload';
-const CACHE = 'routefolk-shell-v21';
+const RELEASE = '20260512-phase3c1-archive-presentation';
+const CACHE = 'routefolk-shell-v22';
 
 const SHELL_ASSETS = [
   './',
