@@ -4,8 +4,8 @@
 // Bump CACHE and RELEASE whenever shell assets change.
 // ============================================================
 
-const RELEASE = '20260512-phase37-validation-polish';
-const CACHE = 'routefolk-shell-v26';
+const RELEASE = '20260512-phase3b21-heatmap-calibration';
+const CACHE = 'routefolk-shell-v28';
 
 const SHELL_ASSETS = [
   './',

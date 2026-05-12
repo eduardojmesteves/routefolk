@@ -52,7 +52,7 @@ User display names come from lightweight `profiles` records created/refreshed af
 | Hosting | Cloudflare Pages, deployed from GitHub | Free, deploy on push |
 | Backend | Supabase (Auth + Postgres + Storage) | Free tier generous |
 | Auth | Google sign-in via Supabase | No passwords |
-| Maps (archive) | GPX-first geography overview | No road tiles; route lines require stage-level GPX tracks |
+| Maps (archive) | GPX-first geography overview + heatmap | No road tiles; route lines and heatmap require stage-level GPX tracks |
 | Maps (navigation) | Google Maps intent links + user-pasted custom URLs | |
 | Geocoding | Open-Meteo geocoding API | Free, no key |
 | Weather | Open-Meteo forecast API | Free, no key, 16-day forecast |
@@ -191,7 +191,7 @@ Journal `info_url` is deliberately looser: any `https` URL is accepted because i
 
 ### Archive geography overview
 
-The Archive map is a boundary-style overview, not a street map. Phase 3B deliberately does not draw fake straight-line routes from stage start/end coordinates. Route lines require GPX files uploaded to individual stages. Cancelled trips remain visible in the Archive list but are not plotted. Google Maps links remain navigation links and are not parsed as route geometry. From Phase 3C onward, uploaded stage GPX tracks feed the archive geography view.
+The Archive map is a boundary-style overview, not a street map. Phase 3B deliberately does not draw fake straight-line routes from stage start/end coordinates. Route lines and heatmap density require GPX files uploaded to individual stages. Cancelled trips remain visible in the Archive list but are not plotted. Google Maps links remain navigation links and are not parsed as route geometry. From Phase 3C onward, uploaded stage GPX tracks feed the archive geography view. From Phase 3B.2 onward, Heatmap is the default archive map layer, with Hybrid and Routes modes available for route detail.
 
 ---
 
@@ -342,6 +342,21 @@ Full current schema in `schema.sql` (idempotent). Incremental changes are tracke
 - [x] Keep cancelled trips listed but not mapped
 - [x] Document that archive route lines are GPX-powered
 
+**Phase 3B.2 — Archive heatmap layer ✅**
+- [x] Add Heatmap / Hybrid / Routes map layer toggle
+- [x] Use Heatmap as the default Archive map style
+- [x] Generate heatmap density from stage-level GPX points only
+- [x] Resample GPX points by distance before aggregation to reduce recorder-frequency bias
+- [x] Aggregate onto a fixed SVG grid with light neighbour smoothing
+- [x] Use log scaling and percentile clipping so one dense corridor does not wash out the whole map
+- [x] Keep route overlays optional through Hybrid and Routes modes
+
+**Phase 3B.2.1 — Heatmap visual calibration ✅**
+- [x] Increase the archive map minimum geographic viewport so one trip does not render as an oversized bar
+- [x] Reduce heatmap blockiness with a finer grid, softer opacity, and rounded heat cells
+- [x] Keep boundaries above heatmap density so the geography remains readable
+- [x] Avoid drawing large clipped boundary fragments across a tight route extent
+
 **Phase 3C — Stage GPX upload + archive geography ✅**
 - [x] Upload + parse GPX files per stage
 - [x] Store each GPX file against one stage, with trip_id retained for access/querying
@@ -386,13 +401,6 @@ Full current schema in `schema.sql` (idempotent). Incremental changes are tracke
 - [x] Make weather/geocoding unavailability more explicit on stage cards
 - [x] Improve no-GPX and unusable-GPX archive map guidance
 - [x] Document repository-review findings as handled, deferred, or later
-
-**Phase 3B.2 — Archive heatmap layer (parked)**
-- [ ] Add Heatmap / Hybrid / Routes toggle to Archive Map
-- [ ] Build heatmap from GPX points only, never from fake stage-coordinate lines
-- [ ] Resample GPX points before aggregation to avoid device sampling bias
-- [ ] Use grid aggregation, light smoothing, log scaling, and percentile clipping
-- [ ] Keep route overlays optional for Hybrid / Routes modes
 
 **Phase 3D — Stage/trip GPX maps**
 - [ ] Display GPX track on the stage map view
@@ -439,7 +447,7 @@ A later repository review raised several risks. Most high-risk items have alread
 | Audit history | Deferred | Current audit metadata is enough for now; full change history is a later data-model feature |
 | URL phishing/shortener blocking | Later | Phase 3.7 adds visible host badges; aggressive blocking is not needed yet |
 | RLS helper performance | Later | Current dataset is small; profile only if real slowness appears |
-| Archive heatmap | Parked | Good idea, but belongs to Phase 3B.2 after reliability polish |
+| Archive heatmap | Handled | Phase 3B.2 adds GPX-derived Heatmap / Hybrid / Routes modes |
 
 ---
 
@@ -455,7 +463,6 @@ Lower-priority items captured so they're not forgotten.
 - **Geocoder ambiguity hints.** Show country alongside ambiguous city names.
 - **Long-range weather outlook** beyond the 16-day Open-Meteo forecast.
 - **Smarter PWA install prompt timing.** A simple Account helper exists; defer automatic prompts until real use shows where they are helpful rather than annoying.
-- **Archive heatmap layer.** Future Phase 3B.2 should use GPX-derived density with Heatmap / Hybrid / Routes modes. Resample points before aggregation so one device's dense recording does not dominate the heatmap.
 
 ---
 
@@ -558,8 +565,12 @@ routefolk/
 
 ## Decisions log
 
-- **2026-05: Phase 3.7 focuses on reliability before more map work.** Host badges, clearer URL validation, better GPX error messages, and explicit weather/geocoding failure states are implemented before adding the archive heatmap or stage/trip GPX maps.
-- **2026-05: Archive heatmap is parked as Phase 3B.2.** The proposed GPX grid heatmap is a good direction, but it must resample GPX points before aggregation to avoid device sampling bias. It should stay separate from the reliability polish phase.
+- **2026-05: Phase 3B.2.1 calibrates the heatmap after real testing.** The first heatmap pass worked technically, but one completed trip made the view look like a blocky chart with strange clipped boundary lines. The map now keeps a larger minimum geographic viewport, uses a finer/softer heat grid, and draws country boundaries above the heat layer for better context.
+
+- **2026-05: Phase 3.7 focuses on reliability before more map work.** Host badges, clearer URL validation, better GPX error messages, and explicit weather/geocoding failure states were implemented before adding more map logic.
+
+- **2026-05: Phase 3B.2 adds a GPX-derived Archive heatmap.** The Archive map now defaults to a heatmap layer built only from real stage GPX data. Hybrid and Routes modes remain available. GPX points are resampled by distance before grid aggregation to avoid over-weighting devices that record more frequently.
+- **2026-05: Archive heatmap stays lightweight and local.** The heatmap uses an in-app SVG grid with neighbour smoothing, log scaling, and percentile clipping. No road tiles, no external map provider, and no fake route geometry are introduced.
 
 - **2026-05: Phase 3.6 treats multiple GPX files per stage as normal.** A stage can have several GPX files because GPS recording may be stopped during breaks. The compact GPX row expands into a management section with one row per file, per-file delete actions, and an upload-another action. Wrong files are replaced by deleting them and uploading the correct file, not by a special replace workflow.
 - **2026-05: Phase 3.5 separates active work from archive history.** The Trips screen now shows only planning and active trips. Completed and cancelled trips live in Archive, making the app workflow clearer: plan, ride, complete, archive.

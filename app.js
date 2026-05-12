@@ -1,6 +1,6 @@
 // ============================================================
 // routefolk — app.js
-// Phase 3.6.1: GPX section toggle hotfix.
+// Phase 3B.2.1: archive heatmap visual calibration.
 // ============================================================
 
 import { signInWithGoogle, signOut, getCurrentUser, onAuthChange } from './lib/auth.js';
@@ -54,6 +54,7 @@ const STATE = {
   archiveStatusFilter: 'all',
   archiveFiltersOpen: false,
   archiveViewMode: 'list', // list | map
+  archiveMapLayer: 'heatmap', // heatmap | hybrid | routes
   archiveDataLoading: false,
   archiveDataError: null,
   isOnline: typeof navigator === 'undefined' ? true : navigator.onLine !== false,
@@ -1072,6 +1073,23 @@ function archiveViewToggleHtml() {
   `;
 }
 
+function archiveMapLayerToggleHtml() {
+  const layers = [
+    { key: 'heatmap', label: 'Heatmap' },
+    { key: 'hybrid', label: 'Hybrid' },
+    { key: 'routes', label: 'Routes' },
+  ];
+  return `
+    <div class="archive-layer-toggle" role="group" aria-label="Archive map style">
+      ${layers.map((layer) => `
+        <button class="archive-layer-btn ${STATE.archiveMapLayer === layer.key ? 'active' : ''}" data-archive-layer="${esc(layer.key)}" type="button">
+          ${esc(layer.label)}
+        </button>
+      `).join('')}
+    </div>
+  `;
+}
+
 function archiveMapHtml() {
   const allArchived = archiveTripsBase();
   const completed = filteredArchiveTrips().filter((trip) => trip.status === 'completed');
@@ -1150,8 +1168,9 @@ function archiveMapHtml() {
       <div class="archive-map-heading">
         <div>
           <div class="card-title">Archive geography</div>
-          <div class="form-help">Real GPX tracks linked to stages, shown on a simple Europe boundary view. No road tiles; no fake straight-line routes.</div>
+          <div class="form-help">Heatmap-first view from real stage GPX data. Hybrid and Routes modes keep the same data visible in different ways.</div>
         </div>
+        ${archiveMapLayerToggleHtml()}
       </div>
       ${STATE.archiveGpxError ? `<div class="stage-warn" style="margin:8px 0;">${esc(STATE.archiveGpxError)}</div>` : ''}
       ${archiveGeoMapSvg(records)}
@@ -1192,6 +1211,9 @@ function archivePointFromPolylines(polylines) {
 function archiveGeoMapSvg(records) {
   const extent = archiveMapExtent(records);
   const boundaryLines = archiveBoundaryLinesSvg(extent);
+  const showHeatmap = STATE.archiveMapLayer === 'heatmap' || STATE.archiveMapLayer === 'hybrid';
+  const showRoutes = STATE.archiveMapLayer === 'routes' || STATE.archiveMapLayer === 'hybrid';
+  const heatmap = showHeatmap ? archiveHeatmapSvg(records, extent) : '';
   const segments = [];
   const centers = [];
 
@@ -1221,33 +1243,177 @@ function archiveGeoMapSvg(records) {
   });
 
   return `
-    <svg class="archive-geo-svg" viewBox="0 0 1000 620" role="img" aria-label="Completed trip GPX route overview">
+    <svg class="archive-geo-svg" viewBox="0 0 1000 620" role="img" aria-label="Completed trip GPX archive geography overview">
       <defs>
         <clipPath id="archiveMapClip"><rect x="42" y="28" width="916" height="540" rx="10"></rect></clipPath>
       </defs>
       <rect class="archive-map-sea" x="0" y="0" width="1000" height="620" rx="14"></rect>
       <rect class="archive-map-land" x="42" y="28" width="916" height="540" rx="10"></rect>
       <g clip-path="url(#archiveMapClip)">
+        ${showHeatmap ? `<g class="archive-heatmap">${heatmap}</g>` : ''}
         <g class="archive-boundaries">${boundaryLines}</g>
-        <g class="archive-routes">${segments.join('')}</g>
+        ${showRoutes ? `<g class="archive-routes">${segments.join('')}</g>` : ''}
         <g class="archive-points">${centers.join('')}</g>
       </g>
     </svg>
   `;
 }
 
+function archiveHeatmapSvg(records, extent) {
+  const cols = 160;
+  const rows = 90;
+  const grid = Array.from({ length: rows }, () => Array(cols).fill(0));
+
+  records.forEach(({ polylines }) => {
+    polylines.forEach(({ points }) => {
+      const sampled = resampleTrackForHeatmap(points, 0.25, 2600);
+      sampled.forEach((point) => addArchiveHeat(point, extent, grid, cols, rows));
+    });
+  });
+
+  const values = grid.flat().filter((v) => v > 0);
+  if (!values.length) return '';
+  values.sort((a, b) => a - b);
+  const p98 = values[Math.floor((values.length - 1) * 0.98)] || values[values.length - 1] || 1;
+  const maxValue = Math.max(p98, 1);
+  const cellW = 916 / cols;
+  const cellH = 540 / rows;
+  const cells = [];
+
+  for (let y = 0; y < rows; y += 1) {
+    for (let x = 0; x < cols; x += 1) {
+      const v = grid[y][x];
+      if (v <= 0.001) continue;
+      const norm = Math.min(1, Math.log1p(v) / Math.log1p(maxValue));
+      if (norm < 0.10) continue;
+      cells.push(`<rect class="archive-heat-cell" x="${(42 + x * cellW).toFixed(2)}" y="${(28 + y * cellH).toFixed(2)}" width="${cellW.toFixed(2)}" height="${cellH.toFixed(2)}" rx="1.5" ry="1.5" fill="${archiveHeatColor(norm)}" fill-opacity="${(0.06 + norm * 0.42).toFixed(3)}"></rect>`);
+    }
+  }
+
+  return cells.join('');
+}
+
+function resampleTrackForHeatmap(points, spacingKm = 0.25, maxSamples = 2600) {
+  if (!Array.isArray(points) || points.length < 2) return points || [];
+  const samples = [points[0]];
+  let lastSample = points[0];
+  let carried = 0;
+
+  for (let i = 1; i < points.length; i += 1) {
+    const prev = points[i - 1];
+    const current = points[i];
+    const segmentKm = haversineKm(prev, current);
+    if (!Number.isFinite(segmentKm) || segmentKm <= 0) continue;
+
+    let remaining = segmentKm;
+    let anchor = prev;
+    while (carried + remaining >= spacingKm && samples.length < maxSamples) {
+      const need = spacingKm - carried;
+      const ratio = Math.max(0, Math.min(1, need / remaining));
+      const sample = interpolateGeoPoint(anchor, current, ratio);
+      samples.push(sample);
+      lastSample = sample;
+      anchor = sample;
+      remaining = haversineKm(anchor, current);
+      carried = 0;
+      if (!Number.isFinite(remaining) || remaining <= 0.00001) break;
+    }
+
+    carried += remaining;
+    lastSample = current;
+    if (samples.length >= maxSamples) break;
+  }
+
+  const finalPoint = points[points.length - 1];
+  if (samples[samples.length - 1] !== finalPoint && samples.length < maxSamples) samples.push(finalPoint);
+  return samples.length ? samples : [lastSample].filter(Boolean);
+}
+
+function haversineKm(a, b) {
+  const lat1 = Number(a?.lat);
+  const lng1 = Number(a?.lng);
+  const lat2 = Number(b?.lat);
+  const lng2 = Number(b?.lng);
+  if (![lat1, lng1, lat2, lng2].every(Number.isFinite)) return 0;
+  const toRad = (deg) => deg * Math.PI / 180;
+  const dLat = toRad(lat2 - lat1);
+  const dLng = toRad(lng2 - lng1);
+  const s1 = Math.sin(dLat / 2);
+  const s2 = Math.sin(dLng / 2);
+  const h = s1 * s1 + Math.cos(toRad(lat1)) * Math.cos(toRad(lat2)) * s2 * s2;
+  return 6371 * 2 * Math.atan2(Math.sqrt(h), Math.sqrt(Math.max(0, 1 - h)));
+}
+
+function interpolateGeoPoint(a, b, t) {
+  return {
+    lat: Number(a.lat) + (Number(b.lat) - Number(a.lat)) * t,
+    lng: Number(a.lng) + (Number(b.lng) - Number(a.lng)) * t,
+  };
+}
+
+function addArchiveHeat(point, extent, grid, cols, rows) {
+  const lngSpan = extent.maxLng - extent.minLng;
+  const latSpan = extent.maxLat - extent.minLat;
+  if (lngSpan <= 0 || latSpan <= 0) return;
+  const xNorm = (point.lng - extent.minLng) / lngSpan;
+  const yNorm = 1 - ((point.lat - extent.minLat) / latSpan);
+  if (!Number.isFinite(xNorm) || !Number.isFinite(yNorm)) return;
+  if (xNorm < 0 || xNorm > 1 || yNorm < 0 || yNorm > 1) return;
+
+  const cx = Math.floor(xNorm * (cols - 1));
+  const cy = Math.floor(yNorm * (rows - 1));
+  const kernel = [
+    { dx: 0, dy: 0, w: 1.0 },
+    { dx: -1, dy: 0, w: 0.55 }, { dx: 1, dy: 0, w: 0.55 },
+    { dx: 0, dy: -1, w: 0.55 }, { dx: 0, dy: 1, w: 0.55 },
+    { dx: -1, dy: -1, w: 0.3 }, { dx: -1, dy: 1, w: 0.3 },
+    { dx: 1, dy: -1, w: 0.3 }, { dx: 1, dy: 1, w: 0.3 },
+  ];
+
+  kernel.forEach(({ dx, dy, w }) => {
+    const x = cx + dx;
+    const y = cy + dy;
+    if (x >= 0 && x < cols && y >= 0 && y < rows) grid[y][x] += w;
+  });
+}
+
+function archiveHeatColor(t) {
+  if (t < 0.22) return '#2563eb';
+  if (t < 0.45) return '#06b6d4';
+  if (t < 0.68) return '#facc15';
+  if (t < 0.86) return '#fb923c';
+  return '#ef4444';
+}
+
 function archiveBoundaryLinesSvg(extent) {
   return EUROPE_BOUNDARY_LINES.map((line) => {
-    const visible = line.some(([lng, lat]) =>
-      lat >= extent.minLat - 3 && lat <= extent.maxLat + 3 && lng >= extent.minLng - 3 && lng <= extent.maxLng + 3
-    );
-    if (!visible) return '';
-    const d = line.map(([lng, lat], index) => {
+    const commands = [];
+    let open = false;
+
+    line.forEach(([lng, lat]) => {
+      const visible = archiveBoundaryPointNearExtent(lng, lat, extent);
+      if (!visible) {
+        open = false;
+        return;
+      }
+
       const p = projectArchivePoint({ lat, lng }, extent);
-      return `${index === 0 ? 'M' : 'L'} ${p.x} ${p.y}`;
-    }).join(' ');
-    return `<path class="archive-country-line" d="${esc(d)}"></path>`;
+      commands.push(`${open ? 'L' : 'M'} ${p.x} ${p.y}`);
+      open = true;
+    });
+
+    if (commands.length < 2) return '';
+    return `<path class="archive-country-line" d="${esc(commands.join(' '))}"></path>`;
   }).join('');
+}
+
+function archiveBoundaryPointNearExtent(lng, lat, extent) {
+  const latBuffer = Math.max((extent.maxLat - extent.minLat) * 0.22, 1.5);
+  const lngBuffer = Math.max((extent.maxLng - extent.minLng) * 0.22, 1.5);
+  return lat >= extent.minLat - latBuffer
+    && lat <= extent.maxLat + latBuffer
+    && lng >= extent.minLng - lngBuffer
+    && lng <= extent.maxLng + lngBuffer;
 }
 
 function archiveMapExtent(records) {
@@ -1276,15 +1442,20 @@ function archiveMapExtent(records) {
   minLng = Math.max(-180, minLng - padLng);
   maxLng = Math.min(180, maxLng + padLng);
 
-  if (maxLat - minLat < 4) {
+  // The Archive map is a geography overview, not a tight GPX chart.
+  // Keep a generous minimum viewport so one trip does not become an oversized bar
+  // and coarse country outlines do not collapse into strange diagonal fragments.
+  const minLatSpan = 8;
+  const minLngSpan = 12;
+  if (maxLat - minLat < minLatSpan) {
     const mid = (minLat + maxLat) / 2;
-    minLat = Math.max(-85, mid - 2);
-    maxLat = Math.min(85, mid + 2);
+    minLat = Math.max(-85, mid - minLatSpan / 2);
+    maxLat = Math.min(85, mid + minLatSpan / 2);
   }
-  if (maxLng - minLng < 4) {
+  if (maxLng - minLng < minLngSpan) {
     const mid = (minLng + maxLng) / 2;
-    minLng = Math.max(-180, mid - 2);
-    maxLng = Math.min(180, mid + 2);
+    minLng = Math.max(-180, mid - minLngSpan / 2);
+    maxLng = Math.min(180, mid + minLngSpan / 2);
   }
 
   return { minLat, maxLat, minLng, maxLng };
@@ -3182,6 +3353,13 @@ function bindContentEvents(content) {
       STATE.archiveViewMode = btn.dataset.archiveView || 'list';
       renderAll();
       if (STATE.archiveViewMode === 'map') ensureArchiveGpxGeometries();
+    });
+  });
+  content.querySelectorAll('[data-archive-layer]').forEach((btn) => {
+    btn.addEventListener('click', () => {
+      const nextLayer = btn.dataset.archiveLayer || 'heatmap';
+      STATE.archiveMapLayer = ['heatmap', 'hybrid', 'routes'].includes(nextLayer) ? nextLayer : 'heatmap';
+      renderAll();
     });
   });
   content.querySelector('#archiveFiltersToggle')?.addEventListener('click', () => {
