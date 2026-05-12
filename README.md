@@ -52,7 +52,7 @@ User display names come from lightweight `profiles` records created/refreshed af
 | Hosting | Cloudflare Pages, deployed from GitHub | Free, deploy on push |
 | Backend | Supabase (Auth + Postgres + Storage) | Free tier generous |
 | Auth | Google sign-in via Supabase | No passwords |
-| Maps (archive) | Leaflet + OpenStreetMap | Free — Phase 3 |
+| Maps (archive) | GPX-first geography overview | No road tiles; route lines require stage-level GPX tracks |
 | Maps (navigation) | Google Maps intent links + user-pasted custom URLs | |
 | Geocoding | Open-Meteo geocoding API | Free, no key |
 | Weather | Open-Meteo forecast API | Free, no key, 16-day forecast |
@@ -172,6 +172,10 @@ A track may belong to a stage OR a whole trip. Distance and duration are optiona
 Custom stage URLs take priority over auto-generated route URLs. Stage custom URLs and journal location URLs are validated with `https` + allowlisted Google Maps hosts.
 
 Journal `info_url` is deliberately looser: any `https` URL is accepted because it can point to Booking.com, a restaurant website, a pub page, TripAdvisor, Instagram, a blog post, or any other useful reference.
+
+### Archive geography overview
+
+The Archive map is a boundary-style overview, not a street map. Phase 3B deliberately does not draw fake straight-line routes from stage start/end coordinates. Route lines require GPX files uploaded to individual stages. Cancelled trips remain visible in the Archive list but are not plotted. Google Maps links remain navigation links and are not parsed as route geometry.
 
 ---
 
@@ -313,15 +317,24 @@ Full current schema in `schema.sql` (idempotent). Incremental changes are tracke
 - [x] Archived trip cards show stages, distance, cost, and journal entry count when loaded
 - [x] Account-screen PWA install helper with iOS, Android, and desktop instructions
 
-**Phase 3B — Completed trips map**
-- [ ] Leaflet world map with completed trips
-- [ ] One marker per completed trip using existing stage coordinates
-- [ ] Open trip detail/summary from map marker
+**Phase 3B — Archive geography overview ✅**
+- [x] Add List / Map toggle to Archive
+- [x] Use a boundary-style geography placeholder instead of road tiles
+- [x] Do not draw fake straight-line routes from stage start/end coordinates
+- [x] Show a clear GPX-required state until stage GPX files exist
+- [x] Keep cancelled trips listed but not mapped
+- [x] Document that archive route lines are GPX-powered
 
-**Phase 3C — GPX tracks**
-- [ ] Upload + parse GPX files
-- [ ] Display GPX track on the trip's map view
+**Phase 3C — Stage GPX tracks**
+- [ ] Upload + parse GPX files per stage
+- [ ] Store each GPX file against one stage, with trip_id retained for access/querying
+- [ ] Display GPX track on the stage/trip map view
+- [ ] Feed completed-stage GPX tracks into the archive geography/heatmap view
+- [ ] Handle GPX storage limits and mobile upload quirks
+
+**Phase 3D — Archive drill-down**
 - [ ] Drill-down: world → country → trip → stage → journal entries
+- [ ] Past trips list remains the non-map fallback
 
 ### Phase 4 — Polish
 
@@ -420,7 +433,7 @@ The human is a capable engineer new to this specific stack — explanations shou
 routefolk/
 ├── index.html              # App shell
 ├── style.css               # All styles
-├── app.js                  # Main app logic, state, archive baseline, schema check, and offline-aware UI
+├── app.js                  # Main app logic, state, GPX-first archive placeholder, schema check, and offline-aware UI
 ├── lib/
 │   ├── config.js           # Supabase URL + anon key
 │   ├── supabase.js         # Supabase client setup
@@ -455,14 +468,19 @@ routefolk/
 
 ## Decisions log
 
-- **2026-05: Phase 3A starts with archive baseline, not maps/GPX.** Archive gets useful list review, metrics, and filters before adding Leaflet or GPX complexity. Completed trips count toward totals; cancelled trips remain visible but are excluded from totals.
+A running list of decisions made and why. New entries go at the top.
+
+- **2026-05: Phase 3B is GPX-first, not fake-route-first.** Archive geography does not draw straight lines from stage start/end coordinates because those lines misrepresent the real ride. Route lines require GPX files linked to individual stages.
+- **2026-05: Archive geography separates overview from route review.** The Archive map is a high-level geography/heatmap surface, not a street navigation map. Trip and stage route maps belong later, once GPX tracks provide real route geometry.
+- **2026-05: Archive geography avoids road tiles.** The map uses a lightweight boundary-style placeholder rather than OpenStreetMap street tiles, because street detail is visual noise for the archive overview and caused brittle rendering in the PWA.
+- **2026-05: Google Maps links are not parsed as geometry.** Custom Google Maps links remain navigation references. GPX tracks, not Google Maps URLs, will feed trip/stage route maps and archive geography.
+
+- **2026-05: Phase 3A starts with archive baseline, not maps/GPX.** Archive gets useful list review, metrics, and filters before adding map/GPX complexity. Completed trips count toward totals; cancelled trips remain visible but are excluded from totals.
 - **2026-05: PWA install help lives in Account.** Friends can see simple device-specific install instructions without needing a full onboarding flow or intrusive prompt.
 
 - **2026-05: Phase 2.6C standardizes app cache invalidation.** Top-level app shell files use an explicit release query string and the service worker uses network-first handling for JavaScript and CSS, reducing stale installed-PWA bugs.
 - **2026-05: App startup checks schema version.** Signed-in users now get a clear migration-required message if `public.app_meta.schema_version` does not match the version expected by the app.
 - **2026-05: Mobile Trips filters are collapsed.** Search and status filters remain visible on tablet/desktop, but mobile shows a compact Filters button to avoid wasting vertical space.
-
-A running list of decisions made and why. New entries go at the top.
 
 - **2026-05: Phase 2.6B moves stage reorder into the database.** Stage order swaps now use a transactional `swap_stage_order` RPC that locks both rows, checks same-trip access, and updates both `order_index` values atomically. The previous two-client-update approach was too fragile once stage order uniqueness was enforced.
 
@@ -515,7 +533,7 @@ A running list of decisions made and why. New entries go at the top.
 - **2026-05: No offline queueing in v1.**
 - **2026-05: Plain HTML/JS/CSS, no framework.**
 - **2026-05: Stages are point-to-point.**
-- **2026-05: GPX tracks can link to stage or trip.**
+- **2026-05: GPX uploads will be stage-level.** Each GPX file should be linked to one stage; trip-level route/archive views will be built by combining stage tracks.
 
 ---
 

@@ -1392,3 +1392,135 @@ a:hover { text-decoration: underline; }
     grid-template-columns: repeat(4, minmax(0, 1fr));
   }
 }
+
+/* ---------- Phase 3B archive geography overview ---------- */
+.archive-view-toggle {
+  display: inline-flex;
+  background: #0f1420;
+  border: 1px solid #2a3142;
+  border-radius: 999px;
+  padding: 3px;
+  flex-shrink: 0;
+}
+
+.archive-view-btn {
+  padding: 5px 11px;
+  border-radius: 999px;
+  font-size: 12px;
+  font-weight: 700;
+  color: #6b7a93;
+}
+
+.archive-view-btn.active {
+  background: #2a3142;
+  color: #e8edf5;
+}
+
+.archive-map-wrap {
+  background: #1a1f2e;
+  border: 1px solid #2a3142;
+  border-radius: 12px;
+  padding: 10px;
+  margin-bottom: 12px;
+}
+
+.archive-map-heading {
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+  align-items: flex-start;
+  margin-bottom: 10px;
+}
+
+.archive-geo-map {
+  width: 100%;
+  border-radius: 10px;
+  overflow: hidden;
+  background: #0b1020;
+  border: 1px solid #2a3142;
+}
+
+.archive-geo-svg {
+  display: block;
+  width: 100%;
+  height: auto;
+  min-height: 300px;
+}
+
+.archive-map-sea {
+  fill: #0b1020;
+}
+
+.archive-map-land {
+  fill: #111827;
+  stroke: #2a3142;
+  stroke-width: 1.2;
+}
+
+.archive-grid-line {
+  stroke: #263247;
+  stroke-width: 1;
+  vector-effect: non-scaling-stroke;
+}
+
+.archive-map-label {
+  fill: #6b7a93;
+  font-size: 18px;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+}
+
+.archive-route-line {
+  stroke: #5ca0ff;
+  stroke-width: 4;
+  stroke-linecap: round;
+  opacity: 0.42;
+  cursor: pointer;
+  vector-effect: non-scaling-stroke;
+}
+
+.archive-route-line:hover,
+.archive-route-line:focus {
+  opacity: 0.9;
+  stroke-width: 6;
+}
+
+.archive-trip-point {
+  cursor: pointer;
+}
+
+.archive-trip-point circle:first-child {
+  fill: rgba(92, 160, 255, 0.18);
+  stroke: #5ca0ff;
+  stroke-width: 2;
+  vector-effect: non-scaling-stroke;
+}
+
+.archive-trip-point circle:last-child {
+  fill: #e8edf5;
+}
+
+.archive-trip-point:hover circle:first-child,
+.archive-trip-point:focus circle:first-child {
+  fill: rgba(92, 160, 255, 0.32);
+  stroke-width: 3;
+}
+
+.archive-map-empty,
+.archive-map-fallback {
+  min-height: 260px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 16px;
+  text-align: center;
+  color: #6b7a93;
+  font-size: 13px;
+  line-height: 1.4;
+}
+
+@media (min-width: 640px) {
+  .archive-geo-svg {
+    min-height: 420px;
+  }
+}

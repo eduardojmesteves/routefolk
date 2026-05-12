@@ -1,6 +1,6 @@
 // ============================================================
 // routefolk — app.js
-// Phase 3A: archive baseline, install helper, cache-hardened shell.
+// Phase 3B corrected: GPX-first archive geography placeholder, archive baseline, install helper.
 // ============================================================
 
 import { signInWithGoogle, signOut, getCurrentUser, onAuthChange } from './lib/auth.js';
@@ -45,10 +45,12 @@ const STATE = {
   archiveSearch: '',
   archiveStatusFilter: 'all',
   archiveFiltersOpen: false,
+  archiveViewMode: 'list', // list | map (map is GPX-first placeholder until stage GPX uploads exist)
   archiveDataLoading: false,
   archiveDataError: null,
   isOnline: typeof navigator === 'undefined' ? true : navigator.onLine !== false,
 };
+
 
 const STATUS_META = {
   planning:  { label: 'Planning',  cls: 'status-planning'  },
@@ -799,7 +801,274 @@ function archiveMetricsHtml() {
   `;
 }
 
-function archiveTripMetaHtml(trip) {
+
+function archiveTripMapPoint(trip) {
+  const stages = STATE.stagesByTrip[trip.id];
+  if (!Array.isArray(stages)) return null;
+
+  const points = archiveStageCoordinatePoints(stages);
+  if (!points.length) return null;
+
+  const lat = points.reduce((sum, p) => sum + p.lat, 0) / points.length;
+  const lng = points.reduce((sum, p) => sum + p.lng, 0) / points.length;
+  return { lat, lng, points };
+}
+
+function archiveStageCoordinatePoints(stages) {
+  const points = [];
+  stages.forEach((stage) => {
+    const pairs = [
+      [stage.start_lat, stage.start_lng],
+      [stage.end_lat, stage.end_lng],
+    ];
+    pairs.forEach(([lat, lng]) => {
+      const la = Number(lat);
+      const ln = Number(lng);
+      if (Number.isFinite(la) && Number.isFinite(ln)) points.push({ lat: la, lng: ln });
+    });
+  });
+  return points;
+}
+
+function archiveRouteSegmentsForTrip(trip) {
+  const stages = STATE.stagesByTrip[trip.id];
+  if (!Array.isArray(stages)) return [];
+
+  return stages.flatMap((stage) => {
+    const startLat = Number(stage.start_lat);
+    const startLng = Number(stage.start_lng);
+    const endLat = Number(stage.end_lat);
+    const endLng = Number(stage.end_lng);
+    if (![startLat, startLng, endLat, endLng].every(Number.isFinite)) return [];
+    return [{
+      trip,
+      stage,
+      start: { lat: startLat, lng: startLng },
+      end: { lat: endLat, lng: endLng },
+    }];
+  });
+}
+
+function archiveMapRecords() {
+  return filteredArchiveTrips()
+    .filter((trip) => trip.status === 'completed')
+    .map((trip) => ({
+      trip,
+      point: archiveTripMapPoint(trip),
+      segments: archiveRouteSegmentsForTrip(trip),
+    }))
+    .filter((record) => record.point || record.segments.length);
+}
+
+function archiveViewToggleHtml() {
+  return `
+    <div class="archive-view-toggle" role="group" aria-label="Archive view">
+      <button class="archive-view-btn ${STATE.archiveViewMode === 'list' ? 'active' : ''}" data-archive-view="list">List</button>
+      <button class="archive-view-btn ${STATE.archiveViewMode === 'map' ? 'active' : ''}" data-archive-view="map">Map</button>
+    </div>
+  `;
+}
+
+function archiveMapHtml() {
+  const allArchived = archiveTripsBase();
+  const completed = filteredArchiveTrips().filter((trip) => trip.status === 'completed');
+
+  if (!allArchived.length) return archiveResultsListHtml();
+
+  if (!completed.length) {
+    return `
+      <div class="archive-map-wrap">
+        <div class="archive-map-empty">
+          <div>
+            <div class="empty-title">No completed trips to map</div>
+            <div class="empty-sub">Cancelled trips stay listed for reference, but they are not plotted on the archive geography view.</div>
+          </div>
+        </div>
+      </div>
+    `;
+  }
+
+  return `
+    <div class="archive-map-wrap">
+      <div class="archive-map-heading">
+        <div>
+          <div class="card-title">Archive geography</div>
+          <div class="form-help">GPX-powered overview. Route lines are intentionally hidden until GPX files are uploaded for individual stages.</div>
+        </div>
+      </div>
+      <div class="archive-map-empty archive-map-empty-tall">
+        <div>
+          <div class="empty-title">GPX tracks required</div>
+          <div class="empty-sub">
+            The archive geography view will use GPX files linked to each stage. routefolk no longer draws straight-line approximations from stage start/end coordinates because they misrepresent the real ride.
+          </div>
+          <div class="form-help" style="margin-top:12px;">
+            Next step: add GPX upload per stage, then use those tracks for the trip/stage maps and archive heatmap.
+          </div>
+        </div>
+      </div>
+    </div>
+  `;
+}
+
+function archiveGeoMapSvg(records) {
+  const extent = archiveMapExtent(records);
+  const ticks = archiveMapTicks(extent);
+  const segments = [];
+  const centers = [];
+
+  records.forEach(({ trip, point, segments: tripSegments }) => {
+    const meta = archiveTripMetaText(trip);
+    tripSegments.forEach((segment) => {
+      const a = projectArchivePoint(segment.start, extent);
+      const b = projectArchivePoint(segment.end, extent);
+      segments.push(`
+        <line class="archive-route-line" x1="${a.x}" y1="${a.y}" x2="${b.x}" y2="${b.y}" data-map-trip-id="${esc(trip.id)}">
+          <title>${esc(trip.title)}${segment.stage?.title ? ` — ${segment.stage.title}` : ''}</title>
+        </line>
+      `);
+    });
+    if (point) {
+      const c = projectArchivePoint(point, extent);
+      centers.push(`
+        <g class="archive-trip-point" data-map-trip-id="${esc(trip.id)}" transform="translate(${c.x} ${c.y})">
+          <circle r="7"></circle>
+          <circle r="3"></circle>
+          <title>${esc(trip.title)}${meta ? ` · ${meta}` : ''}</title>
+        </g>
+      `);
+    }
+  });
+
+  const grid = [
+    ...ticks.lng.map((lng) => {
+      const p1 = projectArchivePoint({ lat: extent.minLat, lng }, extent);
+      const p2 = projectArchivePoint({ lat: extent.maxLat, lng }, extent);
+      return `<line class="archive-grid-line" x1="${p1.x}" y1="${p1.y}" x2="${p2.x}" y2="${p2.y}"></line>`;
+    }),
+    ...ticks.lat.map((lat) => {
+      const p1 = projectArchivePoint({ lat, lng: extent.minLng }, extent);
+      const p2 = projectArchivePoint({ lat, lng: extent.maxLng }, extent);
+      return `<line class="archive-grid-line" x1="${p1.x}" y1="${p1.y}" x2="${p2.x}" y2="${p2.y}"></line>`;
+    }),
+  ].join('');
+
+  const labels = [
+    ...ticks.lng.map((lng) => {
+      const p = projectArchivePoint({ lat: extent.minLat, lng }, extent);
+      return `<text class="archive-map-label" x="${p.x}" y="592" text-anchor="middle">${esc(formatLng(lng))}</text>`;
+    }),
+    ...ticks.lat.map((lat) => {
+      const p = projectArchivePoint({ lat, lng: extent.minLng }, extent);
+      return `<text class="archive-map-label" x="14" y="${p.y + 4}">${esc(formatLat(lat))}</text>`;
+    }),
+  ].join('');
+
+  return `
+    <svg class="archive-geo-svg" viewBox="0 0 1000 620" role="img" aria-label="Completed trip approximate route overview">
+      <rect class="archive-map-sea" x="0" y="0" width="1000" height="620" rx="14"></rect>
+      <rect class="archive-map-land" x="42" y="28" width="916" height="540" rx="10"></rect>
+      <g class="archive-grid">${grid}</g>
+      <g class="archive-routes">${segments.join('')}</g>
+      <g class="archive-points">${centers.join('')}</g>
+      <g class="archive-labels">${labels}</g>
+    </svg>
+  `;
+}
+
+function archiveMapExtent(records) {
+  const coords = [];
+  records.forEach((record) => {
+    if (record.point) coords.push(record.point);
+    record.segments.forEach((segment) => {
+      coords.push(segment.start, segment.end);
+    });
+  });
+
+  let minLat = Math.min(...coords.map((p) => p.lat));
+  let maxLat = Math.max(...coords.map((p) => p.lat));
+  let minLng = Math.min(...coords.map((p) => p.lng));
+  let maxLng = Math.max(...coords.map((p) => p.lng));
+
+  if (!Number.isFinite(minLat) || !Number.isFinite(maxLat) || !Number.isFinite(minLng) || !Number.isFinite(maxLng)) {
+    return { minLat: 35, maxLat: 45, minLng: -10, maxLng: 5 };
+  }
+
+  const latSpan = Math.max(maxLat - minLat, 1);
+  const lngSpan = Math.max(maxLng - minLng, 1);
+  const padLat = Math.max(latSpan * 0.18, 0.5);
+  const padLng = Math.max(lngSpan * 0.18, 0.5);
+
+  minLat = Math.max(-85, minLat - padLat);
+  maxLat = Math.min(85, maxLat + padLat);
+  minLng = Math.max(-180, minLng - padLng);
+  maxLng = Math.min(180, maxLng + padLng);
+
+  if (maxLat - minLat < 4) {
+    const mid = (minLat + maxLat) / 2;
+    minLat = Math.max(-85, mid - 2);
+    maxLat = Math.min(85, mid + 2);
+  }
+  if (maxLng - minLng < 4) {
+    const mid = (minLng + maxLng) / 2;
+    minLng = Math.max(-180, mid - 2);
+    maxLng = Math.min(180, mid + 2);
+  }
+
+  return { minLat, maxLat, minLng, maxLng };
+}
+
+function projectArchivePoint(point, extent) {
+  const xMin = 42;
+  const xMax = 958;
+  const yMin = 28;
+  const yMax = 568;
+  const x = xMin + ((point.lng - extent.minLng) / (extent.maxLng - extent.minLng)) * (xMax - xMin);
+  const y = yMax - ((point.lat - extent.minLat) / (extent.maxLat - extent.minLat)) * (yMax - yMin);
+  return {
+    x: Number.isFinite(x) ? Math.round(x * 10) / 10 : 500,
+    y: Number.isFinite(y) ? Math.round(y * 10) / 10 : 300,
+  };
+}
+
+function archiveMapTicks(extent) {
+  return {
+    lat: niceTicks(extent.minLat, extent.maxLat, 4),
+    lng: niceTicks(extent.minLng, extent.maxLng, 5),
+  };
+}
+
+function niceTicks(min, max, target) {
+  const span = Math.max(max - min, 1);
+  const rawStep = span / Math.max(target, 1);
+  const pow = 10 ** Math.floor(Math.log10(rawStep));
+  const norm = rawStep / pow;
+  const step = (norm <= 1 ? 1 : norm <= 2 ? 2 : norm <= 5 ? 5 : 10) * pow;
+  const first = Math.ceil(min / step) * step;
+  const ticks = [];
+  for (let v = first; v <= max + step * 0.25; v += step) {
+    if (v > min && v < max) ticks.push(Math.round(v * 100) / 100);
+  }
+  return ticks.slice(0, target + 2);
+}
+
+function formatLat(lat) {
+  const hemi = lat >= 0 ? 'N' : 'S';
+  return `${Math.abs(Math.round(lat * 10) / 10)}°${hemi}`;
+}
+
+function formatLng(lng) {
+  const hemi = lng >= 0 ? 'E' : 'W';
+  return `${Math.abs(Math.round(lng * 10) / 10)}°${hemi}`;
+}
+
+function bindArchiveMapEvents(root = document) {
+  root.querySelectorAll('[data-map-trip-id]').forEach((el) => {
+    el.addEventListener('click', () => openTrip(el.dataset.mapTripId));
+  });
+}
+
+function archiveTripMetaText(trip) {
   const stages = STATE.stagesByTrip[trip.id];
   const expenses = STATE.expensesByTrip[trip.id];
   const stagesLoaded = Array.isArray(stages);
@@ -818,14 +1087,17 @@ function archiveTripMetaHtml(trip) {
     });
   }
 
-  const parts = [
+  return [
     stagesLoaded ? `${stageCount} stage${stageCount === 1 ? '' : 's'}` : 'Stages …',
     stagesLoaded && distance ? `${Math.round(distance)} km` : (stagesLoaded ? null : 'Distance …'),
     expensesLoaded && cost ? fmtEuro(cost, { compact: true }) : (expensesLoaded ? null : 'Cost …'),
     entriesLoaded ? `${entries} entr${entries === 1 ? 'y' : 'ies'}` : 'Entries …',
-  ].filter(Boolean);
+  ].filter(Boolean).join(' · ');
+}
 
-  return `<div class="trip-desc archive-trip-meta">${esc(parts.join(' · '))}</div>`;
+function archiveTripMetaHtml(trip) {
+  const meta = archiveTripMetaText(trip);
+  return meta ? `<div class="trip-desc archive-trip-meta">${esc(meta)}</div>` : '';
 }
 
 function archiveTripCardHtml(trip) {
@@ -833,7 +1105,7 @@ function archiveTripCardHtml(trip) {
   return base.replace('</button>', `${archiveTripMetaHtml(trip)}</button>`);
 }
 
-function archiveResultsHtml() {
+function archiveResultsListHtml() {
   const allArchived = archiveTripsBase();
   const trips = filteredArchiveTrips();
   const hasFilters = STATE.archiveSearch.trim() || STATE.archiveStatusFilter !== 'all';
@@ -863,6 +1135,11 @@ function archiveResultsHtml() {
   return `<div class="trip-list">${trips.map(archiveTripCardHtml).join('')}</div>`;
 }
 
+
+function archiveResultsHtml() {
+  return STATE.archiveViewMode === 'map' ? archiveMapHtml() : archiveResultsListHtml();
+}
+
 function renderArchive() {
   if (!STATE.user) return signedOutState('Sign in to see the archive', 'Completed and cancelled trips will appear here.');
 
@@ -881,7 +1158,10 @@ function renderArchive() {
       ${archiveMetricsHtml()}
     </div>
 
-    <div class="section-label">Past trips</div>
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px;gap:8px;">
+      <div class="section-label" style="margin-bottom:0;">Past trips</div>
+      ${archiveViewToggleHtml()}
+    </div>
     ${archiveFiltersHtml()}
     <div id="archiveResults">${archiveResultsHtml()}</div>
   `;
@@ -2347,6 +2627,7 @@ function renderTab() {
   }
 
   bindContentEvents(content);
+  bindArchiveMapEvents(content);
 }
 
 function schemaErrorHtml() {
@@ -2399,6 +2680,12 @@ function bindContentEvents(content) {
       bindTripCards(results);
     }
   });
+  content.querySelectorAll('[data-archive-view]').forEach((btn) => {
+    btn.addEventListener('click', () => {
+      STATE.archiveViewMode = btn.dataset.archiveView || 'list';
+      renderAll();
+    });
+  });
   content.querySelector('#archiveFiltersToggle')?.addEventListener('click', () => {
     STATE.archiveFiltersOpen = !STATE.archiveFiltersOpen;
     renderAll();
@@ -2409,6 +2696,7 @@ function bindContentEvents(content) {
     if (results) {
       results.innerHTML = archiveResultsHtml();
       bindTripCards(results);
+      if (STATE.archiveViewMode === 'map') bindArchiveMapEvents(results);
     }
   });
   content.querySelector('#archiveStatusFilter')?.addEventListener('change', (e) => {
@@ -2417,6 +2705,7 @@ function bindContentEvents(content) {
     if (results) {
       results.innerHTML = archiveResultsHtml();
       bindTripCards(results);
+      if (STATE.archiveViewMode === 'map') bindArchiveMapEvents(results);
     }
   });
   content.querySelector('#newTripBtn')?.addEventListener('click', () => {
