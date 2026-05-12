@@ -367,6 +367,13 @@ Full current schema in `schema.sql` (idempotent). Incremental changes are tracke
 - [x] Journal entry timestamp is constrained to the stage planned date
 - [x] GPX stage section is compact by default and expands only when needed
 
+**Phase 3.6 — GPX track management polish ✅**
+- [x] Stage GPX sections support multiple uploaded files visibly
+- [x] Upload GPX action appears inside the expanded GPX section only
+- [x] Each GPX file row shows filename, distance, and duration when available
+- [x] Each GPX file row has its own delete action
+- [x] Wrong GPX files are replaced by deleting the bad file and uploading the correct one
+
 **Phase 3D — Stage/trip GPX maps**
 - [ ] Display GPX track on the stage map view
 - [ ] Combine stage GPX tracks into a full trip map view
@@ -473,7 +480,7 @@ The human is a capable engineer new to this specific stack — explanations shou
 routefolk/
 ├── index.html              # App shell
 ├── style.css               # All styles
-├── app.js                  # Main app logic, state, active/archive split, GPX upload/archive geography, schema check, and offline-aware UI
+├── app.js                  # Main app logic, state, active/archive split, GPX upload/management, archive geography, schema check, and offline-aware UI
 ├── lib/
 │   ├── config.js           # Supabase URL + anon key
 │   ├── supabase.js         # Supabase client setup
@@ -510,6 +517,7 @@ routefolk/
 
 ## Decisions log
 
+- **2026-05: Phase 3.6 treats multiple GPX files per stage as normal.** A stage can have several GPX files because GPS recording may be stopped during breaks. The compact GPX row expands into a management section with one row per file, per-file delete actions, and an upload-another action. Wrong files are replaced by deleting them and uploading the correct file, not by a special replace workflow.
 - **2026-05: Phase 3.5 separates active work from archive history.** The Trips screen now shows only planning and active trips. Completed and cancelled trips live in Archive, making the app workflow clearer: plan, ride, complete, archive.
 - **2026-05: Journal dates follow stage dates.** New journal entries default to Stop and use the stage planned date for their timestamp. If a stage has no planned date, the journal timestamp stays empty instead of inventing a date.
 - **2026-05: Stage GPX UI is compact by default.** GPX tracks are still linked to stages, but the stage card shows a one-line GPX summary until expanded so route files do not dominate the planning view.
@@ -518,6 +526,9 @@ routefolk/
 - **2026-05: Archive geography uses only real GPX geometry.** Stage start/end coordinates and Google Maps links are not used to draw routes because they would misrepresent the actual ride.
 
 A running list of decisions made and why. New entries go at the top.
+
+- **2026-05: Phase 3.6.1 fixes GPX expansion.** The compact GPX stage row now expands/collapses correctly and keeps upload/delete management inside the expanded section.
+
 
 - **2026-05: Phase 3B is GPX-first, not fake-route-first.** Archive geography does not draw straight lines from stage start/end coordinates because those lines misrepresent the real ride. Route lines require GPX files linked to individual stages.
 - **2026-05: Archive geography separates overview from route review.** The Archive map is a high-level geography/heatmap surface, not a street navigation map. Trip and stage route maps belong later, once GPX tracks provide real route geometry.

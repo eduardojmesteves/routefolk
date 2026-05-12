@@ -1613,3 +1613,13 @@ a:hover { text-decoration: underline; }
   font-size: 11px;
   margin-top: 2px;
 }
+
+.gpx-actions-row {
+  margin-top: 8px;
+  display: flex;
+  justify-content: flex-start;
+}
+
+.gpx-upload-btn {
+  white-space: nowrap;
+}

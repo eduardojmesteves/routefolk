@@ -1,6 +1,6 @@
 // ============================================================
 // routefolk — app.js
-// Phase 3.5: screen clarity, journal defaults, and compact GPX stage UI.
+// Phase 3.6.1: GPX section toggle hotfix.
 // ============================================================
 
 import { signInWithGoogle, signOut, getCurrentUser, onAuthChange } from './lib/auth.js';
@@ -1545,6 +1545,14 @@ function gpxTrackMeta(track) {
   return parts.join(' · ');
 }
 
+function gpxUploadButtonHtml(stage, label = 'Upload GPX') {
+  return `
+    <button class="btn btn-secondary btn-sm gpx-upload-btn" data-stage-gpx-upload="${esc(stage.id)}"${writeDisabledAttr()}>
+      ${esc(label)}
+    </button>
+  `;
+}
+
 function gpxStageSectionHtml(stage, trip) {
   const tracksRaw = STATE.gpxByTrip[trip.id];
   const tracks = gpxTracksForStage(trip, stage);
@@ -1561,7 +1569,12 @@ function gpxStageSectionHtml(stage, trip) {
     if (tracksRaw === 'loading' || STATE.gpxLoading) {
       body = `<div class="empty-sub gpx-section-body">Loading GPX tracks…</div>`;
     } else if (!tracks.length) {
-      body = `<div class="empty-sub gpx-section-body">Upload the real ridden route for this stage when available.</div>`;
+      body = `
+        <div class="gpx-section-body">
+          <div class="empty-sub">Upload one or more GPX files for this stage. Multiple files are expected when GPS recording was stopped during breaks.</div>
+          <div class="gpx-actions-row">${gpxUploadButtonHtml(stage, 'Upload GPX')}</div>
+        </div>
+      `;
     } else {
       body = `
         <div class="gpx-track-list gpx-section-body">
@@ -1575,6 +1588,7 @@ function gpxStageSectionHtml(stage, trip) {
             </div>
           `).join('')}
         </div>
+        <div class="gpx-actions-row">${gpxUploadButtonHtml(stage, 'Upload another GPX')}</div>
       `;
     }
   }
@@ -1589,7 +1603,6 @@ function gpxStageSectionHtml(stage, trip) {
             <span class="gpx-summary-text">${esc(summary)}</span>
           </span>
         </button>
-        <button class="btn btn-secondary btn-sm" data-stage-gpx-upload="${esc(stage.id)}"${writeDisabledAttr()}>Upload</button>
       </div>
       ${STATE.gpxError ? `<div class="stage-warn">${esc(STATE.gpxError)}</div>` : ''}
       ${body}
@@ -3239,6 +3252,25 @@ function toggleStageJournal(stageId) {
   STATE.expandedStages.add(stageId);
   if (!STATE.entriesByStage[stageId] || STATE.entriesByStage[stageId] === 'loading') {
     loadEntriesForStage(stageId);
+  } else {
+    renderAll();
+  }
+}
+
+function toggleStageGpx(stageId) {
+  if (!stageId) return;
+
+  if (STATE.expandedGpxStages.has(stageId)) {
+    STATE.expandedGpxStages.delete(stageId);
+    renderAll();
+    return;
+  }
+
+  STATE.expandedGpxStages.add(stageId);
+
+  const trip = currentTrip();
+  if (trip && !Array.isArray(STATE.gpxByTrip[trip.id])) {
+    loadGpxForTrip(trip.id);
   } else {
     renderAll();
   }
