@@ -296,9 +296,11 @@ Full current schema in `schema.sql` (idempotent). Incremental changes are tracke
 - [x] Reuse private/group trip access rules inside the RPC
 - [x] Set `app_meta.schema_version = 008`
 
-**Phase 2.6C — Release/cache hardening**
-- [ ] Standardize app-shell/module cache invalidation
-- [ ] Add schema-version startup sanity check
+**Phase 2.6C — Release/cache hardening ✅**
+- [x] Standardize app-shell/module cache invalidation with versioned app shell URLs
+- [x] Use network-first service worker handling for JavaScript and CSS
+- [x] Add schema-version startup sanity check against `app_meta.schema_version = 008`
+- [x] Add compact mobile Trips filters behind a Filters button
 
 ### Phase 3 — Archive + tracks
 
@@ -375,7 +377,7 @@ For every release that includes a database migration:
 
 ## PWA update notes
 
-After deploying changes that touch `app.js`, `style.css`, or `sw.js`, close and reopen the installed PWA. On iOS, if the Home Screen app remains stale, open the site in Safari, refresh it, then close and reopen the Home Screen app. The last-resort fix is removing and reinstalling the Home Screen app.
+The app shell uses a manual release query string for `app.js` and `style.css`, and the service worker uses network-first handling for JavaScript and CSS. After deploying changes that touch `app.js`, `style.css`, or `sw.js`, close and reopen the installed PWA. On iOS, if the Home Screen app remains stale, open the site in Safari, refresh it, then close and reopen the Home Screen app. The last-resort fix is removing and reinstalling the Home Screen app.
 
 ---
 
@@ -404,11 +406,12 @@ The human is a capable engineer new to this specific stack — explanations shou
 routefolk/
 ├── index.html              # App shell
 ├── style.css               # All styles
-├── app.js                  # Main app logic, state, filters, and offline-aware UI
+├── app.js                  # Main app logic, state, filters, schema check, and offline-aware UI
 ├── lib/
 │   ├── config.js           # Supabase URL + anon key
 │   ├── supabase.js         # Supabase client setup
 │   ├── auth.js             # Sign-in / sign-out / current user
+│   ├── meta.js             # App metadata helpers, including schema version check
 │   ├── trips.js            # Trip CRUD + visibility handling
 │   ├── stages.js           # Stage CRUD with auto-geocoding, custom-URL validation, and atomic reorder RPC
 │   ├── geocoding.js        # Open-Meteo geocoding wrapper + cache
@@ -416,7 +419,7 @@ routefolk/
 │   ├── journal.js          # Journal entry CRUD + journal URL validation
 │   ├── profiles.js         # Profile upsert/list for names and avatars
 │   └── expenses.js         # Expense CRUD + Phase 2B stage assignment validation
-├── sw.js                   # Service worker (bump CACHE on shell changes)
+├── sw.js                   # Service worker with network-first handling for app code
 ├── manifest.json           # PWA manifest
 ├── icons/
 │   ├── icon-192.png
@@ -437,6 +440,10 @@ routefolk/
 ---
 
 ## Decisions log
+
+- **2026-05: Phase 2.6C standardizes app cache invalidation.** Top-level app shell files use an explicit release query string and the service worker uses network-first handling for JavaScript and CSS, reducing stale installed-PWA bugs.
+- **2026-05: App startup checks schema version.** Signed-in users now get a clear migration-required message if `public.app_meta.schema_version` does not match the version expected by the app.
+- **2026-05: Mobile Trips filters are collapsed.** Search and status filters remain visible on tablet/desktop, but mobile shows a compact Filters button to avoid wasting vertical space.
 
 A running list of decisions made and why. New entries go at the top.
 

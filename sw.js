@@ -1,20 +1,22 @@
 // ============================================================
 // routefolk — sw.js (service worker)
-// Caches the app shell. Network-first for HTML, cache-first
-// for static assets. Bump CACHE when shell assets change.
+// Network-first for app code, cache fallback for installed PWA use.
+// Bump CACHE and RELEASE whenever shell assets change.
 // ============================================================
 
-const CACHE = 'routefolk-shell-v14';
+const RELEASE = '20260512-phase26c';
+const CACHE = 'routefolk-shell-v15';
 
 const SHELL_ASSETS = [
   './',
   './index.html',
-  './style.css',
-  './app.js',
+  `./style.css?v=${RELEASE}`,
+  `./app.js?v=${RELEASE}`,
   './manifest.json',
   './lib/config.js',
   './lib/supabase.js',
   './lib/auth.js',
+  './lib/meta.js',
   './lib/trips.js',
   './lib/stages.js',
   './lib/geocoding.js',
@@ -24,8 +26,6 @@ const SHELL_ASSETS = [
   './lib/expenses.js',
   './icons/icon-192.png',
   './icons/icon-512.png',
-  './style.css?v=20260511-phase25-filters',
-  './app.js?v=20260511-phase25-filters',
 ];
 
 self.addEventListener('install', (event) => {
@@ -46,6 +46,42 @@ self.addEventListener('activate', (event) => {
   })());
 });
 
+function isAppCodeRequest(req, url) {
+  return req.destination === 'script'
+    || req.destination === 'style'
+    || url.pathname.endsWith('.js')
+    || url.pathname.endsWith('.css');
+}
+
+async function networkFirst(req) {
+  const cache = await caches.open(CACHE);
+  try {
+    const fresh = await fetch(req);
+    if (fresh.ok) cache.put(req, fresh.clone()).catch(() => {});
+    return fresh;
+  } catch {
+    const cached = await caches.match(req);
+    if (cached) return cached;
+    if (req.mode === 'navigate') return caches.match('./index.html');
+    return Response.error();
+  }
+}
+
+async function cacheFirst(req) {
+  const cached = await caches.match(req);
+  if (cached) return cached;
+  try {
+    const fresh = await fetch(req);
+    if (fresh.ok) {
+      const cache = await caches.open(CACHE);
+      cache.put(req, fresh.clone()).catch(() => {});
+    }
+    return fresh;
+  } catch {
+    return Response.error();
+  }
+}
+
 self.addEventListener('fetch', (event) => {
   const req = event.request;
   if (req.method !== 'GET') return;
@@ -53,33 +89,10 @@ self.addEventListener('fetch', (event) => {
   const url = new URL(req.url);
   if (url.origin !== self.location.origin) return;
 
-  if (req.mode === 'navigate') {
-    event.respondWith((async () => {
-      try {
-        const fresh = await fetch(req);
-        const cache = await caches.open(CACHE);
-        cache.put(req, fresh.clone()).catch(() => {});
-        return fresh;
-      } catch {
-        const cached = await caches.match(req);
-        return cached || caches.match('./index.html');
-      }
-    })());
+  if (req.mode === 'navigate' || isAppCodeRequest(req, url)) {
+    event.respondWith(networkFirst(req));
     return;
   }
 
-  event.respondWith((async () => {
-    const cached = await caches.match(req);
-    if (cached) return cached;
-    try {
-      const fresh = await fetch(req);
-      if (fresh.ok) {
-        const cache = await caches.open(CACHE);
-        cache.put(req, fresh.clone()).catch(() => {});
-      }
-      return fresh;
-    } catch {
-      return Response.error();
-    }
-  })());
+  event.respondWith(cacheFirst(req));
 });

@@ -1,21 +1,27 @@
 // ============================================================
 // routefolk — app.js
-// Phase 2.5: reliability polish, trip filters, audit display.
+// Phase 2.6C: release/cache hardening, schema check, compact mobile filters.
 // ============================================================
 
 import { signInWithGoogle, signOut, getCurrentUser, onAuthChange } from './lib/auth.js';
-import { listTrips, createTrip, updateTrip, deleteTrip } from './lib/trips.js?v=20260511-visibility-fix';
-import { listExpensesForTrip, createExpense, updateExpense, deleteExpense } from './lib/expenses.js?v=20260511-expense-stage-assignment';
+import { listTrips, createTrip, updateTrip, deleteTrip } from './lib/trips.js';
+import { listExpensesForTrip, createExpense, updateExpense, deleteExpense } from './lib/expenses.js';
 import { listStages, createStage, updateStage, deleteStage, swapStageOrder } from './lib/stages.js';
 import { fetchStageForecasts } from './lib/weather.js';
 import { listEntriesForStage, createEntry, updateEntry, deleteEntry } from './lib/journal.js';
 import { upsertCurrentProfile, listProfiles } from './lib/profiles.js';
+import { getSchemaVersion } from './lib/meta.js';
+
+const EXPECTED_SCHEMA_VERSION = '008';
 
 const STATE = {
   tab: 'trips',
   view: 'list', // list | detail | summary
   viewTripId: null,
   user: null,
+  schemaVersion: null,
+  schemaLoading: false,
+  schemaError: null,
   trips: [],
   tripsLoading: false,
   tripsError: null,
@@ -35,6 +41,7 @@ const STATE = {
   expensesError: null,
   tripSearch: '',
   tripStatusFilter: 'all',
+  tripFiltersOpen: false,
   isOnline: typeof navigator === 'undefined' ? true : navigator.onLine !== false,
 };
 
@@ -411,8 +418,39 @@ async function loadProfiles() {
   }
 }
 
+async function ensureSchemaCompatible() {
+  if (!STATE.user) return false;
+
+  STATE.schemaLoading = true;
+  STATE.schemaError = null;
+  renderAll();
+
+  try {
+    const version = await getSchemaVersion();
+    STATE.schemaVersion = version;
+
+    if (version !== EXPECTED_SCHEMA_VERSION) {
+      STATE.schemaError = `Database migration required. Expected schema version ${EXPECTED_SCHEMA_VERSION}, but found ${version || 'none'}.`;
+      return false;
+    }
+
+    return true;
+  } catch (err) {
+    console.error(err);
+    STATE.schemaError = 'Could not verify database schema version. Check the connection and confirm migrations are applied.';
+    return false;
+  } finally {
+    STATE.schemaLoading = false;
+    renderAll();
+  }
+}
+
 async function loadSignedInData() {
   if (!STATE.user) return;
+
+  const schemaOk = await ensureSchemaCompatible();
+  if (!schemaOk) return;
+
   try {
     await upsertCurrentProfile(STATE.user);
   } catch (err) {
@@ -525,8 +563,16 @@ function tripCardHtml(trip) {
 }
 
 function tripFiltersHtml() {
+  const activeFilters = Number(Boolean(STATE.tripSearch.trim())) + Number(STATE.tripStatusFilter !== 'all');
+  const toggleText = STATE.tripFiltersOpen ? 'Hide filters' : `Filters${activeFilters ? ` (${activeFilters})` : ''}`;
+
   return `
-    <div class="trip-controls">
+    <div class="trip-filter-toggle-row">
+      <button class="btn btn-secondary btn-sm trip-filter-toggle" id="tripFiltersToggle" aria-expanded="${STATE.tripFiltersOpen ? 'true' : 'false'}">
+        ${esc(toggleText)}
+      </button>
+    </div>
+    <div class="trip-controls ${STATE.tripFiltersOpen ? 'open' : ''}" id="tripFiltersPanel">
       <div class="trip-search-wrap">
         <label class="form-label" for="tripSearchInput">Search trips</label>
         <input class="inp" id="tripSearchInput" type="search" value="${esc(STATE.tripSearch)}" placeholder="Search by trip title">
@@ -2001,7 +2047,11 @@ function renderTab() {
   const content = $('content');
   if (!content) return;
 
-  if (STATE.tab === 'account') {
+  if (STATE.user && STATE.schemaLoading) {
+    content.innerHTML = offlineBannerHtml() + `<div class="empty-state"><div class="empty-sub">Checking database schema…</div></div>`;
+  } else if (STATE.user && STATE.schemaError) {
+    content.innerHTML = offlineBannerHtml() + schemaErrorHtml();
+  } else if (STATE.tab === 'account') {
     content.innerHTML = offlineBannerHtml() + renderAccount();
   } else if (STATE.view === 'detail') {
     content.innerHTML = offlineBannerHtml() + renderTripDetail();
@@ -2016,6 +2066,17 @@ function renderTab() {
   bindContentEvents(content);
 }
 
+function schemaErrorHtml() {
+  return `
+    <div class="card">
+      <div class="card-title" style="color:#ef6262;">Database migration required</div>
+      <div style="color:#c5d0e0;font-size:14px;line-height:1.5;">${esc(STATE.schemaError)}</div>
+      <div class="form-help" style="margin-top:8px;">Expected schema version: ${esc(EXPECTED_SCHEMA_VERSION)}</div>
+      <button class="btn btn-secondary btn-block" style="margin-top:12px;" id="retrySchemaBtn">Check again</button>
+    </div>
+  `;
+}
+
 function bindTripCards(root) {
   root.querySelectorAll('[data-trip-id]').forEach((btn) => {
     btn.addEventListener('click', () => openTrip(btn.dataset.tripId));
@@ -2027,11 +2088,16 @@ function bindContentEvents(content) {
   content.querySelector('#accountSignInBtn')?.addEventListener('click', handleSignIn);
   content.querySelector('#signOutBtn')?.addEventListener('click', handleSignOut);
   content.querySelector('#retryTripsBtn')?.addEventListener('click', loadTrips);
+  content.querySelector('#retrySchemaBtn')?.addEventListener('click', loadSignedInData);
   content.querySelector('#retryStagesBtn')?.addEventListener('click', () => {
     if (STATE.viewTripId) loadStagesForTrip(STATE.viewTripId);
   });
   content.querySelector('#retryExpensesBtn')?.addEventListener('click', () => {
     if (STATE.viewTripId) loadExpensesForTrip(STATE.viewTripId);
+  });
+  content.querySelector('#tripFiltersToggle')?.addEventListener('click', () => {
+    STATE.tripFiltersOpen = !STATE.tripFiltersOpen;
+    renderAll();
   });
   content.querySelector('#tripSearchInput')?.addEventListener('input', (e) => {
     STATE.tripSearch = e.target.value || '';
@@ -2193,6 +2259,9 @@ async function init() {
 
   onAuthChange(async (user) => {
     STATE.user = user;
+    STATE.schemaVersion = null;
+    STATE.schemaLoading = false;
+    STATE.schemaError = null;
     STATE.trips = [];
     STATE.stagesByTrip = {};
     STATE.entriesByStage = {};
@@ -2204,6 +2273,7 @@ async function init() {
     STATE.expensesError = null;
     STATE.expandedStages.clear();
     STATE.expandedSummaryStages.clear();
+    STATE.tripFiltersOpen = false;
     STATE.view = 'list';
     STATE.viewTripId = null;
     renderAll();

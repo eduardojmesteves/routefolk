@@ -1294,11 +1294,25 @@ a:hover { text-decoration: underline; }
   margin-bottom: 12px;
 }
 
+.trip-filter-toggle-row {
+  display: flex;
+  justify-content: flex-start;
+  margin-bottom: 10px;
+}
+
+.trip-filter-toggle {
+  min-width: 104px;
+}
+
 .trip-controls {
-  display: grid;
+  display: none;
   grid-template-columns: 1fr;
   gap: 10px;
   margin-bottom: 12px;
+}
+
+.trip-controls.open {
+  display: grid;
 }
 
 .trip-search-wrap,
@@ -1314,7 +1328,13 @@ a:hover { text-decoration: underline; }
 }
 
 @media (min-width: 640px) {
-  .trip-controls {
+  .trip-filter-toggle-row {
+    display: none;
+  }
+
+  .trip-controls,
+  .trip-controls.open {
+    display: grid;
     grid-template-columns: minmax(0, 1fr) 180px;
     align-items: end;
   }
