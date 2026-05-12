@@ -122,6 +122,8 @@ Small schema/app metadata table.
 | notes | text | |
 | updated_by / updated_at | | auto-set on UPDATE |
 
+Stage reordering is handled by the transactional `swap_stage_order(stage_a_id, stage_b_id)` RPC, not by two separate client-side updates.
+
 ### `journal_entries`
 | Field | Type | Notes |
 |---|---|---|
@@ -188,6 +190,7 @@ Full current schema in `schema.sql` (idempotent). Incremental changes are tracke
 | `005_expenses_phase2.sql` | Adds Phase 2A expenses: selectable payer, EUR-only costs, categories, audit fields, and expense RLS hardening |
 | `006_expense_stage_assignment.sql` | Adds optional expense stage assignment with same-trip validation |
 | `007_schema_safety_pack.sql` | Fixes FK/nullability consistency, adds core DB constraints, normalizes/protects stage ordering, and sets `app_meta.schema_version = 007` |
+| `008_atomic_stage_reorder.sql` | Adds transactional `swap_stage_order` RPC and sets `app_meta.schema_version = 008` |
 
 ---
 
@@ -286,8 +289,12 @@ Full current schema in `schema.sql` (idempotent). Incremental changes are tracke
 - [x] Add deferrable uniqueness for `stages(trip_id, order_index)`
 - [x] Add lightweight `app_meta.schema_version = 007` marker
 
-**Phase 2.6B — Atomic stage reorder**
-- [ ] Replace the two-client-update stage swap with a transactional Supabase RPC
+**Phase 2.6B — Atomic stage reorder ✅**
+- [x] Replace the two-client-update stage swap with a transactional Supabase RPC
+- [x] Lock both stage rows before swapping order values
+- [x] Validate both stages belong to the same trip
+- [x] Reuse private/group trip access rules inside the RPC
+- [x] Set `app_meta.schema_version = 008`
 
 **Phase 2.6C — Release/cache hardening**
 - [ ] Standardize app-shell/module cache invalidation
@@ -403,7 +410,7 @@ routefolk/
 │   ├── supabase.js         # Supabase client setup
 │   ├── auth.js             # Sign-in / sign-out / current user
 │   ├── trips.js            # Trip CRUD + visibility handling
-│   ├── stages.js           # Stage CRUD with auto-geocoding & custom-URL validation
+│   ├── stages.js           # Stage CRUD with auto-geocoding, custom-URL validation, and atomic reorder RPC
 │   ├── geocoding.js        # Open-Meteo geocoding wrapper + cache
 │   ├── weather.js          # Open-Meteo forecast wrapper + cache
 │   ├── journal.js          # Journal entry CRUD + journal URL validation
@@ -421,7 +428,9 @@ routefolk/
 │   ├── 003_profiles_trip_visibility.sql
 │   ├── 004_visibility_rls_hardening.sql
 │   ├── 005_expenses_phase2.sql
-│   └── 006_expense_stage_assignment.sql
+│   ├── 006_expense_stage_assignment.sql
+│   ├── 007_schema_safety_pack.sql
+│   └── 008_atomic_stage_reorder.sql
 └── README.md               # This file
 ```
 
@@ -430,6 +439,8 @@ routefolk/
 ## Decisions log
 
 A running list of decisions made and why. New entries go at the top.
+
+- **2026-05: Phase 2.6B moves stage reorder into the database.** Stage order swaps now use a transactional `swap_stage_order` RPC that locks both rows, checks same-trip access, and updates both `order_index` values atomically. The previous two-client-update approach was too fragile once stage order uniqueness was enforced.
 
 - **2026-05: Phase 2.6A hardens schema invariants before Phase 3.** Foreign-key/nullability mismatches are fixed, core date/distance/order/coordinate constraints are added, and stage order is protected with a deferrable unique constraint.
 - **2026-05: Auth-user deletion is restricted for ownership and payer fields.** `trips.created_by` and `expenses.user_id` are semantically important and must not silently become null. Journal authorship is less critical, so `journal_entries.author_id` may become null if an auth user is removed.
