@@ -134,7 +134,7 @@ Stage reordering is handled by the transactional `swap_stage_order(stage_a_id, s
 | title / description / location | text | |
 | location_url | text | optional Google Maps URL; `https` + Google Maps host allowlist |
 | info_url | text | optional generic website URL; `https` only |
-| timestamp | timestamptz | when it happened (not when entered) |
+| timestamp | timestamptz | when it happened; in the UI it follows the stage planned date |
 | photo_album_url | text | optional external album URL; `https` only |
 
 ### `expenses`
@@ -297,7 +297,7 @@ Full current schema in `schema.sql` (idempotent). Incremental changes are tracke
 - [x] Show last edited by / at on trip detail and stage cards
 - [x] Hide whole-trip delete action for non-creators
 - [x] Trip title search on the Trips screen
-- [x] Trip status filter: All / Planning / Active / Completed / Cancelled
+- [x] Trip status filter: All active / Planning / Active
 
 ### Phase 2.6 — Safety and operational hardening
 
@@ -357,6 +357,15 @@ Full current schema in `schema.sql` (idempotent). Incremental changes are tracke
 - [x] Remove latitude/longitude grid labels from the archive geography view
 - [x] Keep one consistent GPX route style for now
 - [x] Open trip detail when a route or point is clicked
+
+**Phase 3.5 — Screen clarity and stage-card usability ✅**
+- [x] Trips screen shows only Planning and Active trips
+- [x] Trips status filter is limited to All active / Planning / Active
+- [x] Archive remains the home for Completed and Cancelled trips
+- [x] New journal entries default to Stop
+- [x] Journal entry timestamp defaults to the stage planned date; if the stage has no date, the timestamp is empty
+- [x] Journal entry timestamp is constrained to the stage planned date
+- [x] GPX stage section is compact by default and expands only when needed
 
 **Phase 3D — Stage/trip GPX maps**
 - [ ] Display GPX track on the stage map view
@@ -464,7 +473,7 @@ The human is a capable engineer new to this specific stack — explanations shou
 routefolk/
 ├── index.html              # App shell
 ├── style.css               # All styles
-├── app.js                  # Main app logic, state, GPX upload/archive geography, schema check, and offline-aware UI
+├── app.js                  # Main app logic, state, active/archive split, GPX upload/archive geography, schema check, and offline-aware UI
 ├── lib/
 │   ├── config.js           # Supabase URL + anon key
 │   ├── supabase.js         # Supabase client setup
@@ -500,6 +509,10 @@ routefolk/
 ---
 
 ## Decisions log
+
+- **2026-05: Phase 3.5 separates active work from archive history.** The Trips screen now shows only planning and active trips. Completed and cancelled trips live in Archive, making the app workflow clearer: plan, ride, complete, archive.
+- **2026-05: Journal dates follow stage dates.** New journal entries default to Stop and use the stage planned date for their timestamp. If a stage has no planned date, the journal timestamp stays empty instead of inventing a date.
+- **2026-05: Stage GPX UI is compact by default.** GPX tracks are still linked to stages, but the stage card shows a one-line GPX summary until expanded so route files do not dominate the planning view.
 
 - **2026-05: Phase 3C.1 improves Archive GPX presentation.** Archive geography now uses a simple Europe boundary view with country outlines only. Latitude/longitude labels and road tiles are avoided because this view is for ride history, not turn-by-turn navigation.
 - **2026-05: Archive geography uses only real GPX geometry.** Stage start/end coordinates and Google Maps links are not used to draw routes because they would misrepresent the actual ride.

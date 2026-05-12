@@ -1,6 +1,6 @@
 // ============================================================
 // routefolk — app.js
-// Phase 3C.1: GPX archive geography presentation with simplified Europe boundaries.
+// Phase 3.5: screen clarity, journal defaults, and compact GPX stage UI.
 // ============================================================
 
 import { signInWithGoogle, signOut, getCurrentUser, onAuthChange } from './lib/auth.js';
@@ -32,6 +32,7 @@ const STATE = {
   forecastsByStage: {},
   entriesByStage: {},          // stageId -> array of entries OR 'loading'
   expandedStages: new Set(),   // journal sections open in trip detail
+  expandedGpxStages: new Set(), // GPX sections open in trip detail
   expandedSummaryStages: new Set(),
   profiles: [],                // users who have signed in at least once
   profilesById: {},
@@ -65,6 +66,9 @@ const STATUS_META = {
   completed: { label: 'Completed', cls: 'status-completed' },
   cancelled: { label: 'Cancelled', cls: 'status-cancelled' },
 };
+
+const TRIPS_SCREEN_STATUSES = ['planning', 'active'];
+const ARCHIVE_SCREEN_STATUSES = ['completed', 'cancelled'];
 
 
 const VISIBILITY_META = {
@@ -316,6 +320,16 @@ function todayIsoDate() {
   const d = new Date();
   const pad = (n) => String(n).padStart(2, '0');
   return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`;
+}
+
+function currentLocalTimeHHMM() {
+  const d = new Date();
+  const pad = (n) => String(n).padStart(2, '0');
+  return `${pad(d.getHours())}:${pad(d.getMinutes())}`;
+}
+
+function journalDefaultDatetimeLocal(stage) {
+  return stage?.planned_date ? `${stage.planned_date}T${currentLocalTimeHHMM()}` : '';
 }
 
 function fmtEuro(value, options = {}) {
@@ -765,35 +779,44 @@ function tripFiltersHtml() {
       <div class="trip-status-wrap">
         <label class="form-label" for="tripStatusFilter">Status</label>
         <select class="sel" id="tripStatusFilter">
-          <option value="all" ${STATE.tripStatusFilter === 'all' ? 'selected' : ''}>All</option>
-          ${Object.entries(STATUS_META).map(([key, meta]) => `<option value="${esc(key)}" ${STATE.tripStatusFilter === key ? 'selected' : ''}>${esc(meta.label)}</option>`).join('')}
+          <option value="all" ${STATE.tripStatusFilter === 'all' ? 'selected' : ''}>All active</option>
+          ${TRIPS_SCREEN_STATUSES.map((key) => {
+            const meta = STATUS_META[key];
+            return `<option value="${esc(key)}" ${STATE.tripStatusFilter === key ? 'selected' : ''}>${esc(meta.label)}</option>`;
+          }).join('')}
         </select>
       </div>
     </div>
   `;
 }
 
+function activeTripsBase() {
+  return STATE.trips.filter((trip) => TRIPS_SCREEN_STATUSES.includes(trip.status));
+}
+
 function filteredTripsForTripsScreen() {
   const query = STATE.tripSearch.trim().toLowerCase();
-  return STATE.trips.filter((trip) => {
-    const matchesStatus = STATE.tripStatusFilter === 'all' || trip.status === STATE.tripStatusFilter;
+  const statusFilter = TRIPS_SCREEN_STATUSES.includes(STATE.tripStatusFilter) ? STATE.tripStatusFilter : 'all';
+  return activeTripsBase().filter((trip) => {
+    const matchesStatus = statusFilter === 'all' || trip.status === statusFilter;
     const matchesSearch = !query || String(trip.title || '').toLowerCase().includes(query);
     return matchesStatus && matchesSearch;
   });
 }
 
 function tripResultsHtml() {
+  const baseTrips = activeTripsBase();
   const trips = filteredTripsForTripsScreen();
   const hasFilters = STATE.tripSearch.trim() || STATE.tripStatusFilter !== 'all';
 
-  if (!STATE.trips.length) {
+  if (!baseTrips.length) {
     return `
       <div class="empty-state">
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
           <path d="M3 6h18M3 12h18M3 18h12"/>
         </svg>
-        <div class="empty-title">No trips</div>
-        <div class="empty-sub">Tap "+ New trip" to plan one.</div>
+        <div class="empty-title">No active trips</div>
+        <div class="empty-sub">Planning and active trips appear here. Completed and cancelled trips live in the Archive.</div>
       </div>
     `;
   }
@@ -802,7 +825,7 @@ function tripResultsHtml() {
     return `
       <div class="empty-state">
         <div class="empty-title">No matching trips</div>
-        <div class="empty-sub">${hasFilters ? 'Adjust the search or status filter.' : 'No trips to show.'}</div>
+        <div class="empty-sub">${hasFilters ? 'Adjust the search or active-trip status filter.' : 'No planning or active trips to show.'}</div>
       </div>
     `;
   }
@@ -831,7 +854,7 @@ function renderTrips() {
 
 
 function archiveTripsBase() {
-  return STATE.trips.filter((t) => t.status === 'completed' || t.status === 'cancelled');
+  return STATE.trips.filter((t) => ARCHIVE_SCREEN_STATUSES.includes(t.status));
 }
 
 function completedArchiveTrips() {
@@ -1525,36 +1548,48 @@ function gpxTrackMeta(track) {
 function gpxStageSectionHtml(stage, trip) {
   const tracksRaw = STATE.gpxByTrip[trip.id];
   const tracks = gpxTracksForStage(trip, stage);
-  let body = '';
+  const expanded = STATE.expandedGpxStages.has(stage.id);
+  const totalDistance = tracks.reduce((sum, track) => sum + (Number(track.distance_km) || 0), 0);
+  const summary = tracksRaw === 'loading' || STATE.gpxLoading
+    ? 'Loading…'
+    : tracks.length
+      ? `${tracks.length} track${tracks.length === 1 ? '' : 's'}${totalDistance ? ` · ${fmtKm(totalDistance)}` : ''}`
+      : 'No track yet';
 
-  if (tracksRaw === 'loading' || STATE.gpxLoading) {
-    body = `<div class="empty-sub">Loading GPX tracks…</div>`;
-  } else if (!tracks.length) {
-    body = `<div class="empty-sub">No GPX track linked to this stage yet.</div>`;
-  } else {
-    body = `
-      <div class="gpx-track-list">
-        ${tracks.map((track) => `
-          <div class="gpx-track-row">
-            <div class="gpx-track-main">
-              <div class="gpx-track-name">${esc(trackFileName(track))}</div>
-              <div class="gpx-track-meta">${esc(gpxTrackMeta(track) || 'GPX track')}</div>
+  let body = '';
+  if (expanded) {
+    if (tracksRaw === 'loading' || STATE.gpxLoading) {
+      body = `<div class="empty-sub gpx-section-body">Loading GPX tracks…</div>`;
+    } else if (!tracks.length) {
+      body = `<div class="empty-sub gpx-section-body">Upload the real ridden route for this stage when available.</div>`;
+    } else {
+      body = `
+        <div class="gpx-track-list gpx-section-body">
+          ${tracks.map((track) => `
+            <div class="gpx-track-row">
+              <div class="gpx-track-main">
+                <div class="gpx-track-name">${esc(trackFileName(track))}</div>
+                <div class="gpx-track-meta">${esc(gpxTrackMeta(track) || 'GPX track')}</div>
+              </div>
+              <button class="entry-icon-btn entry-icon-danger" data-gpx-action="delete" data-id="${esc(track.id)}" title="Delete GPX"${writeDisabledAttr()}>✕</button>
             </div>
-            <button class="entry-icon-btn entry-icon-danger" data-gpx-action="delete" data-id="${esc(track.id)}" title="Delete GPX"${writeDisabledAttr()}>✕</button>
-          </div>
-        `).join('')}
-      </div>
-    `;
+          `).join('')}
+        </div>
+      `;
+    }
   }
 
   return `
-    <div class="gpx-section">
+    <div class="gpx-section ${expanded ? 'open' : ''}">
       <div class="gpx-section-head">
-        <div>
-          <div class="gpx-section-title">GPX track</div>
-          <div class="form-help">Upload the real ridden route for this stage.</div>
-        </div>
-        <button class="btn btn-secondary btn-sm" data-stage-gpx-upload="${esc(stage.id)}"${writeDisabledAttr()}>Upload GPX</button>
+        <button class="gpx-summary-toggle" data-gpx-toggle="${esc(stage.id)}" aria-expanded="${expanded ? 'true' : 'false'}">
+          <span class="gpx-caret">${expanded ? '▾' : '▸'}</span>
+          <span class="gpx-summary-copy">
+            <span class="gpx-section-title">GPX</span>
+            <span class="gpx-summary-text">${esc(summary)}</span>
+          </span>
+        </button>
+        <button class="btn btn-secondary btn-sm" data-stage-gpx-upload="${esc(stage.id)}"${writeDisabledAttr()}>Upload</button>
       </div>
       ${STATE.gpxError ? `<div class="stage-warn">${esc(STATE.gpxError)}</div>` : ''}
       ${body}
@@ -2149,13 +2184,33 @@ function showDeleteStageConfirm(stage) {
     ]);
 }
 
-function entryFormHtml(entry = {}) {
+function findStageById(stageId) {
+  for (const stages of Object.values(STATE.stagesByTrip)) {
+    if (!Array.isArray(stages)) continue;
+    const stage = stages.find((s) => s.id === stageId);
+    if (stage) return stage;
+  }
+  return null;
+}
+
+function entryFormHtml(entry = {}, stage = null) {
+  const selectedType = entry.entry_type || 'stop';
+  const timeValue = stage?.planned_date
+    ? (entry.timestamp ? isoToDatetimeLocal(entry.timestamp) : journalDefaultDatetimeLocal(stage))
+    : '';
+  const timeAttrs = stage?.planned_date
+    ? ` min="${esc(`${stage.planned_date}T00:00`)}" max="${esc(`${stage.planned_date}T23:59`)}"`
+    : ' disabled';
+  const timeHelp = stage?.planned_date
+    ? `Journal entries for this stage must use ${esc(fmtDate(stage.planned_date))}.`
+    : 'This stage has no planned date, so the journal date is left empty.';
+
   return `
     <div class="form-row">
       <label class="form-label" for="jfType">Type</label>
       <select class="sel" id="jfType">
         ${Object.entries(ENTRY_TYPE_META).map(([key, m]) =>
-          `<option value="${esc(key)}" ${(entry.entry_type || 'note') === key ? 'selected' : ''}>${esc(m.icon)} ${esc(m.label)}</option>`
+          `<option value="${esc(key)}" ${selectedType === key ? 'selected' : ''}>${esc(m.icon)} ${esc(m.label)}</option>`
         ).join('')}
       </select>
     </div>
@@ -2183,7 +2238,8 @@ function entryFormHtml(entry = {}) {
     </div>
     <div class="form-row">
       <label class="form-label" for="jfTime">When</label>
-      <input class="inp" id="jfTime" type="datetime-local" value="${esc(entry.timestamp ? isoToDatetimeLocal(entry.timestamp) : nowAsDatetimeLocal())}">
+      <input class="inp" id="jfTime" type="datetime-local" value="${esc(timeValue)}"${timeAttrs}>
+      <div class="form-help">${timeHelp}</div>
     </div>
     <div class="form-row">
       <label class="form-label" for="jfAlbum">Photo album URL (optional)</label>
@@ -2193,21 +2249,34 @@ function entryFormHtml(entry = {}) {
   `;
 }
 
-function readEntryForm() {
+function readEntryForm(stageId = null) {
+  const stage = findStageById(stageId);
+  const rawTime = $('jfTime')?.value || '';
+  let timestamp = null;
+
+  if (stage?.planned_date) {
+    if (!rawTime) throw new Error('Journal entry date is required because the stage has a planned date.');
+    if (!rawTime.startsWith(`${stage.planned_date}T`)) {
+      throw new Error('Journal entry date must match the stage planned date.');
+    }
+    timestamp = datetimeLocalToIso(rawTime);
+  }
+
   return {
-    entry_type: $('jfType')?.value || 'note',
+    entry_type: $('jfType')?.value || 'stop',
     title: $('jfTitle')?.value.trim() || '',
     description: $('jfDesc')?.value.trim() || '',
     location: $('jfLocation')?.value.trim() || '',
     location_url: $('jfLocationUrl')?.value.trim() || '',
     info_url: $('jfInfoUrl')?.value.trim() || '',
-    timestamp: datetimeLocalToIso($('jfTime')?.value || ''),
+    timestamp,
     photo_album_url: $('jfAlbum')?.value.trim() || '',
   };
 }
 
 function showNewEntryModal(stageId) {
-  showModal('Add journal entry', entryFormHtml({ entry_type: 'note' }), [
+  const stage = findStageById(stageId);
+  showModal('Add journal entry', entryFormHtml({ entry_type: 'stop' }, stage), [
     { label: 'Add entry', cls: 'btn-primary', fn: () => handleCreateEntry(stageId) },
     { label: 'Cancel', cls: 'btn-secondary', fn: closeModal },
   ]);
@@ -2215,7 +2284,8 @@ function showNewEntryModal(stageId) {
 }
 
 function showEditEntryModal(stageId, entry) {
-  showModal('Edit journal entry', entryFormHtml(entry), [
+  const stage = findStageById(stageId);
+  showModal('Edit journal entry', entryFormHtml(entry, stage), [
     { label: 'Save', cls: 'btn-primary', fn: () => handleUpdateEntry(stageId, entry.id) },
     { label: 'Cancel', cls: 'btn-secondary', fn: closeModal },
   ]);
@@ -2801,26 +2871,28 @@ async function handleMoveStage(stageId, direction) {
 async function handleCreateEntry(stageId) {
   if (!ensureOnline()) return;
   try {
-    await createEntry(stageId, readEntryForm());
+    await createEntry(stageId, readEntryForm(stageId));
     closeModal();
     await loadEntriesForStage(stageId, { quiet: true });
     toast('Entry added.');
   } catch (err) {
     console.error(err);
-    toast(friendlyError('save journal entry', err));
+    const msg = String(err?.message || '');
+    toast(msg.startsWith('Journal entry') ? msg : friendlyError('save journal entry', err));
   }
 }
 
 async function handleUpdateEntry(stageId, entryId) {
   if (!ensureOnline()) return;
   try {
-    await updateEntry(entryId, readEntryForm());
+    await updateEntry(entryId, readEntryForm(stageId));
     closeModal();
     await loadEntriesForStage(stageId, { quiet: true });
     toast('Entry updated.');
   } catch (err) {
     console.error(err);
-    toast(friendlyError('save journal entry', err));
+    const msg = String(err?.message || '');
+    toast(msg.startsWith('Journal entry') ? msg : friendlyError('save journal entry', err));
   }
 }
 
@@ -2990,7 +3062,7 @@ function bindContentEvents(content) {
     }
   });
   content.querySelector('#tripStatusFilter')?.addEventListener('change', (e) => {
-    STATE.tripStatusFilter = e.target.value || 'all';
+    STATE.tripStatusFilter = TRIPS_SCREEN_STATUSES.includes(e.target.value) ? e.target.value : 'all';
     const results = content.querySelector('#tripResults');
     if (results) {
       results.innerHTML = tripResultsHtml();
@@ -3091,6 +3163,10 @@ function bindContentEvents(content) {
 
   content.querySelectorAll('[data-stage-add-entry]').forEach((btn) => {
     btn.addEventListener('click', () => { if (ensureOnline()) showNewEntryModal(btn.dataset.stageAddEntry); });
+  });
+
+  content.querySelectorAll('[data-gpx-toggle]').forEach((btn) => {
+    btn.addEventListener('click', () => toggleStageGpx(btn.dataset.gpxToggle));
   });
 
   content.querySelectorAll('[data-stage-gpx-upload]').forEach((btn) => {
@@ -3209,6 +3285,7 @@ async function init() {
     STATE.expensesByTrip = {};
     STATE.expensesError = null;
     STATE.expandedStages.clear();
+    STATE.expandedGpxStages.clear();
     STATE.expandedSummaryStages.clear();
     STATE.tripFiltersOpen = false;
     STATE.view = 'list';
