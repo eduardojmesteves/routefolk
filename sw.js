@@ -5,7 +5,7 @@
 // ============================================================
 
 const RELEASE = '20260512-phase26c';
-const CACHE = 'routefolk-shell-v15';
+const CACHE = 'routefolk-shell-v16';
 
 const SHELL_ASSETS = [
   './',

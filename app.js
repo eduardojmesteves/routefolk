@@ -1,6 +1,6 @@
 // ============================================================
 // routefolk — app.js
-// Phase 2.6C: release/cache hardening, schema check, compact mobile filters.
+// Phase 3A: archive baseline, install helper, cache-hardened shell.
 // ============================================================
 
 import { signInWithGoogle, signOut, getCurrentUser, onAuthChange } from './lib/auth.js';
@@ -42,6 +42,11 @@ const STATE = {
   tripSearch: '',
   tripStatusFilter: 'all',
   tripFiltersOpen: false,
+  archiveSearch: '',
+  archiveStatusFilter: 'all',
+  archiveFiltersOpen: false,
+  archiveDataLoading: false,
+  archiveDataError: null,
   isOnline: typeof navigator === 'undefined' ? true : navigator.onLine !== false,
 };
 
@@ -377,6 +382,7 @@ function goTo(tab) {
   STATE.view = 'list';
   STATE.viewTripId = null;
   renderAll();
+  if (tab === 'archive') ensureArchiveData();
 }
 
 // ---------- Data loaders ----------
@@ -394,6 +400,7 @@ async function loadTrips() {
   } finally {
     STATE.tripsLoading = false;
     renderAll();
+    if (STATE.tab === 'archive') ensureArchiveData();
   }
 }
 
@@ -536,11 +543,64 @@ async function loadExpensesForTrip(tripId, options = {}) {
   }
 }
 
+
+async function ensureArchiveData() {
+  if (!STATE.user || STATE.archiveDataLoading) return;
+  const archived = STATE.trips.filter((t) => t.status === 'completed' || t.status === 'cancelled');
+  if (!archived.length) return;
+
+  const needsWork = archived.some((trip) => {
+    const stages = STATE.stagesByTrip[trip.id];
+    if (!Array.isArray(stages)) return true;
+    if (!Array.isArray(STATE.expensesByTrip[trip.id])) return true;
+    return stages.some((stage) => !Array.isArray(STATE.entriesByStage[stage.id]));
+  });
+  if (!needsWork) return;
+
+  STATE.archiveDataLoading = true;
+  STATE.archiveDataError = null;
+  renderAll();
+
+  try {
+    for (const trip of archived) {
+      let stages = STATE.stagesByTrip[trip.id];
+      if (!Array.isArray(stages)) {
+        stages = await listStages(trip.id);
+        STATE.stagesByTrip[trip.id] = stages;
+      }
+
+      if (!Array.isArray(STATE.expensesByTrip[trip.id])) {
+        STATE.expensesByTrip[trip.id] = await listExpensesForTrip(trip.id);
+      }
+
+      for (const stage of stages) {
+        if (!Array.isArray(STATE.entriesByStage[stage.id])) {
+          STATE.entriesByStage[stage.id] = await listEntriesForStage(stage.id);
+        }
+      }
+    }
+  } catch (err) {
+    console.error(err);
+    STATE.archiveDataError = err.message || 'Failed to load archive details.';
+  } finally {
+    STATE.archiveDataLoading = false;
+    renderAll();
+  }
+}
+
 async function openTrip(tripId, view = 'detail') {
   STATE.viewTripId = tripId;
   STATE.view = view;
   renderAll();
-  if (!STATE.stagesByTrip[tripId]) await loadStagesForTrip(tripId);
+  if (!STATE.stagesByTrip[tripId]) {
+    await loadStagesForTrip(tripId);
+  } else {
+    const stages = STATE.stagesByTrip[tripId] || [];
+    stages.forEach(loadForecastForStage);
+    stages.forEach((stage) => {
+      if (!STATE.entriesByStage[stage.id]) loadEntriesForStage(stage.id, { quiet: true });
+    });
+  }
   if (!Array.isArray(STATE.expensesByTrip[tripId])) await loadExpensesForTrip(tripId, { quiet: true });
 }
 
@@ -644,17 +704,141 @@ function renderTrips() {
   `;
 }
 
-function renderArchive() {
-  if (!STATE.user) return signedOutState('Sign in to see the archive', 'Completed and cancelled trips will appear here.');
 
-  if (STATE.tripsLoading && !STATE.trips.length) {
-    return `<div class="empty-state"><div class="empty-sub">Loading archive…</div></div>`;
+function archiveTripsBase() {
+  return STATE.trips.filter((t) => t.status === 'completed' || t.status === 'cancelled');
+}
+
+function completedArchiveTrips() {
+  return STATE.trips.filter((t) => t.status === 'completed');
+}
+
+function archiveFiltersHtml() {
+  const activeFilters = Number(Boolean(STATE.archiveSearch.trim())) + Number(STATE.archiveStatusFilter !== 'all');
+  const toggleText = STATE.archiveFiltersOpen ? 'Hide filters' : `Filters${activeFilters ? ` (${activeFilters})` : ''}`;
+
+  return `
+    <div class="trip-filter-toggle-row">
+      <button class="btn btn-secondary btn-sm trip-filter-toggle" id="archiveFiltersToggle" aria-expanded="${STATE.archiveFiltersOpen ? 'true' : 'false'}">
+        ${esc(toggleText)}
+      </button>
+    </div>
+    <div class="trip-controls ${STATE.archiveFiltersOpen ? 'open' : ''}" id="archiveFiltersPanel">
+      <div class="trip-search-wrap">
+        <label class="form-label" for="archiveSearchInput">Search archive</label>
+        <input class="inp" id="archiveSearchInput" type="search" value="${esc(STATE.archiveSearch)}" placeholder="Search by trip title">
+      </div>
+      <div class="trip-status-wrap">
+        <label class="form-label" for="archiveStatusFilter">Status</label>
+        <select class="sel" id="archiveStatusFilter">
+          <option value="all" ${STATE.archiveStatusFilter === 'all' ? 'selected' : ''}>All</option>
+          <option value="completed" ${STATE.archiveStatusFilter === 'completed' ? 'selected' : ''}>Completed</option>
+          <option value="cancelled" ${STATE.archiveStatusFilter === 'cancelled' ? 'selected' : ''}>Cancelled</option>
+        </select>
+      </div>
+    </div>
+  `;
+}
+
+function filteredArchiveTrips() {
+  const query = STATE.archiveSearch.trim().toLowerCase();
+  return archiveTripsBase().filter((trip) => {
+    const matchesStatus = STATE.archiveStatusFilter === 'all' || trip.status === STATE.archiveStatusFilter;
+    const matchesSearch = !query || String(trip.title || '').toLowerCase().includes(query);
+    return matchesStatus && matchesSearch;
+  });
+}
+
+function archiveMetrics() {
+  const completed = completedArchiveTrips();
+  let distance = 0;
+  let cost = 0;
+  let entries = 0;
+  let completeData = true;
+
+  completed.forEach((trip) => {
+    const stages = STATE.stagesByTrip[trip.id];
+    const expenses = STATE.expensesByTrip[trip.id];
+
+    if (!Array.isArray(stages)) {
+      completeData = false;
+    } else {
+      distance += stages.reduce((sum, stage) => sum + (Number(stage.distance_km) || 0), 0);
+      stages.forEach((stage) => {
+        const stageEntries = STATE.entriesByStage[stage.id];
+        if (Array.isArray(stageEntries)) {
+          entries += stageEntries.length;
+        } else {
+          completeData = false;
+        }
+      });
+    }
+
+    if (Array.isArray(expenses)) {
+      cost += expenses.reduce((sum, expense) => sum + (Number(expense.amount) || 0), 0);
+    } else {
+      completeData = false;
+    }
+  });
+
+  return { completedCount: completed.length, distance, cost, entries, completeData };
+}
+
+function archiveMetricsHtml() {
+  const metrics = archiveMetrics();
+  const loading = STATE.archiveDataLoading || !metrics.completeData;
+  return `
+    <div class="archive-stats" aria-label="Archive metrics">
+      ${statItemHtml('Completed', metrics.completedCount)}
+      ${statItemHtml('Distance', loading ? '…' : (metrics.distance ? `${Math.round(metrics.distance)} km` : '—'))}
+      ${statItemHtml('Cost', loading ? '…' : (metrics.cost ? fmtEuro(metrics.cost, { compact: true }) : '—'))}
+      ${statItemHtml('Entries', loading ? '…' : metrics.entries)}
+    </div>
+    ${STATE.archiveDataLoading ? `<div class="form-help" style="margin-top:8px;">Loading archive details…</div>` : ''}
+    ${STATE.archiveDataError ? `<div class="stage-warn" style="margin-top:8px;">${esc(STATE.archiveDataError)}</div><button class="btn btn-secondary btn-sm" id="retryArchiveDataBtn" style="margin-top:8px;">Retry archive details</button>` : ''}
+  `;
+}
+
+function archiveTripMetaHtml(trip) {
+  const stages = STATE.stagesByTrip[trip.id];
+  const expenses = STATE.expensesByTrip[trip.id];
+  const stagesLoaded = Array.isArray(stages);
+  const expensesLoaded = Array.isArray(expenses);
+  const stageCount = stagesLoaded ? stages.length : null;
+  const distance = stagesLoaded ? stages.reduce((sum, s) => sum + (Number(s.distance_km) || 0), 0) : null;
+  const cost = expensesLoaded ? expenses.reduce((sum, e) => sum + (Number(e.amount) || 0), 0) : null;
+  let entries = 0;
+  let entriesLoaded = stagesLoaded;
+
+  if (stagesLoaded) {
+    stages.forEach((stage) => {
+      const stageEntries = STATE.entriesByStage[stage.id];
+      if (Array.isArray(stageEntries)) entries += stageEntries.length;
+      else entriesLoaded = false;
+    });
   }
 
-  if (STATE.tripsError) return errorCard(STATE.tripsError, 'retryTripsBtn');
+  const parts = [
+    stagesLoaded ? `${stageCount} stage${stageCount === 1 ? '' : 's'}` : 'Stages …',
+    stagesLoaded && distance ? `${Math.round(distance)} km` : (stagesLoaded ? null : 'Distance …'),
+    expensesLoaded && cost ? fmtEuro(cost, { compact: true }) : (expensesLoaded ? null : 'Cost …'),
+    entriesLoaded ? `${entries} entr${entries === 1 ? 'y' : 'ies'}` : 'Entries …',
+  ].filter(Boolean);
 
-  const archived = STATE.trips.filter((t) => t.status === 'completed' || t.status === 'cancelled');
-  if (!archived.length) {
+  return `<div class="trip-desc archive-trip-meta">${esc(parts.join(' · '))}</div>`;
+}
+
+function archiveTripCardHtml(trip) {
+  const base = tripCardHtml(trip);
+  return base.replace('</button>', `${archiveTripMetaHtml(trip)}</button>`);
+}
+
+function archiveResultsHtml() {
+  const allArchived = archiveTripsBase();
+  const trips = filteredArchiveTrips();
+  const hasFilters = STATE.archiveSearch.trim() || STATE.archiveStatusFilter !== 'all';
+
+  if (!allArchived.length) {
     return `
       <div class="empty-state">
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
@@ -667,11 +851,42 @@ function renderArchive() {
     `;
   }
 
+  if (!trips.length) {
+    return `
+      <div class="empty-state">
+        <div class="empty-title">No matching archived trips</div>
+        <div class="empty-sub">${hasFilters ? 'Adjust the search or status filter.' : 'No archived trips to show.'}</div>
+      </div>
+    `;
+  }
+
+  return `<div class="trip-list">${trips.map(archiveTripCardHtml).join('')}</div>`;
+}
+
+function renderArchive() {
+  if (!STATE.user) return signedOutState('Sign in to see the archive', 'Completed and cancelled trips will appear here.');
+
+  if (STATE.tripsLoading && !STATE.trips.length) {
+    return `<div class="empty-state"><div class="empty-sub">Loading archive…</div></div>`;
+  }
+
+  if (STATE.tripsError) return errorCard(STATE.tripsError, 'retryTripsBtn');
+
   return `
+    <div class="card">
+      <div class="card-title">Archive</div>
+      <div style="font-size:14px;color:#c5d0e0;line-height:1.5;margin-bottom:12px;">
+        Completed trips count toward archive totals. Cancelled trips stay listed for reference but do not affect totals.
+      </div>
+      ${archiveMetricsHtml()}
+    </div>
+
     <div class="section-label">Past trips</div>
-    <div class="trip-list">${archived.map(tripCardHtml).join('')}</div>
+    ${archiveFiltersHtml()}
+    <div id="archiveResults">${archiveResultsHtml()}</div>
   `;
 }
+
 
 function signedOutState(title, subtitle) {
   return `
@@ -1749,6 +1964,72 @@ function showDeleteExpenseConfirm(trip, expense) {
     ]);
 }
 
+
+// ---------- PWA install helper ----------
+function detectedInstallPlatform() {
+  const ua = navigator.userAgent || '';
+  const isIOS = /iPad|iPhone|iPod/.test(ua) || (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
+  const isAndroid = /Android/i.test(ua);
+  if (isIOS) return 'ios';
+  if (isAndroid) return 'android';
+  return 'desktop';
+}
+
+function installStepsForPlatform(platform) {
+  if (platform === 'ios') {
+    return {
+      title: 'iPhone / iPad',
+      note: 'Use Safari. Other iOS browsers usually cannot add the PWA properly.',
+      steps: ['Open routefolk in Safari.', 'Tap the Share button.', 'Choose Add to Home Screen.', 'Tap Add.'],
+    };
+  }
+  if (platform === 'android') {
+    return {
+      title: 'Android',
+      note: 'Chrome gives the most reliable install flow.',
+      steps: ['Open routefolk in Chrome.', 'Tap the three-dot menu.', 'Choose Install app or Add to Home screen.', 'Confirm the install.'],
+    };
+  }
+  return {
+    title: 'Desktop',
+    note: 'Chrome and Edge usually show an install icon in the address bar when the app is installable.',
+    steps: ['Open routefolk in Chrome or Edge.', 'Click the install icon in the address bar, when available.', 'Confirm the install.', 'Open routefolk from your app launcher or dock.'],
+  };
+}
+
+function installStepsHtml(config) {
+  return `
+    <div class="install-helper-block">
+      <div class="install-helper-title">${esc(config.title)}</div>
+      <ol class="install-steps">
+        ${config.steps.map((step) => `<li>${esc(step)}</li>`).join('')}
+      </ol>
+      <div class="form-help">${esc(config.note)}</div>
+    </div>
+  `;
+}
+
+function pwaInstallHelperHtml() {
+  const platform = detectedInstallPlatform();
+  const primary = installStepsForPlatform(platform);
+  const others = ['ios', 'android', 'desktop'].filter((p) => p !== platform).map(installStepsForPlatform);
+  return `
+    <div class="card">
+      <div class="card-title">Install routefolk</div>
+      <div style="font-size:14px;color:#c5d0e0;line-height:1.5;margin-bottom:12px;">
+        Add routefolk to your home screen so it opens like a normal app.
+      </div>
+      ${installStepsHtml(primary)}
+      <details class="form-details install-helper-details">
+        <summary>Instructions for other devices</summary>
+        <div class="install-helper-extra">
+          ${others.map(installStepsHtml).join('')}
+        </div>
+      </details>
+    </div>
+  `;
+}
+
 // ---------- Account ----------
 function renderAccount() {
   if (!STATE.user) {
@@ -1789,6 +2070,8 @@ function renderAccount() {
         This list shows users who have signed in at least once. Add or remove access in the Google OAuth Test users list.
       </div>
     </div>
+
+    ${pwaInstallHelperHtml()}
   `;
 }
 
@@ -2095,6 +2378,7 @@ function bindContentEvents(content) {
   content.querySelector('#retryExpensesBtn')?.addEventListener('click', () => {
     if (STATE.viewTripId) loadExpensesForTrip(STATE.viewTripId);
   });
+  content.querySelector('#retryArchiveDataBtn')?.addEventListener('click', ensureArchiveData);
   content.querySelector('#tripFiltersToggle')?.addEventListener('click', () => {
     STATE.tripFiltersOpen = !STATE.tripFiltersOpen;
     renderAll();
@@ -2112,6 +2396,26 @@ function bindContentEvents(content) {
     const results = content.querySelector('#tripResults');
     if (results) {
       results.innerHTML = tripResultsHtml();
+      bindTripCards(results);
+    }
+  });
+  content.querySelector('#archiveFiltersToggle')?.addEventListener('click', () => {
+    STATE.archiveFiltersOpen = !STATE.archiveFiltersOpen;
+    renderAll();
+  });
+  content.querySelector('#archiveSearchInput')?.addEventListener('input', (e) => {
+    STATE.archiveSearch = e.target.value || '';
+    const results = content.querySelector('#archiveResults');
+    if (results) {
+      results.innerHTML = archiveResultsHtml();
+      bindTripCards(results);
+    }
+  });
+  content.querySelector('#archiveStatusFilter')?.addEventListener('change', (e) => {
+    STATE.archiveStatusFilter = e.target.value || 'all';
+    const results = content.querySelector('#archiveResults');
+    if (results) {
+      results.innerHTML = archiveResultsHtml();
       bindTripCards(results);
     }
   });

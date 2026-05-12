@@ -304,11 +304,24 @@ Full current schema in `schema.sql` (idempotent). Incremental changes are tracke
 
 ### Phase 3 — Archive + tracks
 
+**Phase 3A — Archive baseline ✅**
+- [x] Archive header metrics: completed trips, total distance, total cost, journal entries
+- [x] Cancelled trips remain listed but do not count toward archive totals
+- [x] Archive search by trip title
+- [x] Archive status filter: All / Completed / Cancelled
+- [x] Compact mobile Archive filters behind a Filters button
+- [x] Archived trip cards show stages, distance, cost, and journal entry count when loaded
+- [x] Account-screen PWA install helper with iOS, Android, and desktop instructions
+
+**Phase 3B — Completed trips map**
 - [ ] Leaflet world map with completed trips
-- [ ] Drill-down: world → country → trip → stage → journal entries
-- [ ] Past trips list view as alternative to map
+- [ ] One marker per completed trip using existing stage coordinates
+- [ ] Open trip detail/summary from map marker
+
+**Phase 3C — GPX tracks**
 - [ ] Upload + parse GPX files
 - [ ] Display GPX track on the trip's map view
+- [ ] Drill-down: world → country → trip → stage → journal entries
 
 ### Phase 4 — Polish
 
@@ -341,6 +354,7 @@ Lower-priority items captured so they're not forgotten.
 - **Automatic expense-to-stage suggestions.** Possible later, but Phase 2B keeps assignment explicit and optional to avoid wrong guesses.
 - **Geocoder ambiguity hints.** Show country alongside ambiguous city names.
 - **Long-range weather outlook** beyond the 16-day Open-Meteo forecast.
+- **Smarter PWA install prompt timing.** A simple Account helper exists; defer automatic prompts until real use shows where they are helpful rather than annoying.
 
 ---
 
@@ -377,7 +391,7 @@ For every release that includes a database migration:
 
 ## PWA update notes
 
-The app shell uses a manual release query string for `app.js` and `style.css`, and the service worker uses network-first handling for JavaScript and CSS. After deploying changes that touch `app.js`, `style.css`, or `sw.js`, close and reopen the installed PWA. On iOS, if the Home Screen app remains stale, open the site in Safari, refresh it, then close and reopen the Home Screen app. The last-resort fix is removing and reinstalling the Home Screen app.
+The app shell uses a manual release query string for `app.js` and `style.css`, and the service worker uses network-first handling for JavaScript and CSS. The Account screen includes a simple install helper for iOS, Android, and desktop. After deploying changes that touch `app.js`, `style.css`, or `sw.js`, close and reopen the installed PWA. On iOS, if the Home Screen app remains stale, open the site in Safari, refresh it, then close and reopen the Home Screen app. The last-resort fix is removing and reinstalling the Home Screen app.
 
 ---
 
@@ -406,7 +420,7 @@ The human is a capable engineer new to this specific stack — explanations shou
 routefolk/
 ├── index.html              # App shell
 ├── style.css               # All styles
-├── app.js                  # Main app logic, state, filters, schema check, and offline-aware UI
+├── app.js                  # Main app logic, state, archive baseline, schema check, and offline-aware UI
 ├── lib/
 │   ├── config.js           # Supabase URL + anon key
 │   ├── supabase.js         # Supabase client setup
@@ -440,6 +454,9 @@ routefolk/
 ---
 
 ## Decisions log
+
+- **2026-05: Phase 3A starts with archive baseline, not maps/GPX.** Archive gets useful list review, metrics, and filters before adding Leaflet or GPX complexity. Completed trips count toward totals; cancelled trips remain visible but are excluded from totals.
+- **2026-05: PWA install help lives in Account.** Friends can see simple device-specific install instructions without needing a full onboarding flow or intrusive prompt.
 
 - **2026-05: Phase 2.6C standardizes app cache invalidation.** Top-level app shell files use an explicit release query string and the service worker uses network-first handling for JavaScript and CSS, reducing stale installed-PWA bugs.
 - **2026-05: App startup checks schema version.** Signed-in users now get a clear migration-required message if `public.app_meta.schema_version` does not match the version expected by the app.

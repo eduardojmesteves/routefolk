@@ -1339,3 +1339,56 @@ a:hover { text-decoration: underline; }
     align-items: end;
   }
 }
+
+/* ---------- Phase 3A archive baseline + install helper ---------- */
+.archive-stats {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 8px;
+}
+
+.archive-trip-meta {
+  margin-top: 8px;
+  -webkit-line-clamp: 3;
+}
+
+.install-helper-block {
+  background: #0f1420;
+  border: 1px solid #2a3142;
+  border-radius: 10px;
+  padding: 12px;
+  margin-bottom: 10px;
+}
+
+.install-helper-title {
+  font-size: 13px;
+  font-weight: 700;
+  color: #e8edf5;
+  margin-bottom: 8px;
+}
+
+.install-steps {
+  margin: 0 0 8px 18px;
+  color: #c5d0e0;
+  font-size: 13px;
+  line-height: 1.5;
+}
+
+.install-steps li + li {
+  margin-top: 3px;
+}
+
+.install-helper-details {
+  margin-top: 10px;
+  margin-bottom: 0;
+}
+
+.install-helper-extra {
+  margin-top: 10px;
+}
+
+@media (min-width: 640px) {
+  .archive-stats {
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+  }
+}
