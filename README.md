@@ -8,7 +8,7 @@ This README is updated for the current modularisation step. The app remains a no
 
 ## Current step
 
-**Phase 3.9C — Account screen extraction**
+**Phase 3.9D — Archive screen extraction**
 
 This step continues the controlled `app.js` modularisation.
 
