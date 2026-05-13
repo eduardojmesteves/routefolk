@@ -4,8 +4,8 @@
 // Bump CACHE and RELEASE whenever shell assets change.
 // ============================================================
 
-const RELEASE = '20260513-phase39h-access-cache-expenses';
-const CACHE = 'routefolk-shell-v36';
+const RELEASE = '20260513-phase39j-forms-rollback-smoke-tests';
+const CACHE = 'routefolk-shell-v38';
 
 const SHELL_ASSETS = [
   './',
@@ -23,6 +23,7 @@ const SHELL_ASSETS = [
   './components/modal.js',
   './components/feedback.js',
   './components/trip-card.js',
+  './components/forms.js',
   './screens/trips-screen.js',
   './screens/account-screen.js',
   './manifest.json',

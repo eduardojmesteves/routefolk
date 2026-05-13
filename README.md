@@ -80,6 +80,19 @@ routefolk covers the full trip lifecycle:
 
 ---
 
+## Feedback and issues
+
+Feature requests and bug reports are welcome through GitHub Issues.
+
+When opening an issue, use the appropriate label:
+
+- `enhancement` for feature requests or improvement ideas.
+- `bug` for broken behaviour, regressions, or unexpected errors.
+
+Please include enough context to reproduce the problem or understand the requested feature.
+
+---
+
 ## Technology
 
 | Layer | Choice |
@@ -153,3 +166,14 @@ routefolk is under active development. It is suitable for personal testing and c
 Maintained by Eduardo Esteves.
 
 GitHub: [@eduardojmesteves](https://github.com/eduardojmesteves)
+
+---
+
+## Licence
+
+This project is distributed under the **Routefolk Source-Available License v1.0**.
+
+The code may be used, studied, and modified for personal and non-commercial purposes only. Commercial use, redistribution, sublicensing, publication of modified versions, and offering the software as a hosted service require prior written permission from the copyright holder.
+
+See the `LICENSE` file for the full terms.
+
