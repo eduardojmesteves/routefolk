@@ -39,6 +39,7 @@ It is not intended to be a public social network or a commercial trip-planning p
 - Use generated Google Maps links or custom route URLs.
 - Show weather context through Open-Meteo.
 - Upload and manage GPX files per stage.
+- Store lightweight cached GPX geometry for faster archive map rendering.
 - Database-level checks keep stage dates inside the trip date range.
 
 ### Journal
@@ -170,8 +171,7 @@ Private operational notes, local tests, and developer helper scripts should not 
 
 ### Near term
 
-- Finish splitting the large `app.js` file into smaller screen/component modules.
-- Store simplified GPX geometry at upload time.
+- Continue reducing the large `app.js` file in safe slices.
 - Cache archive heatmap calculations by track IDs and viewport.
 
 ### Later
@@ -186,7 +186,7 @@ Private operational notes, local tests, and developer helper scripts should not 
 
 ## Project status
 
-routefolk is under active development. It is suitable for personal testing and controlled group use, but not a general public product.
+routefolk is under active development. The archive map now uses cached lightweight GPX geometry for newly uploaded files, while older GPX records still fall back to parsing the original stored file when needed. It is suitable for personal testing and controlled group use, but not a general public product.
 
 ---
 

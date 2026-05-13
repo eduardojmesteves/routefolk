@@ -1,6 +1,6 @@
 // ============================================================
 // routefolk — screens/archive-screen.js
-// Archive screen rendering and GPX geography view.
+// Archive screen rendering and cached GPX geography view.
 // ============================================================
 
 import { STATE } from '../state/app-state.js';
@@ -290,8 +290,13 @@ function archiveMapRecordsFromGpx() {
     const tracks = gpxTracksForTrip(trip.id);
     const polylines = tracks.map((track) => {
       const geometry = STATE.gpxGeometryByTrack[track.id];
-      const points = geometry && geometry !== 'loading' && Array.isArray(geometry.points) ? geometry.points : [];
-      return { track, points: simplifyTrackPoints(points, 420) };
+      const routePoints = geometry && geometry !== 'loading' && Array.isArray(geometry.points) ? geometry.points : [];
+      const heatPoints = geometry && geometry !== 'loading' && Array.isArray(geometry.heatPoints) ? geometry.heatPoints : [];
+      return {
+        track,
+        points: simplifyTrackPoints(routePoints, 420),
+        heatPoints: heatPoints.length >= 2 ? heatPoints : null,
+      };
     }).filter((line) => line.points.length >= 2);
     return { trip, polylines, point: archivePointFromPolylines(polylines) };
   }).filter((record) => record.polylines.length);
@@ -371,8 +376,10 @@ function archiveHeatmapSvg(records, extent) {
   const grid = Array.from({ length: rows }, () => Array(cols).fill(0));
 
   records.forEach(({ polylines }) => {
-    polylines.forEach(({ points }) => {
-      const sampled = resampleTrackForHeatmap(points, 0.25, 2600);
+    polylines.forEach(({ points, heatPoints }) => {
+      const sampled = Array.isArray(heatPoints) && heatPoints.length >= 2
+        ? heatPoints
+        : resampleTrackForHeatmap(points, 0.25, 2600);
       sampled.forEach((point) => addArchiveHeat(point, extent, grid, cols, rows));
     });
   });

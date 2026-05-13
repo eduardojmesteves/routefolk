@@ -1,6 +1,6 @@
 // ============================================================
 // routefolk — app.js
-// Phase 3.11: journal optional time and Monday-first locale polish.
+// Phase 3.12: cached GPX geometry for archive maps.
 // ============================================================
 
 import { signInWithGoogle, signOut, getCurrentUser, onAuthChange } from './lib/auth.js';
@@ -12,7 +12,7 @@ import { listEntriesForStage, createEntry, updateEntry, deleteEntry } from './li
 import { upsertCurrentProfile, listProfiles } from './lib/profiles.js';
 import { getSchemaVersion } from './lib/meta.js';
 import { getCurrentAppAccess } from './lib/access.js';
-import { listGpxTracksForTrip, uploadStageGpx, deleteGpxTrack, downloadAndParseGpxTrack, trackFileName } from './lib/gpx.js';
+import { listGpxTracksForTrip, uploadStageGpx, deleteGpxTrack, downloadAndParseGpxTrack, geometryFromGpxTrackRecord, trackFileName } from './lib/gpx.js';
 import { STATE } from './state/app-state.js';
 import {
   STATUS_META,
@@ -49,7 +49,7 @@ import { renderStagesSection as renderStagesSectionView } from './screens/trip-d
 import { renderExpensesSection as renderExpensesSectionView, expensesForTrip as expensesForTripView, expenseTotals as expenseTotalsView, expenseTotalsHtml as expenseTotalsHtmlView } from './screens/trip-detail-expenses.js';
 import { userInitials, userDisplayName, userAvatarUrl, initialsFromName, displayNameForUserId } from './utils/user.js';
 
-const EXPECTED_SCHEMA_VERSION = '012';
+const EXPECTED_SCHEMA_VERSION = '013';
 
 function canDeleteTrip(trip) {
   return Boolean(STATE.user?.id && trip?.created_by === STATE.user.id);
@@ -340,6 +340,12 @@ async function loadGpxForTrip(tripId, options = {}) {
   try {
     const tracks = await listGpxTracksForTrip(tripId);
     STATE.gpxByTrip[tripId] = tracks;
+    tracks.forEach((track) => {
+      const cachedGeometry = geometryFromGpxTrackRecord(track);
+      if (cachedGeometry && !STATE.gpxGeometryByTrack[track.id]) {
+        STATE.gpxGeometryByTrack[track.id] = cachedGeometry;
+      }
+    });
   } catch (err) {
     console.error(err);
     STATE.gpxByTrip[tripId] = [];
@@ -357,6 +363,12 @@ async function ensureGpxGeometry(track) {
   if (existing && existing !== 'loading') return existing;
   if (existing === 'loading') return null;
 
+  const cachedGeometry = geometryFromGpxTrackRecord(track);
+  if (cachedGeometry) {
+    STATE.gpxGeometryByTrack[track.id] = cachedGeometry;
+    return cachedGeometry;
+  }
+
   STATE.gpxGeometryByTrack[track.id] = 'loading';
   try {
     const geometry = await downloadAndParseGpxTrack(track);
@@ -372,7 +384,7 @@ async function ensureGpxGeometry(track) {
 async function ensureArchiveGpxGeometries() {
   if (STATE.archiveGpxLoading) return;
 
-  const completed = filteredArchiveTrips().filter((trip) => trip.status === 'completed');
+  const completed = STATE.trips.filter((trip) => trip.status === 'completed');
   const tracks = completed.flatMap((trip) => gpxTracksForTrip(trip.id));
   const missing = tracks.filter((track) => !STATE.gpxGeometryByTrack[track.id]);
   if (!missing.length) return;
