@@ -11,7 +11,7 @@ import { STATE } from '../state/app-state.js';
 import { ENTRY_TYPE_META } from '../constants/app-constants.js';
 import { esc } from '../utils/dom.js';
 import { linkHostBadgeHtml } from '../utils/url.js';
-import { fmtDate, fmtDateTime, isStageDateOutsideTrip } from '../utils/datetime.js';
+import { fmtDate, fmtDateTime, fmtJournalWhen, isStageDateOutsideTrip } from '../utils/datetime.js';
 import { fmtDuration, fmtKm } from '../utils/format.js';
 import { displayNameForUserId, authorInitials, authorLabel } from '../utils/user.js';
 import { errorCard } from '../components/feedback.js';
@@ -90,7 +90,7 @@ function entryCardHtml(entry) {
           ${entry.title ? `<div class="entry-title">${esc(entry.title)}</div>` : `<div class="entry-title entry-title-muted">${esc(meta.label)}</div>`}
           <div class="entry-meta">
             <span class="entry-author" title="${esc(authorLabel(entry.author_id))}">${esc(authorInitials(entry.author_id))}</span>
-            ${entry.timestamp ? `<span>${esc(fmtDateTime(entry.timestamp))}</span>` : ''}
+            ${entry.timestamp ? `<span>${esc(fmtJournalWhen(entry.timestamp))}</span>` : ''}
             ${location}
           </div>
         </div>

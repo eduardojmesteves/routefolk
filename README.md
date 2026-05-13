@@ -46,7 +46,7 @@ It is not intended to be a public social network or a commercial trip-planning p
 - Add, edit, and delete journal entries per stage.
 - Entry types: Stop, Meal, Lodging, Note, Drink, and Other.
 - Optional location, Google Maps URL, website URL, and external photo-album URL.
-- Author labels and timestamps.
+- Author labels, with optional time when the exact time matters.
 
 ### Expenses
 
@@ -65,6 +65,12 @@ It is not intended to be a public social network or a commercial trip-planning p
 - Archive map view powered by uploaded GPX tracks.
 - Heatmap, Hybrid, and Routes map modes.
 - No fake straight-line route rendering.
+
+### Date and time behaviour
+
+- Date formatting uses `en-GB` conventions, keeping the app aligned with Monday-first week expectations.
+- Native browser date pickers are used. Most browsers follow the browser/OS locale for the calendar layout; a guaranteed custom Monday-first picker would require replacing native date inputs.
+- Journal entry time is optional. Entries belong to their stage date by default, and a specific time can be added only when useful.
 
 ### PWA
 
@@ -167,7 +173,6 @@ Private operational notes, local tests, and developer helper scripts should not 
 - Finish splitting the large `app.js` file into smaller screen/component modules.
 - Store simplified GPX geometry at upload time.
 - Cache archive heatmap calculations by track IDs and viewport.
-- Add local smoke tests for critical user flows without turning the project into a build-based app.
 
 ### Later
 

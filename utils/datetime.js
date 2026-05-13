@@ -3,11 +3,13 @@
 // Date/time formatting and date-range helpers.
 // ============================================================
 
+const APP_LOCALE = 'en-GB';
+
 export function fmtDate(iso) {
   if (!iso) return '';
   const d = new Date(`${iso}T00:00:00`);
   if (Number.isNaN(d.getTime())) return iso;
-  return d.toLocaleDateString(undefined, { day: 'numeric', month: 'short', year: 'numeric' });
+  return d.toLocaleDateString(APP_LOCALE, { day: 'numeric', month: 'short', year: 'numeric' });
 }
 
 export function fmtDateRange(start, end) {
@@ -22,9 +24,20 @@ export function fmtDateTime(iso) {
   if (!iso) return '';
   const d = new Date(iso);
   if (Number.isNaN(d.getTime())) return iso;
-  return d.toLocaleString(undefined, {
+  return d.toLocaleString(APP_LOCALE, {
     day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit',
   });
+}
+
+export function fmtTime(iso) {
+  if (!iso) return '';
+  const d = new Date(iso);
+  if (Number.isNaN(d.getTime())) return iso;
+  return d.toLocaleTimeString(APP_LOCALE, { hour: '2-digit', minute: '2-digit' });
+}
+
+export function fmtJournalWhen(iso) {
+  return iso ? fmtTime(iso) : '';
 }
 
 
@@ -60,8 +73,9 @@ export function currentLocalTimeHHMM() {
   return `${pad(d.getHours())}:${pad(d.getMinutes())}`;
 }
 
-export function journalDefaultDatetimeLocal(stage) {
-  return stage?.planned_date ? `${stage.planned_date}T${currentLocalTimeHHMM()}` : '';
+export function journalDefaultTimeLocal(entry = {}) {
+  if (entry?.timestamp) return isoToDatetimeLocal(entry.timestamp).slice(11, 16);
+  return currentLocalTimeHHMM();
 }
 
 export function inclusiveDays(start, end) {

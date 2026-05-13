@@ -6,7 +6,7 @@
 import { STATE } from '../state/app-state.js';
 import { STATUS_META, ENTRY_TYPE_META, EXPENSE_CATEGORY_META } from '../constants/app-constants.js';
 import { esc } from '../utils/dom.js';
-import { fmtDate, fmtDateRange, fmtDateTime, isStageDateOutsideTrip, isExpenseDateOutsideTrip } from '../utils/datetime.js';
+import { fmtDate, fmtDateRange, fmtJournalWhen, isStageDateOutsideTrip, isExpenseDateOutsideTrip } from '../utils/datetime.js';
 import { fmtEuro } from '../utils/format.js';
 import { linkHostBadgeHtml } from '../utils/url.js';
 import { displayNameForUserId } from '../utils/user.js';
@@ -153,7 +153,7 @@ function summaryEntryRowHtml(entry) {
   return `
     <tr>
       <td>${esc(meta.icon)} ${esc(meta.label)}</td>
-      <td>${entry.timestamp ? esc(fmtDateTime(entry.timestamp)) : '—'}</td>
+      <td>${entry.timestamp ? esc(fmtJournalWhen(entry.timestamp)) : '—'}</td>
       <td>${entry.title ? esc(entry.title) : '—'}${entry.description ? `<div class="summary-entry-desc">${esc(entry.description)}</div>` : ''}</td>
       <td>${location}</td>
       <td>${links.length ? links.join(' · ') : '—'}</td>

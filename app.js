@@ -1,6 +1,6 @@
 // ============================================================
 // routefolk — app.js
-// Phase 3.10: database date consistency hardening.
+// Phase 3.11: journal optional time and Monday-first locale polish.
 // ============================================================
 
 import { signInWithGoogle, signOut, getCurrentUser, onAuthChange } from './lib/auth.js';
@@ -27,12 +27,10 @@ import {
   fmtDate,
   fmtDateRange,
   fmtDateTime,
-  isoToDatetimeLocal,
   datetimeLocalToIso,
   nowAsDatetimeLocal,
   todayIsoDate,
-  currentLocalTimeHHMM,
-  journalDefaultDatetimeLocal,
+  journalDefaultTimeLocal,
   inclusiveDays,
   isExpenseDateOutsideTrip,
 } from './utils/datetime.js';
@@ -868,15 +866,12 @@ function findStageById(stageId) {
 
 function entryFormHtml(entry = {}, stage = null) {
   const selectedType = entry.entry_type || 'stop';
-  const timeValue = stage?.planned_date
-    ? (entry.timestamp ? isoToDatetimeLocal(entry.timestamp) : journalDefaultDatetimeLocal(stage))
-    : '';
-  const timeAttrs = stage?.planned_date
-    ? ` min="${esc(`${stage.planned_date}T00:00`)}" max="${esc(`${stage.planned_date}T23:59`)}"`
-    : ' disabled';
-  const timeHelp = stage?.planned_date
-    ? `Journal entries for this stage must use ${esc(fmtDate(stage.planned_date))}.`
-    : 'This stage has no planned date, so the journal date is left empty.';
+  const hasStageDate = Boolean(stage?.planned_date);
+  const hasTime = Boolean(entry.timestamp);
+  const timeValue = hasStageDate ? journalDefaultTimeLocal(entry) : '';
+  const dateHelp = hasStageDate
+    ? `This entry belongs to ${esc(fmtDate(stage.planned_date))}. Add a time only if it matters.`
+    : 'This stage has no planned date, so no journal time can be added yet.';
 
   return `
     <div class="form-row">
@@ -910,9 +905,18 @@ function entryFormHtml(entry = {}, stage = null) {
       <div class="form-help">Booking.com, restaurant website, pub page, TripAdvisor, or any useful HTTPS link.</div>
     </div>
     <div class="form-row">
-      <label class="form-label" for="jfTime">When</label>
-      <input class="inp" id="jfTime" type="datetime-local" value="${esc(timeValue)}"${timeAttrs}>
-      <div class="form-help">${timeHelp}</div>
+      <label class="form-label">When</label>
+      <div class="form-help">${dateHelp}</div>
+      <label class="choice-option" style="margin-top:8px;">
+        <input type="checkbox" id="jfUseTime" ${hasTime ? 'checked' : ''}${hasStageDate ? '' : ' disabled'}>
+        <span>
+          <strong>Add a specific time</strong>
+          <small>Leave this off unless the exact time matters.</small>
+        </span>
+      </label>
+      <div id="jfTimeWrap" style="margin-top:8px;${hasTime && hasStageDate ? '' : 'display:none;'}">
+        <input class="inp" id="jfTime" type="time" value="${esc(timeValue)}"${hasStageDate ? '' : ' disabled'}>
+      </div>
     </div>
     <div class="form-row">
       <label class="form-label" for="jfAlbum">Photo album URL (optional)</label>
@@ -922,17 +926,32 @@ function entryFormHtml(entry = {}, stage = null) {
   `;
 }
 
+function bindEntryTimeToggle() {
+  const checkbox = $('jfUseTime');
+  const timeWrap = $('jfTimeWrap');
+  const timeInput = $('jfTime');
+  if (!checkbox || !timeWrap || !timeInput) return;
+
+  const sync = () => {
+    const enabled = checkbox.checked && !checkbox.disabled;
+    timeWrap.style.display = enabled ? 'block' : 'none';
+    timeInput.disabled = !enabled;
+    if (enabled && !timeInput.value) timeInput.value = journalDefaultTimeLocal();
+  };
+
+  checkbox.addEventListener('change', sync);
+  sync();
+}
+
 function readEntryForm(stageId = null) {
   const stage = findStageById(stageId);
+  const useTime = Boolean($('jfUseTime')?.checked);
   const rawTime = $('jfTime')?.value || '';
   let timestamp = null;
 
-  if (stage?.planned_date) {
-    if (!rawTime) throw new Error('Journal entry date is required because the stage has a planned date.');
-    if (!rawTime.startsWith(`${stage.planned_date}T`)) {
-      throw new Error('Journal entry date must match the stage planned date.');
-    }
-    timestamp = datetimeLocalToIso(rawTime);
+  if (stage?.planned_date && useTime) {
+    if (!rawTime) throw new Error('Enter a journal entry time or turn off the time option.');
+    timestamp = datetimeLocalToIso(`${stage.planned_date}T${rawTime}`);
   }
 
   const fields = {
@@ -956,6 +975,7 @@ function showNewEntryModal(stageId) {
     { label: 'Add entry', cls: 'btn-primary', fn: () => handleCreateEntry(stageId) },
     { label: 'Cancel', cls: 'btn-secondary', fn: closeModal },
   ]);
+  bindEntryTimeToggle();
   setTimeout(() => $('jfTitle')?.focus(), 50);
 }
 
@@ -965,6 +985,7 @@ function showEditEntryModal(stageId, entry) {
     { label: 'Save', cls: 'btn-primary', fn: () => handleUpdateEntry(stageId, entry.id) },
     { label: 'Cancel', cls: 'btn-secondary', fn: closeModal },
   ]);
+  bindEntryTimeToggle();
 }
 
 function showDeleteEntryConfirm(stageId, entry) {
