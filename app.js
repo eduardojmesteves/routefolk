@@ -48,6 +48,7 @@ import { renderArchive, archiveResultsHtml, bindArchiveMapEvents } from './scree
 import { renderTripSummary, bindSummaryEvents } from './screens/summary-screen.js';
 import { renderTripDetailScreen } from './screens/trip-detail-screen.js';
 import { renderStagesSection as renderStagesSectionView } from './screens/trip-detail-stages.js';
+import { renderExpensesSection as renderExpensesSectionView, expensesForTrip as expensesForTripView, expenseTotals as expenseTotalsView, expenseTotalsHtml as expenseTotalsHtmlView } from './screens/trip-detail-expenses.js';
 import { userInitials, userDisplayName, userAvatarUrl, initialsFromName, displayNameForUserId } from './utils/user.js';
 
 const EXPECTED_SCHEMA_VERSION = '011';
@@ -1566,7 +1567,7 @@ function renderTab() {
       auditLineHtml,
       tripStatsStripHtml,
       renderStagesSection: renderStagesSectionView,
-      renderExpensesSection,
+      renderExpensesSection: (trip) => renderExpensesSectionView(trip, { writeDisabledAttr }),
       canDeleteTrip,
       writeDisabledAttr,
     });
@@ -1574,10 +1575,10 @@ function renderTab() {
     content.innerHTML = offlineBannerHtml() + renderTripSummary({
       currentTrip,
       tripNotFoundHtml,
-      expensesForTrip,
+      expensesForTrip: expensesForTripView,
       tripStatsStripHtml,
-      expenseTotalsHtml,
-      expenseTotals,
+      expenseTotalsHtml: expenseTotalsHtmlView,
+      expenseTotals: expenseTotalsView,
       stageRouteLabel,
     });
   } else if (STATE.tab === 'archive') {
@@ -1800,7 +1801,7 @@ function bindContentEvents(content) {
     btn.addEventListener('click', () => {
       const trip = currentTrip();
       if (!trip) return;
-      const expense = expensesForTrip(trip.id).find((e) => e.id === btn.dataset.id);
+      const expense = expensesForTripView(trip.id).find((e) => e.id === btn.dataset.id);
       if (!expense) return;
       if (!ensureOnline()) return;
       if (btn.dataset.expenseAction === 'edit') showEditExpenseModal(trip, expense);

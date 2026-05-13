@@ -1,95 +1,155 @@
 # routefolk
 
-A Progressive Web App for planning, journaling, and archiving motorcycle trips taken with friends.
+routefolk is a small Progressive Web App for planning, journaling, and archiving motorcycle trips with friends.
 
-## Current development state
+It is designed for a fixed riding group, not as a public social network or commercial trip-planning platform. The goal is simple: plan the route, ride the trip, record the memories, track shared costs, import GPS tracks, and keep a useful archive afterwards.
 
-This package includes the Phase 3.9H access-message hotfix and modularisation work. The app now checks database app membership before checking the schema version, so signed-in but non-allowed users see an explicit app-access message rather than a misleading migration warning.
+---
 
-## App membership
+## What the app does
 
-Allowed users are defined in Supabase, in `public.app_members`. Google OAuth only controls who can sign in; `public.app_members` controls who can access app data.
+routefolk covers the full trip lifecycle:
 
-To list allowed users, run this in Supabase SQL Editor:
+1. **Plan** a motorcycle trip with dates, stages, route links, notes, and weather context.
+2. **Ride** the trip while adding journal entries for stops, meals, lodging, drinks, and other notes.
+3. **Track costs** in euros, including payer, category, optional stage assignment, and total trip spend.
+4. **Import GPX tracks** per stage after the ride.
+5. **Archive completed trips** with list and map views, including a GPX-derived heatmap.
 
-```sql
-select email, role, active, created_at, updated_at
-from public.app_members
-order by active desc, lower(email);
-```
+---
 
-To list signed-in users who are not active app members, run:
+## Current features
 
-```sql
-select
-  u.email,
-  u.created_at as signed_up_at,
-  u.last_sign_in_at,
-  m.role,
-  m.active
-from auth.users u
-left join public.app_members m
-  on lower(m.email) = lower(u.email)
-where m.email is null
-   or m.active = false
-order by u.created_at desc;
-```
+### Trips
 
-Do not commit real user lists to the public repository. Keep operational documentation in `/docs/`, which is ignored by Git.
+- Create, edit, view, and delete trips.
+- Trip statuses: Planning, Active, Completed, Cancelled.
+- Active trips and archived trips are shown separately.
+- Private/group visibility model.
+- Trip summary metrics: days, stages, distance, entries, authors, average distance, and cost.
 
-## Database migrations
+### Stages
 
-Run migrations in order. This package adds:
+- Add, edit, delete, and reorder stages.
+- Store start/end locations, planned date, notes, distance, and Google Maps links.
+- Custom route URL support.
+- Weather forecast strip using Open-Meteo.
+- Stage-level GPX upload and management.
 
-- `011_app_access_state.sql` — adds `get_current_app_access()` and sets `schema_version = 011`.
+### Journal
+
+- Add, edit, and delete journal entries per stage.
+- Entry types: Stop, Meal, Lodging, Note, Drink, Other.
+- Optional location, Google Maps URL, website URL, and external photo-album URL.
+- Author labels and timestamps.
+
+### Expenses
+
+- Add, edit, and delete trip expenses.
+- EUR-only expense tracking.
+- Categories: fuel, food & drinks, lodging, tolls, parking, other.
+- Payer selection for group trips.
+- Category and payer breakdowns.
+- Optional stage assignment.
+
+### Archive
+
+- Completed and cancelled trips are separated from active planning work.
+- Archive list view with trip metrics.
+- Archive map view powered by uploaded GPX tracks.
+- Heatmap, Hybrid, and Routes map modes.
+- No fake straight-line route rendering.
+
+### PWA
+
+- Installable on mobile and desktop.
+- Hand-written service worker.
+- Online-only writes; offline editing is deliberately not implemented yet.
+
+---
+
+## How to use it
+
+1. Sign in with Google.
+2. Create a trip and choose whether it is private or group-visible.
+3. Add stages for each riding day or route segment.
+4. Add notes, route links, and planned dates.
+5. During or after the trip, add journal entries and expenses.
+6. Upload GPX files to stages after riding.
+7. Mark the trip as completed to make it part of the archive.
+
+---
+
+## Technology
+
+| Layer | Choice |
+|---|---|
+| Frontend | Plain HTML, CSS, and JavaScript with native ES modules |
+| Hosting | Cloudflare Pages |
+| Backend | Supabase Auth, Postgres, and Storage |
+| Authentication | Google sign-in through Supabase |
+| Weather/geocoding | Open-Meteo |
+| Map archive | In-app SVG geography/heatmap from GPX data |
+| PWA | Custom service worker and manifest |
+
+The project intentionally avoids React, Vue, Svelte, Tailwind, TypeScript, and build tools for now.
+
+---
 
 ## Project structure
 
 ```text
 routefolk/
-├── app.js
 ├── index.html
-├── sw.js
-├── lib/
-│   ├── access.js
-│   ├── auth.js
-│   ├── expenses.js
-│   ├── gpx.js
-│   ├── journal.js
-│   ├── meta.js
-│   ├── profiles.js
-│   ├── stages.js
-│   └── trips.js
+├── style.css
+├── app.js
 ├── components/
 ├── constants/
+├── lib/
 ├── screens/
 ├── state/
 ├── utils/
 ├── migrations/
-└── docs/              # local/private; ignored by Git
+├── sw.js
+├── manifest.json
+├── icons/
+└── README.md
 ```
 
-## Refactor status
+`migrations/` contains database schema changes. These files are part of the project history and should not contain private user data.
 
-Extracted so far:
+`docs/` is intentionally ignored by Git and should be used only for local/private operational notes.
 
-- shared state/constants/utils
-- modal/toast/feedback/stats/trip-card components
-- Trips screen
-- Account screen
-- Archive screen
-- Trip Summary screen
-- Trip Detail shell
-- Trip Detail stage rendering
+---
 
-Next safe development steps:
+## Planned features
 
-1. Extract Trip Detail expense rendering.
-2. Extract modal form rendering.
-3. Add Playwright smoke tests before deeper controller refactors.
+### Near term
 
-## Commit message
+- Finish splitting the large `app.js` file into smaller screen/component modules.
+- Store simplified GPX geometry at upload time.
+- Cache archive heatmap calculations by track IDs and viewport.
+- Add Playwright smoke tests.
+- Add stronger database date-consistency checks.
 
-```bash
-git commit -m "fix(access): show explicit non-member message"
-```
+### Later
+
+- Offline write queue.
+- Realtime collaboration.
+- Multiple groups and richer roles.
+- Photo storage.
+- PDF or shareable trip export.
+
+---
+
+## Project status
+
+routefolk is under active development. It is suitable for personal testing and controlled group use, but not a general public product.
+
+---
+
+## Contact
+
+Maintained by Eduardo Esteves.
+
+GitHub: [@eduardojmesteves](https://github.com/eduardojmesteves)
