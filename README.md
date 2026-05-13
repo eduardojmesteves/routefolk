@@ -203,3 +203,9 @@ GitHub: [@eduardojmesteves](https://github.com/eduardojmesteves)
 Routefolk is released under the **Routefolk Source-Available License v1.0**.
 
 See [`LICENSE`](./LICENSE) for the full licence terms.
+
+
+## Latest update
+
+- Archive heatmap caching: the archive map now reuses generated heatmap SVG output for the same track set and viewport, reducing repeated work when switching map layers or re-rendering filters.
+

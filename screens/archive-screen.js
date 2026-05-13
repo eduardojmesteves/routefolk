@@ -12,6 +12,9 @@ import { tripCardHtml } from '../components/trip-card.js';
 import { statItemHtml } from '../components/stats.js';
 import { trackFileName } from '../lib/gpx.js';
 
+const HEATMAP_CACHE_LIMIT = 12;
+const archiveHeatmapCache = new Map();
+
 function gpxTracksForTrip(tripId) {
   const tracks = STATE.gpxByTrip[tripId];
   return Array.isArray(tracks) ? tracks : [];
@@ -373,6 +376,14 @@ function archiveGeoMapSvg(records) {
 function archiveHeatmapSvg(records, extent) {
   const cols = 160;
   const rows = 90;
+  const cacheKey = archiveHeatmapCacheKey(records, extent, cols, rows);
+  const cached = archiveHeatmapCache.get(cacheKey);
+  if (typeof cached === 'string') {
+    archiveHeatmapCache.delete(cacheKey);
+    archiveHeatmapCache.set(cacheKey, cached);
+    return cached;
+  }
+
   const grid = Array.from({ length: rows }, () => Array(cols).fill(0));
 
   records.forEach(({ polylines }) => {
@@ -385,7 +396,10 @@ function archiveHeatmapSvg(records, extent) {
   });
 
   const values = grid.flat().filter((v) => v > 0);
-  if (!values.length) return '';
+  if (!values.length) {
+    rememberArchiveHeatmap(cacheKey, '');
+    return '';
+  }
   values.sort((a, b) => a - b);
   const p98 = values[Math.floor((values.length - 1) * 0.98)] || values[values.length - 1] || 1;
   const maxValue = Math.max(p98, 1);
@@ -403,7 +417,33 @@ function archiveHeatmapSvg(records, extent) {
     }
   }
 
-  return cells.join('');
+  const svg = cells.join('');
+  rememberArchiveHeatmap(cacheKey, svg);
+  return svg;
+}
+
+function archiveHeatmapCacheKey(records, extent, cols, rows) {
+  const viewport = [extent.minLat, extent.maxLat, extent.minLng, extent.maxLng]
+    .map((value) => Number(value).toFixed(3))
+    .join(':');
+  const tracks = records.flatMap((record) => (record.polylines || []).map((line) => {
+    const track = line.track || {};
+    return [
+      track.id || track.file_path || 'unknown',
+      track.updated_at || track.uploaded_at || track.created_at || '',
+      track.point_count || '',
+      Array.isArray(line.points) ? line.points.length : 0,
+      Array.isArray(line.heatPoints) ? line.heatPoints.length : 0,
+    ].join('@');
+  })).sort().join('|');
+  return `${cols}x${rows}:${viewport}:${tracks}`;
+}
+
+function rememberArchiveHeatmap(key, svg) {
+  archiveHeatmapCache.set(key, svg);
+  while (archiveHeatmapCache.size > HEATMAP_CACHE_LIMIT) {
+    archiveHeatmapCache.delete(archiveHeatmapCache.keys().next().value);
+  }
 }
 
 function resampleTrackForHeatmap(points, spacingKm = 0.25, maxSamples = 2600) {
