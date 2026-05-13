@@ -1,20 +1,24 @@
 # routefolk
 
-routefolk is a small Progressive Web App for planning, journaling, and archiving motorcycle trips with friends.
+routefolk is a Progressive Web App for planning, journaling, and archiving motorcycle trips with friends.
 
-It is designed for a fixed riding group, not as a public social network or commercial trip-planning platform. The goal is simple: plan the route, ride the trip, record the memories, track shared costs, import GPS tracks, and keep a useful archive afterwards.
+It is built for a fixed riding group: plan the route, ride the trip, record what happened, track costs, import GPX tracks, and keep a useful archive afterwards.
 
 ---
 
-## What the app does
+## What routefolk is for
 
-routefolk covers the full trip lifecycle:
+routefolk helps small motorcycle groups manage the full lifecycle of a trip:
 
-1. **Plan** a motorcycle trip with dates, stages, route links, notes, and weather context.
-2. **Ride** the trip while adding journal entries for stops, meals, lodging, drinks, and other notes.
-3. **Track costs** in euros, including payer, category, optional stage assignment, and total trip spend.
-4. **Import GPX tracks** per stage after the ride.
-5. **Archive completed trips** with list and map views, including a GPX-derived heatmap.
+- plan upcoming rides;
+- organise each trip into stages;
+- keep route notes and useful links together;
+- add journal entries during or after the ride;
+- track trip expenses in euros;
+- upload stage-level GPX files;
+- archive completed trips with list and map views.
+
+It is not intended to be a public social network or a commercial trip-planning platform.
 
 ---
 
@@ -23,23 +27,24 @@ routefolk covers the full trip lifecycle:
 ### Trips
 
 - Create, edit, view, and delete trips.
-- Trip statuses: Planning, Active, Completed, Cancelled.
-- Active trips and archived trips are shown separately.
+- Trip statuses: Planning, Active, Completed, and Cancelled.
+- Separate active trips and archived trips.
 - Private/group visibility model.
-- Trip summary metrics: days, stages, distance, entries, authors, average distance, and cost.
+- Trip summary metrics for days, stages, distance, entries, authors, average distance, and cost.
 
 ### Stages
 
 - Add, edit, delete, and reorder stages.
-- Store start/end locations, planned date, notes, distance, and Google Maps links.
-- Custom route URL support.
-- Weather forecast strip using Open-Meteo.
-- Stage-level GPX upload and management.
+- Store start/end locations, planned dates, notes, distance, and route links.
+- Use generated Google Maps links or custom route URLs.
+- Show weather context through Open-Meteo.
+- Upload and manage GPX files per stage.
+- Database-level checks keep stage dates inside the trip date range.
 
 ### Journal
 
 - Add, edit, and delete journal entries per stage.
-- Entry types: Stop, Meal, Lodging, Note, Drink, Other.
+- Entry types: Stop, Meal, Lodging, Note, Drink, and Other.
 - Optional location, Google Maps URL, website URL, and external photo-album URL.
 - Author labels and timestamps.
 
@@ -47,10 +52,11 @@ routefolk covers the full trip lifecycle:
 
 - Add, edit, and delete trip expenses.
 - EUR-only expense tracking.
-- Categories: fuel, food & drinks, lodging, tolls, parking, other.
+- Categories: fuel, food & drinks, lodging, tolls, parking, and other.
 - Payer selection for group trips.
 - Category and payer breakdowns.
 - Optional stage assignment.
+- Database-level checks keep expense dates inside the trip date range.
 
 ### Archive
 
@@ -73,21 +79,21 @@ routefolk covers the full trip lifecycle:
 1. Sign in with Google.
 2. Create a trip and choose whether it is private or group-visible.
 3. Add stages for each riding day or route segment.
-4. Add notes, route links, and planned dates.
+4. Add notes, route links, planned dates, and optional distance information.
 5. During or after the trip, add journal entries and expenses.
 6. Upload GPX files to stages after riding.
-7. Mark the trip as completed to make it part of the archive.
+7. Mark the trip as completed to move it into the archive.
 
 ---
 
-## Feedback and issues
+## Feedback, bugs, and feature requests
 
-Feature requests and bug reports are welcome through GitHub Issues.
+Feature requests and bug reports are welcome through the GitHub repository Issues page.
 
 When opening an issue, use the appropriate label:
 
-- `enhancement` for feature requests or improvement ideas.
-- `bug` for broken behaviour, regressions, or unexpected errors.
+- `bug` for broken or unexpected behaviour;
+- `enhancement` for feature requests or improvements.
 
 Please include enough context to reproduce the problem or understand the requested feature.
 
@@ -102,10 +108,28 @@ Please include enough context to reproduce the problem or understand the request
 | Backend | Supabase Auth, Postgres, and Storage |
 | Authentication | Google sign-in through Supabase |
 | Weather/geocoding | Open-Meteo |
-| Map archive | In-app SVG geography/heatmap from GPX data |
+| Archive map | In-app SVG geography/heatmap from GPX data |
 | PWA | Custom service worker and manifest |
 
 The project intentionally avoids React, Vue, Svelte, Tailwind, TypeScript, and build tools for now.
+
+---
+
+## Local development
+
+Run a local static server from the repository root:
+
+```bash
+python3 -m http.server 8000
+```
+
+Open:
+
+```text
+http://localhost:8000
+```
+
+Do not use `https://localhost:8000` unless you are running a local HTTPS server.
 
 ---
 
@@ -119,19 +143,20 @@ routefolk/
 ├── components/
 ├── constants/
 ├── lib/
+├── migrations/
 ├── screens/
 ├── state/
 ├── utils/
-├── migrations/
 ├── sw.js
 ├── manifest.json
 ├── icons/
+├── LICENSE
 └── README.md
 ```
 
 `migrations/` contains database schema changes. These files are part of the project history and should not contain private user data.
 
-`docs/` is intentionally ignored by Git and should be used only for local/private operational notes.
+Private operational notes, local tests, and developer helper scripts should not be committed to this public repository.
 
 ---
 
@@ -142,8 +167,7 @@ routefolk/
 - Finish splitting the large `app.js` file into smaller screen/component modules.
 - Store simplified GPX geometry at upload time.
 - Cache archive heatmap calculations by track IDs and viewport.
-- Add Playwright smoke tests.
-- Add stronger database date-consistency checks.
+- Add local smoke tests for critical user flows without turning the project into a build-based app.
 
 ### Later
 
@@ -171,9 +195,6 @@ GitHub: [@eduardojmesteves](https://github.com/eduardojmesteves)
 
 ## Licence
 
-This project is distributed under the **Routefolk Source-Available License v1.0**.
+Routefolk is released under the **Routefolk Source-Available License v1.0**.
 
-The code may be used, studied, and modified for personal and non-commercial purposes only. Commercial use, redistribution, sublicensing, publication of modified versions, and offering the software as a hosted service require prior written permission from the copyright holder.
-
-See the `LICENSE` file for the full terms.
-
+See [`LICENSE`](./LICENSE) for the full licence terms.

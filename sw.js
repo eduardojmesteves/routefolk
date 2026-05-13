@@ -4,8 +4,8 @@
 // Bump CACHE and RELEASE whenever shell assets change.
 // ============================================================
 
-const RELEASE = '20260513-phase39j-forms-rollback-smoke-tests';
-const CACHE = 'routefolk-shell-v38';
+const RELEASE = '20260513-phase310-date-consistency';
+const CACHE = 'routefolk-shell-v40';
 
 const SHELL_ASSETS = [
   './',

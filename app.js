@@ -1,6 +1,6 @@
 // ============================================================
 // routefolk — app.js
-// Phase 3.9H: clarify app membership access state.
+// Phase 3.10: database date consistency hardening.
 // ============================================================
 
 import { signInWithGoogle, signOut, getCurrentUser, onAuthChange } from './lib/auth.js';
@@ -51,7 +51,7 @@ import { renderStagesSection as renderStagesSectionView } from './screens/trip-d
 import { renderExpensesSection as renderExpensesSectionView, expensesForTrip as expensesForTripView, expenseTotals as expenseTotalsView, expenseTotalsHtml as expenseTotalsHtmlView } from './screens/trip-detail-expenses.js';
 import { userInitials, userDisplayName, userAvatarUrl, initialsFromName, displayNameForUserId } from './utils/user.js';
 
-const EXPECTED_SCHEMA_VERSION = '011';
+const EXPECTED_SCHEMA_VERSION = '012';
 
 function canDeleteTrip(trip) {
   return Boolean(STATE.user?.id && trip?.created_by === STATE.user.id);
