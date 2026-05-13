@@ -4,14 +4,27 @@
 // Bump CACHE and RELEASE whenever shell assets change.
 // ============================================================
 
-const RELEASE = '20260512-phase3b21-heatmap-calibration';
-const CACHE = 'routefolk-shell-v28';
+const RELEASE = '20260513-phase39c-account-screen-extraction';
+const CACHE = 'routefolk-shell-v31';
 
 const SHELL_ASSETS = [
   './',
   './index.html',
   `./style.css?v=${RELEASE}`,
   `./app.js?v=${RELEASE}`,
+  './state/app-state.js',
+  './constants/app-constants.js',
+  './utils/dom.js',
+  './utils/url.js',
+  './utils/datetime.js',
+  './utils/format.js',
+  './utils/user.js',
+  './components/toast.js',
+  './components/modal.js',
+  './components/feedback.js',
+  './components/trip-card.js',
+  './screens/trips-screen.js',
+  './screens/account-screen.js',
   './manifest.json',
   './lib/config.js',
   './lib/supabase.js',

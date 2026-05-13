@@ -1,6 +1,6 @@
 // ============================================================
 // routefolk — app.js
-// Phase 3B.2.1: archive heatmap visual calibration.
+// Phase 3.9C: extract Account screen rendering.
 // ============================================================
 
 import { signInWithGoogle, signOut, getCurrentUser, onAuthChange } from './lib/auth.js';
@@ -12,298 +12,42 @@ import { listEntriesForStage, createEntry, updateEntry, deleteEntry } from './li
 import { upsertCurrentProfile, listProfiles } from './lib/profiles.js';
 import { getSchemaVersion } from './lib/meta.js';
 import { listGpxTracksForTrip, uploadStageGpx, deleteGpxTrack, downloadAndParseGpxTrack, trackFileName } from './lib/gpx.js';
+import { STATE } from './state/app-state.js';
+import {
+  STATUS_META,
+  TRIPS_SCREEN_STATUSES,
+  ARCHIVE_SCREEN_STATUSES,
+  VISIBILITY_META,
+  ENTRY_TYPE_META,
+  EXPENSE_CATEGORY_META,
+  EUROPE_BOUNDARY_LINES,
+} from './constants/app-constants.js';
+import { $, esc, attr, boolAttr } from './utils/dom.js';
+import { linkHostBadgeHtml, validateEntryUrls } from './utils/url.js';
+import {
+  fmtDate,
+  fmtDateRange,
+  fmtDateTime,
+  isoToDatetimeLocal,
+  datetimeLocalToIso,
+  nowAsDatetimeLocal,
+  todayIsoDate,
+  currentLocalTimeHHMM,
+  journalDefaultDatetimeLocal,
+  inclusiveDays,
+  isStageDateOutsideTrip,
+  isExpenseDateOutsideTrip,
+} from './utils/datetime.js';
+import { fmtEuro, fmtDuration, fmtKm, parseAmount } from './utils/format.js';
+import { toast } from './components/toast.js';
+import { showModal, closeModal } from './components/modal.js';
+import { signedOutState, errorCard } from './components/feedback.js';
+import { tripVisibility, visibilityPillHtml, tripCardHtml } from './components/trip-card.js';
+import { renderTrips, tripResultsHtml } from './screens/trips-screen.js';
+import { renderAccount } from './screens/account-screen.js';
+import { userInitials, userDisplayName, userAvatarUrl, initialsFromName, displayNameForUserId, authorInitials, authorLabel } from './utils/user.js';
 
-const EXPECTED_SCHEMA_VERSION = '009';
-
-const STATE = {
-  tab: 'trips',
-  view: 'list', // list | detail | summary
-  viewTripId: null,
-  user: null,
-  schemaVersion: null,
-  schemaLoading: false,
-  schemaError: null,
-  trips: [],
-  tripsLoading: false,
-  tripsError: null,
-  stagesByTrip: {},
-  stagesLoading: false,
-  stagesError: null,
-  forecastsByStage: {},
-  entriesByStage: {},          // stageId -> array of entries OR 'loading'
-  expandedStages: new Set(),   // journal sections open in trip detail
-  expandedGpxStages: new Set(), // GPX sections open in trip detail
-  expandedSummaryStages: new Set(),
-  profiles: [],                // users who have signed in at least once
-  profilesById: {},
-  profilesLoading: false,
-  profilesError: null,
-  expensesByTrip: {},       // tripId -> array of expenses OR 'loading'
-  gpxByTrip: {},            // tripId -> array of GPX track records OR 'loading'
-  gpxGeometryByTrack: {},   // trackId -> parsed geometry OR 'loading'
-  gpxLoading: false,
-  gpxError: null,
-  archiveGpxLoading: false,
-  archiveGpxError: null,
-  expensesLoading: false,
-  expensesError: null,
-  tripSearch: '',
-  tripStatusFilter: 'all',
-  tripFiltersOpen: false,
-  archiveSearch: '',
-  archiveStatusFilter: 'all',
-  archiveFiltersOpen: false,
-  archiveViewMode: 'list', // list | map
-  archiveMapLayer: 'heatmap', // heatmap | hybrid | routes
-  archiveDataLoading: false,
-  archiveDataError: null,
-  isOnline: typeof navigator === 'undefined' ? true : navigator.onLine !== false,
-};
-
-
-const STATUS_META = {
-  planning:  { label: 'Planning',  cls: 'status-planning'  },
-  active:    { label: 'Active',    cls: 'status-active'    },
-  completed: { label: 'Completed', cls: 'status-completed' },
-  cancelled: { label: 'Cancelled', cls: 'status-cancelled' },
-};
-
-const TRIPS_SCREEN_STATUSES = ['planning', 'active'];
-const ARCHIVE_SCREEN_STATUSES = ['completed', 'cancelled'];
-
-
-const VISIBILITY_META = {
-  private: { label: 'Private', formLabel: 'Private — only me', cls: 'visibility-private' },
-  group:   { label: 'Group',   formLabel: 'Friends group — everyone with app access', cls: 'visibility-group' },
-};
-
-const ENTRY_TYPE_META = {
-  stop:    { label: 'Stop',    icon: '🛑' },
-  meal:    { label: 'Meal',    icon: '🍽️' },
-  lodging: { label: 'Lodging', icon: '🏨' },
-  note:    { label: 'Note',    icon: '💬' },
-  drink:   { label: 'Drink',   icon: '🍺' },
-  other:   { label: 'Other',   icon: '📌' },
-};
-
-
-const EXPENSE_CATEGORY_META = {
-  fuel:         { label: 'Fuel',          icon: '⛽' },
-  food_drinks:  { label: 'Food & drinks', icon: '🍽️' },
-  lodging:      { label: 'Lodging',       icon: '🏨' },
-  tolls:        { label: 'Tolls',         icon: '🛣️' },
-  parking:      { label: 'Parking',       icon: '🅿️' },
-  other:        { label: 'Other',         icon: '📌' },
-};
-
-// Simplified Europe country/border outlines for the archive geography view.
-// These are deliberately coarse: they give geographic context without road tiles,
-// labels, or external map providers. Coordinates are [longitude, latitude].
-const EUROPE_BOUNDARY_LINES = [
-  // Portugal
-  [[-8.67,42.15],[-8.1,41.8],[-8.8,40.0],[-9.45,38.7],[-8.98,37.0],[-7.3,37.0],[-6.9,38.2],[-7.1,39.6],[-6.8,41.0],[-6.2,41.9],[-7.0,42.1],[-8.67,42.15]],
-  // Spain
-  [[-9.3,43.4],[-7.0,43.6],[-3.0,43.5],[0.8,42.7],[3.2,42.3],[2.2,41.0],[0.2,40.7],[-0.3,39.0],[0.2,38.3],[-0.8,37.6],[-1.9,36.7],[-4.5,36.0],[-6.2,36.1],[-7.4,36.9],[-8.7,41.9],[-9.3,43.4]],
-  // France
-  [[-5.1,48.7],[-2.0,49.7],[1.6,50.9],[4.0,50.8],[7.6,49.1],[7.4,48.0],[6.2,46.2],[7.5,43.7],[5.5,43.2],[3.0,42.4],[0.8,42.7],[-1.8,43.4],[-1.6,46.0],[-5.1,48.7]],
-  // United Kingdom
-  [[-6.3,50.0],[-4.8,50.6],[-3.0,51.0],[-1.0,50.8],[1.7,52.1],[1.0,54.0],[-1.5,55.0],[-2.0,57.6],[-4.8,58.7],[-6.2,57.0],[-5.2,55.0],[-6.8,54.0],[-5.5,52.0],[-6.3,50.0]],
-  // Ireland
-  [[-10.5,51.4],[-9.0,51.4],[-7.2,52.2],[-6.0,53.4],[-6.1,55.1],[-8.2,55.3],[-10.0,54.2],[-10.5,51.4]],
-  // Belgium / Netherlands rough coastline
-  [[2.5,51.1],[3.4,51.4],[4.9,51.5],[5.8,53.4],[6.9,53.5],[7.2,51.8],[6.0,50.7],[4.0,50.7],[2.5,51.1]],
-  // Germany / Denmark rough outline
-  [[5.8,53.4],[8.0,54.9],[10.0,54.8],[12.5,54.5],[13.9,53.7],[14.9,51.0],[13.0,48.9],[10.5,47.4],[8.5,47.6],[7.6,49.1],[6.0,50.7],[7.2,51.8],[5.8,53.4]],
-  // Switzerland / Austria
-  [[6.0,46.2],[8.0,45.8],[10.5,46.5],[13.0,46.4],[16.5,47.7],[15.5,48.9],[13.0,48.9],[10.5,47.4],[8.5,47.6],[7.0,47.8],[6.0,46.2]],
-  // Italy
-  [[7.5,43.7],[8.8,44.4],[10.0,43.8],[12.0,42.2],[13.0,41.1],[14.5,40.5],[15.9,38.0],[15.6,37.0],[13.0,38.0],[12.2,40.0],[10.0,41.8],[9.0,43.8],[7.5,43.7]],
-  // Northern Balkans / Adriatic context
-  [[13.0,46.4],[14.5,45.5],[16.0,45.8],[18.0,44.8],[19.5,43.6],[18.5,42.5],[16.0,43.0],[14.0,44.2],[13.0,46.4]],
-  // Scandinavia rough outline
-  [[5.0,58.0],[8.0,58.5],[11.0,57.5],[13.0,55.5],[16.0,56.0],[18.5,59.0],[20.0,62.0],[23.5,65.0],[25.0,68.5],[21.0,70.0],[16.0,69.0],[12.0,66.0],[8.0,62.0],[5.0,58.0]],
-  // Poland / Czechia / eastern context
-  [[14.9,51.0],[17.0,50.7],[19.5,49.5],[23.0,50.0],[24.0,52.0],[22.5,54.0],[18.0,54.8],[14.9,51.0]],
-];
-
-// ---------- DOM helpers ----------
-function $(id) { return document.getElementById(id); }
-
-function esc(v) {
-  return String(v ?? '').replace(/[&<>'"]/g, (ch) => ({
-    '&': '&amp;', '<': '&lt;', '>': '&gt;', "'": '&#39;', '"': '&quot;',
-  }[ch]));
-}
-
-function attr(name, value) {
-  return value ? ` ${name}="${esc(value)}"` : '';
-}
-
-function boolAttr(name, condition) {
-  return condition ? ` ${name}` : '';
-}
-
-function canonicalHost(value) {
-  if (!value) return '';
-  try {
-    const url = new URL(String(value).trim());
-    let host = url.hostname.toLowerCase();
-    if (host.startsWith('www.')) host = host.slice(4);
-    return host;
-  } catch {
-    return '';
-  }
-}
-
-function linkHostBadgeHtml(value) {
-  const host = canonicalHost(value);
-  return host ? `<span class="link-host">· ${esc(host)}</span>` : '';
-}
-
-function isHttpsUrl(value) {
-  if (!value) return true;
-  try {
-    const url = new URL(String(value).trim());
-    return url.protocol === 'https:';
-  } catch {
-    return false;
-  }
-}
-
-function isGoogleMapsUrl(value) {
-  if (!value) return true;
-  try {
-    const url = new URL(String(value).trim());
-    const host = url.hostname.toLowerCase();
-    const path = url.pathname.toLowerCase();
-    if (host === 'maps.app.goo.gl' || host === 'goo.gl') return true;
-    const isGoogleHost = host === 'google.com'
-      || host === 'www.google.com'
-      || host.startsWith('maps.google.')
-      || /^www\.google\.[a-z.]+$/.test(host)
-      || /^google\.[a-z.]+$/.test(host);
-    return url.protocol === 'https:' && isGoogleHost && (path.startsWith('/maps') || path.includes('/maps/'));
-  } catch {
-    return false;
-  }
-}
-
-function validateEntryUrls(fields) {
-  if (fields.location_url && !isGoogleMapsUrl(fields.location_url)) {
-    throw new Error('Use a valid HTTPS Google Maps link for the Maps URL.');
-  }
-  if (fields.info_url && !isHttpsUrl(fields.info_url)) {
-    throw new Error('Use a valid HTTPS website link.');
-  }
-  if (fields.photo_album_url && !isHttpsUrl(fields.photo_album_url)) {
-    throw new Error('Photo album links must start with https://.');
-  }
-}
-
-// ---------- Toast ----------
-let toastTimer = null;
-function toast(msg) {
-  const t = $('toast');
-  if (!t) return;
-  t.textContent = msg;
-  t.classList.add('show');
-  clearTimeout(toastTimer);
-  toastTimer = setTimeout(() => t.classList.remove('show'), 2400);
-}
-
-// ---------- Modal ----------
-function showModal(title, bodyHtml, buttons) {
-  let overlay = $('modal');
-  if (!overlay) {
-    overlay = document.createElement('div');
-    overlay.id = 'modal';
-    overlay.className = 'modal-overlay';
-    overlay.innerHTML = `
-      <div class="modal-box" id="modalBox">
-        <div class="modal-title" id="modalTitle"></div>
-        <div id="modalBody"></div>
-        <div class="modal-btns" id="modalBtns"></div>
-      </div>
-    `;
-    document.body.appendChild(overlay);
-    overlay.addEventListener('click', (e) => {
-      if (e.target === overlay) closeModal();
-    });
-  }
-
-  $('modalTitle').textContent = title;
-  $('modalBody').innerHTML = bodyHtml;
-
-  const btnWrap = $('modalBtns');
-  btnWrap.innerHTML = '';
-  buttons.forEach((b) => {
-    const btn = document.createElement('button');
-    btn.className = `btn ${b.cls || 'btn-secondary'} btn-block`;
-    btn.textContent = b.label;
-    btn.addEventListener('click', () => b.fn?.());
-    btnWrap.appendChild(btn);
-  });
-
-  overlay.style.display = 'flex';
-}
-
-function closeModal() {
-  const overlay = $('modal');
-  if (overlay) overlay.style.display = 'none';
-}
-
-// ---------- User helpers ----------
-function userInitials(user) {
-  const name = user?.user_metadata?.full_name || user?.email || '?';
-  return name.trim().split(/\s+/).slice(0, 2).map((w) => w[0]?.toUpperCase() || '').join('') || '?';
-}
-
-function userDisplayName(user) {
-  return user?.user_metadata?.full_name || user?.user_metadata?.name || user?.email || 'Unknown';
-}
-
-function userAvatarUrl(user) {
-  return user?.user_metadata?.avatar_url || user?.user_metadata?.picture || '';
-}
-
-function initialsFromName(name) {
-  return String(name || '?')
-    .trim()
-    .split(/\s+/)
-    .filter(Boolean)
-    .slice(0, 2)
-    .map((w) => w[0]?.toUpperCase() || '')
-    .join('') || '?';
-}
-
-function profileForUserId(userId) {
-  return userId ? STATE.profilesById[userId] || null : null;
-}
-
-function displayNameForUserId(userId) {
-  if (STATE.user && userId === STATE.user.id) return userDisplayName(STATE.user);
-  const profile = profileForUserId(userId);
-  return profile?.full_name || profile?.email || 'Friend';
-}
-
-function authorInitials(authorId) {
-  return initialsFromName(displayNameForUserId(authorId));
-}
-
-function authorLabel(authorId) {
-  if (STATE.user && authorId === STATE.user.id) return `You — ${userDisplayName(STATE.user)}`;
-  return displayNameForUserId(authorId);
-}
-
-function tripVisibility(trip) {
-  return trip?.visibility === 'private' ? 'private' : 'group';
-}
-
-function visibilityPillHtml(trip) {
-  const key = tripVisibility(trip);
-  const meta = VISIBILITY_META[key];
-  return `<span class="visibility-pill ${meta.cls}">${esc(meta.label)}</span>`;
-}
+const EXPECTED_SCHEMA_VERSION = '010';
 
 function canDeleteTrip(trip) {
   return Boolean(STATE.user?.id && trip?.created_by === STATE.user.id);
@@ -323,131 +67,13 @@ function ensureOnline(message = 'You are offline. Reconnect before making change
   return false;
 }
 
-// ---------- Date helpers ----------
-function fmtDate(iso) {
-  if (!iso) return '';
-  const d = new Date(`${iso}T00:00:00`);
-  if (Number.isNaN(d.getTime())) return iso;
-  return d.toLocaleDateString(undefined, { day: 'numeric', month: 'short', year: 'numeric' });
-}
-
-function fmtDateRange(start, end) {
-  if (!start && !end) return 'No dates set';
-  if (start && !end) return fmtDate(start);
-  if (!start && end) return `Until ${fmtDate(end)}`;
-  if (start === end) return fmtDate(start);
-  return `${fmtDate(start)} → ${fmtDate(end)}`;
-}
-
-function fmtDateTime(iso) {
-  if (!iso) return '';
-  const d = new Date(iso);
-  if (Number.isNaN(d.getTime())) return iso;
-  return d.toLocaleString(undefined, {
-    day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit',
-  });
-}
-
 function auditLineHtml(record, label = 'Last edited') {
   if (!record?.updated_by || !record?.updated_at) return '';
   const who = displayNameForUserId(record.updated_by);
   return `<div class="audit-line">${esc(label)} by ${esc(who)} · ${esc(fmtDateTime(record.updated_at))}</div>`;
 }
 
-function isoToDatetimeLocal(iso) {
-  if (!iso) return '';
-  const d = new Date(iso);
-  if (Number.isNaN(d.getTime())) return '';
-  const pad = (n) => String(n).padStart(2, '0');
-  return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(d.getMinutes())}`;
-}
 
-function datetimeLocalToIso(value) {
-  if (!value) return null;
-  const d = new Date(value);
-  if (Number.isNaN(d.getTime())) return null;
-  return d.toISOString();
-}
-
-function nowAsDatetimeLocal() {
-  return isoToDatetimeLocal(new Date().toISOString());
-}
-
-
-function todayIsoDate() {
-  const d = new Date();
-  const pad = (n) => String(n).padStart(2, '0');
-  return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`;
-}
-
-function currentLocalTimeHHMM() {
-  const d = new Date();
-  const pad = (n) => String(n).padStart(2, '0');
-  return `${pad(d.getHours())}:${pad(d.getMinutes())}`;
-}
-
-function journalDefaultDatetimeLocal(stage) {
-  return stage?.planned_date ? `${stage.planned_date}T${currentLocalTimeHHMM()}` : '';
-}
-
-function fmtEuro(value, options = {}) {
-  const n = Number(value);
-  if (!Number.isFinite(n)) return options.empty || '—';
-  const maximumFractionDigits = options.compact ? 0 : 2;
-  const minimumFractionDigits = options.compact ? 0 : 2;
-  return new Intl.NumberFormat(undefined, {
-    style: 'currency',
-    currency: 'EUR',
-    minimumFractionDigits,
-    maximumFractionDigits,
-  }).format(n);
-}
-
-function fmtDuration(seconds) {
-  const n = Number(seconds);
-  if (!Number.isFinite(n) || n <= 0) return '—';
-  const hours = Math.floor(n / 3600);
-  const minutes = Math.round((n % 3600) / 60);
-  if (hours && minutes) return `${hours}h ${minutes}m`;
-  if (hours) return `${hours}h`;
-  return `${minutes}m`;
-}
-
-function fmtKm(value) {
-  const n = Number(value);
-  if (!Number.isFinite(n)) return '—';
-  return `${Math.round(n * 10) / 10} km`;
-}
-
-function parseAmount(value) {
-  const raw = String(value ?? '').trim().replace(',', '.');
-  if (!raw) return null;
-  const n = Number(raw);
-  return Number.isFinite(n) ? n : null;
-}
-
-function inclusiveDays(start, end) {
-  if (!start || !end) return null;
-  const a = new Date(`${start}T00:00:00`);
-  const b = new Date(`${end}T00:00:00`);
-  if (Number.isNaN(a.getTime()) || Number.isNaN(b.getTime())) return null;
-  const diff = Math.round((b - a) / 86400000) + 1;
-  return diff > 0 ? diff : null;
-}
-
-function isStageDateOutsideTrip(stage, trip) {
-  if (!stage?.planned_date) return false;
-  if (trip.start_date && stage.planned_date < trip.start_date) return true;
-  if (trip.end_date && stage.planned_date > trip.end_date) return true;
-  return false;
-}
-
-function isExpenseDateOutsideTrip(expense, trip) {
-  if (!expense?.date) return false;
-  if (trip.start_date && expense.date < trip.start_date) return true;
-  if (trip.end_date && expense.date > trip.end_date) return true;
-  return false;
-}
 
 // ---------- Online/offline ----------
 function offlineBannerHtml() {
@@ -800,116 +426,6 @@ async function openTrip(tripId, view = 'detail') {
   if (!Array.isArray(STATE.expensesByTrip[tripId])) await loadExpensesForTrip(tripId, { quiet: true });
   if (!Array.isArray(STATE.gpxByTrip[tripId])) await loadGpxForTrip(tripId, { quiet: true });
 }
-
-// ---------- Trip cards / list ----------
-function tripCardHtml(trip) {
-  const meta = STATUS_META[trip.status] || STATUS_META.planning;
-  return `
-    <button class="trip-card" data-trip-id="${esc(trip.id)}">
-      <div class="trip-card-head">
-        <div class="trip-title">${esc(trip.title)}</div>
-        <div class="trip-card-pills">
-          <span class="status-pill ${meta.cls}">${esc(meta.label)}</span>
-          ${visibilityPillHtml(trip)}
-        </div>
-      </div>
-      <div class="trip-dates">${esc(fmtDateRange(trip.start_date, trip.end_date))}</div>
-      ${trip.description ? `<div class="trip-desc">${esc(trip.description)}</div>` : ''}
-    </button>
-  `;
-}
-
-function tripFiltersHtml() {
-  const activeFilters = Number(Boolean(STATE.tripSearch.trim())) + Number(STATE.tripStatusFilter !== 'all');
-  const toggleText = STATE.tripFiltersOpen ? 'Hide filters' : `Filters${activeFilters ? ` (${activeFilters})` : ''}`;
-
-  return `
-    <div class="trip-filter-toggle-row">
-      <button class="btn btn-secondary btn-sm trip-filter-toggle" id="tripFiltersToggle" aria-expanded="${STATE.tripFiltersOpen ? 'true' : 'false'}">
-        ${esc(toggleText)}
-      </button>
-    </div>
-    <div class="trip-controls ${STATE.tripFiltersOpen ? 'open' : ''}" id="tripFiltersPanel">
-      <div class="trip-search-wrap">
-        <label class="form-label" for="tripSearchInput">Search trips</label>
-        <input class="inp" id="tripSearchInput" type="search" value="${esc(STATE.tripSearch)}" placeholder="Search by trip title">
-      </div>
-      <div class="trip-status-wrap">
-        <label class="form-label" for="tripStatusFilter">Status</label>
-        <select class="sel" id="tripStatusFilter">
-          <option value="all" ${STATE.tripStatusFilter === 'all' ? 'selected' : ''}>All active</option>
-          ${TRIPS_SCREEN_STATUSES.map((key) => {
-            const meta = STATUS_META[key];
-            return `<option value="${esc(key)}" ${STATE.tripStatusFilter === key ? 'selected' : ''}>${esc(meta.label)}</option>`;
-          }).join('')}
-        </select>
-      </div>
-    </div>
-  `;
-}
-
-function activeTripsBase() {
-  return STATE.trips.filter((trip) => TRIPS_SCREEN_STATUSES.includes(trip.status));
-}
-
-function filteredTripsForTripsScreen() {
-  const query = STATE.tripSearch.trim().toLowerCase();
-  const statusFilter = TRIPS_SCREEN_STATUSES.includes(STATE.tripStatusFilter) ? STATE.tripStatusFilter : 'all';
-  return activeTripsBase().filter((trip) => {
-    const matchesStatus = statusFilter === 'all' || trip.status === statusFilter;
-    const matchesSearch = !query || String(trip.title || '').toLowerCase().includes(query);
-    return matchesStatus && matchesSearch;
-  });
-}
-
-function tripResultsHtml() {
-  const baseTrips = activeTripsBase();
-  const trips = filteredTripsForTripsScreen();
-  const hasFilters = STATE.tripSearch.trim() || STATE.tripStatusFilter !== 'all';
-
-  if (!baseTrips.length) {
-    return `
-      <div class="empty-state">
-        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
-          <path d="M3 6h18M3 12h18M3 18h12"/>
-        </svg>
-        <div class="empty-title">No active trips</div>
-        <div class="empty-sub">Planning and active trips appear here. Completed and cancelled trips live in the Archive.</div>
-      </div>
-    `;
-  }
-
-  if (!trips.length) {
-    return `
-      <div class="empty-state">
-        <div class="empty-title">No matching trips</div>
-        <div class="empty-sub">${hasFilters ? 'Adjust the search or active-trip status filter.' : 'No planning or active trips to show.'}</div>
-      </div>
-    `;
-  }
-
-  return `<div class="trip-list">${trips.map(tripCardHtml).join('')}</div>`;
-}
-
-function renderTrips() {
-  if (!STATE.user) return signedOutState('Sign in to see trips', 'Trips are shared with everyone signed in.');
-
-  if (STATE.tripsLoading && !STATE.trips.length) {
-    return `<div class="empty-state"><div class="empty-sub">Loading trips…</div></div>`;
-  }
-
-  if (STATE.tripsError) return errorCard(STATE.tripsError, 'retryTripsBtn');
-
-  return `
-    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px;gap:8px;">
-      <div class="section-label" style="margin-bottom:0;">Trips</div>
-      <button class="btn btn-primary btn-sm" id="newTripBtn"${writeDisabledAttr()}>+ New trip</button>
-    </div>
-    ${tripFiltersHtml()}
-    <div id="tripResults">${tripResultsHtml()}</div>
-  `;
-}
-
 
 function archiveTripsBase() {
   return STATE.trips.filter((t) => ARCHIVE_SCREEN_STATUSES.includes(t.status));
@@ -1610,29 +1126,6 @@ function renderArchive() {
   `;
 }
 
-
-function signedOutState(title, subtitle) {
-  return `
-    <div class="empty-state">
-      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
-        <path d="M3 6h18M3 12h18M3 18h12"/>
-      </svg>
-      <div class="empty-title">${esc(title)}</div>
-      <div class="empty-sub">${esc(subtitle || '')}</div>
-      <button class="btn btn-primary" id="emptySignInBtn" style="margin-top:14px;">Sign in with Google</button>
-    </div>
-  `;
-}
-
-function errorCard(message, retryId) {
-  return `
-    <div class="card">
-      <div class="card-title" style="color:#ef6262;">Error</div>
-      <div style="color:#c5d0e0;font-size:14px;line-height:1.5;">${esc(message)}</div>
-      <button class="btn btn-secondary btn-block" style="margin-top:12px;" id="${esc(retryId)}">Retry</button>
-    </div>
-  `;
-}
 
 function friendlyError(action, err) {
   const msg = String(err?.message || '').toLowerCase();
@@ -2863,142 +2356,6 @@ function showDeleteGpxConfirm(track) {
     ]);
 }
 
-
-// ---------- PWA install helper ----------
-function detectedInstallPlatform() {
-  const ua = navigator.userAgent || '';
-  const isIOS = /iPad|iPhone|iPod/.test(ua) || (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
-  const isAndroid = /Android/i.test(ua);
-  if (isIOS) return 'ios';
-  if (isAndroid) return 'android';
-  return 'desktop';
-}
-
-function installStepsForPlatform(platform) {
-  if (platform === 'ios') {
-    return {
-      title: 'iPhone / iPad',
-      note: 'Use Safari. Other iOS browsers usually cannot add the PWA properly.',
-      steps: ['Open routefolk in Safari.', 'Tap the Share button.', 'Choose Add to Home Screen.', 'Tap Add.'],
-    };
-  }
-  if (platform === 'android') {
-    return {
-      title: 'Android',
-      note: 'Chrome gives the most reliable install flow.',
-      steps: ['Open routefolk in Chrome.', 'Tap the three-dot menu.', 'Choose Install app or Add to Home screen.', 'Confirm the install.'],
-    };
-  }
-  return {
-    title: 'Desktop',
-    note: 'Chrome and Edge usually show an install icon in the address bar when the app is installable.',
-    steps: ['Open routefolk in Chrome or Edge.', 'Click the install icon in the address bar, when available.', 'Confirm the install.', 'Open routefolk from your app launcher or dock.'],
-  };
-}
-
-function installStepsHtml(config) {
-  return `
-    <div class="install-helper-block">
-      <div class="install-helper-title">${esc(config.title)}</div>
-      <ol class="install-steps">
-        ${config.steps.map((step) => `<li>${esc(step)}</li>`).join('')}
-      </ol>
-      <div class="form-help">${esc(config.note)}</div>
-    </div>
-  `;
-}
-
-function pwaInstallHelperHtml() {
-  const platform = detectedInstallPlatform();
-  const primary = installStepsForPlatform(platform);
-  const others = ['ios', 'android', 'desktop'].filter((p) => p !== platform).map(installStepsForPlatform);
-  return `
-    <div class="card">
-      <div class="card-title">Install routefolk</div>
-      <div style="font-size:14px;color:#c5d0e0;line-height:1.5;margin-bottom:12px;">
-        Add routefolk to your home screen so it opens like a normal app.
-      </div>
-      ${installStepsHtml(primary)}
-      <details class="form-details install-helper-details">
-        <summary>Instructions for other devices</summary>
-        <div class="install-helper-extra">
-          ${others.map(installStepsHtml).join('')}
-        </div>
-      </details>
-    </div>
-  `;
-}
-
-// ---------- Account ----------
-function renderAccount() {
-  if (!STATE.user) {
-    return `
-      <div class="card">
-        <div class="card-title">Account</div>
-        <div style="font-size:14px;color:#c5d0e0;line-height:1.5;margin-bottom:14px;">
-          Sign in with Google to access shared trips.
-        </div>
-        <button class="btn-google" id="accountSignInBtn">
-          <svg viewBox="0 0 24 24" aria-hidden="true"><path fill="#4285F4" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"/><path fill="#34A853" d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z"/><path fill="#FBBC05" d="M5.84 14.1c-.22-.66-.35-1.36-.35-2.1s.13-1.44.35-2.1V7.06H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.94l3.66-2.84z"/><path fill="#EA4335" d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.06L5.84 9.9C6.71 7.3 9.14 5.38 12 5.38z"/></svg>
-          Sign in with Google
-        </button>
-      </div>
-    `;
-  }
-
-  const avatar = userAvatarUrl(STATE.user);
-  return `
-    <div class="card">
-      <div class="card-title">Account</div>
-      <div class="account-row">
-        <div class="account-avatar">
-          ${avatar ? `<img src="${esc(avatar)}" alt="" referrerpolicy="no-referrer">` : esc(userInitials(STATE.user))}
-        </div>
-        <div class="account-info">
-          <div class="account-name">${esc(userDisplayName(STATE.user))}</div>
-          <div class="account-email">${esc(STATE.user.email || '')}</div>
-        </div>
-      </div>
-      <button class="btn btn-secondary btn-block" id="signOutBtn" style="margin-top:12px;">Sign out</button>
-    </div>
-
-    <div class="card">
-      <div class="card-title">People with access</div>
-      ${peopleListHtml()}
-      <div class="form-help" style="margin-top:10px;">
-        This list shows users who have signed in at least once. Add or remove access in the Google OAuth Test users list.
-      </div>
-    </div>
-
-    ${pwaInstallHelperHtml()}
-  `;
-}
-
-function peopleListHtml() {
-  if (STATE.profilesLoading && !STATE.profiles.length) return `<div class="empty-sub">Loading people…</div>`;
-  if (STATE.profilesError) return `<div class="stage-warn">${esc(STATE.profilesError)}</div>`;
-  if (!STATE.profiles.length) return `<div class="empty-sub">No profiles yet. People appear here after their first sign-in.</div>`;
-
-  return `
-    <div class="people-list">
-      ${STATE.profiles.map((profile) => {
-        const initials = initialsFromName(profile.full_name || profile.email);
-        const isYou = STATE.user?.id === profile.id;
-        return `
-          <div class="people-row">
-            <div class="account-avatar people-avatar">
-              ${profile.avatar_url ? `<img src="${esc(profile.avatar_url)}" alt="" referrerpolicy="no-referrer">` : esc(initials)}
-            </div>
-            <div class="account-info">
-              <div class="account-name">${esc(profile.full_name || profile.email || 'Unknown')}${isYou ? ' <span class="people-you">You</span>' : ''}</div>
-              <div class="account-email">${esc(profile.email || '')}</div>
-            </div>
-          </div>
-        `;
-      }).join('')}
-    </div>
-  `;
-}
 
 // ---------- Handlers ----------
 async function handleSignIn() {
