@@ -1,6 +1,6 @@
 // ============================================================
 // routefolk — app.js
-// Phase 3.9D: extract Archive screen rendering.
+// Phase 3.9F: extract Trip Detail screen shell.
 // ============================================================
 
 import { signInWithGoogle, signOut, getCurrentUser, onAuthChange } from './lib/auth.js';
@@ -45,6 +45,8 @@ import { tripVisibility, visibilityPillHtml, tripCardHtml } from './components/t
 import { renderTrips, tripResultsHtml } from './screens/trips-screen.js';
 import { renderAccount } from './screens/account-screen.js';
 import { renderArchive, archiveResultsHtml, bindArchiveMapEvents } from './screens/archive-screen.js';
+import { renderTripSummary, bindSummaryEvents } from './screens/summary-screen.js';
+import { renderTripDetailScreen } from './screens/trip-detail-screen.js';
 import { userInitials, userDisplayName, userAvatarUrl, initialsFromName, displayNameForUserId, authorInitials, authorLabel } from './utils/user.js';
 
 const EXPECTED_SCHEMA_VERSION = '010';
@@ -746,45 +748,6 @@ function renderStagesSection(trip) {
   `;
 }
 
-function renderTripDetail() {
-  const trip = currentTrip();
-  if (!trip) return tripNotFoundHtml();
-
-  const meta = STATUS_META[trip.status] || STATUS_META.planning;
-  return `
-    <button class="btn btn-secondary btn-sm" id="backToTripsBtn" style="margin-bottom:12px;">← Back</button>
-
-    <div class="card">
-      <div class="trip-detail-head">
-        <h1 class="trip-detail-title">${esc(trip.title)}</h1>
-        <div class="trip-detail-pills">
-          <span class="status-pill ${meta.cls}">${esc(meta.label)}</span>
-          ${visibilityPillHtml(trip)}
-        </div>
-      </div>
-      <div class="trip-detail-dates">${esc(fmtDateRange(trip.start_date, trip.end_date))}</div>
-      ${trip.description ? `<div class="trip-detail-desc">${esc(trip.description)}</div>` : ''}
-      ${auditLineHtml(trip)}
-      ${tripStatsStripHtml(trip)}
-      <div class="trip-detail-actions">
-        <button class="btn btn-secondary btn-sm" id="summaryTripBtn">Summary</button>
-        <button class="btn btn-secondary btn-sm" id="editTripBtn"${writeDisabledAttr()}>Edit</button>
-        ${canDeleteTrip(trip) ? `<button class="btn btn-danger btn-sm" id="deleteTripBtn"${writeDisabledAttr()}>Delete</button>` : ''}
-      </div>
-    </div>
-
-    <div class="card">
-      <div class="card-title">Stages</div>
-      ${renderStagesSection(trip)}
-    </div>
-
-    <div class="card">
-      <div class="card-title">Expenses</div>
-      ${renderExpensesSection(trip)}
-    </div>
-  `;
-}
-
 function currentTrip() {
   return STATE.trips.find((t) => t.id === STATE.viewTripId) || null;
 }
@@ -845,188 +808,6 @@ function tripStatsStripHtml(trip) {
   `;
 }
 
-
-// ---------- Summary view ----------
-function renderTripSummary() {
-  const trip = currentTrip();
-  if (!trip) return tripNotFoundHtml();
-
-  const stages = STATE.stagesByTrip[trip.id] || [];
-  const expenses = expensesForTrip(trip.id);
-  return `
-    <button class="btn btn-secondary btn-sm" id="backToDetailBtn" style="margin-bottom:12px;">← Back to trip</button>
-
-    <div class="card">
-      <div class="trip-detail-head">
-        <h1 class="trip-detail-title">${esc(trip.title)}</h1>
-        <div class="trip-detail-pills">
-          <span class="status-pill ${(STATUS_META[trip.status] || STATUS_META.planning).cls}">${esc((STATUS_META[trip.status] || STATUS_META.planning).label)}</span>
-          ${visibilityPillHtml(trip)}
-        </div>
-      </div>
-      <div class="trip-detail-dates">${esc(fmtDateRange(trip.start_date, trip.end_date))}</div>
-      <div class="section-label" style="margin-top:12px;margin-bottom:8px;">Trip Summary Review</div>
-      ${tripStatsStripHtml(trip)}
-    </div>
-
-    <div class="card">
-      <div class="card-title">Trip cost</div>
-      ${expenseTotalsHtml(expenseTotals(expenses))}
-    </div>
-
-    <div class="card">
-      <div class="card-title">Summary table</div>
-      ${summaryTableHtml(stages, trip)}
-      ${summaryTripLevelExpensesHtml(trip)}
-    </div>
-  `;
-}
-
-function summaryTableHtml(stages, trip) {
-  if (STATE.stagesLoading && !stages.length) return `<div class="empty-sub">Loading summary…</div>`;
-  if (!stages.length) return `<div class="empty-sub">No stages yet.</div>`;
-
-  return `
-    <div class="summary-table-wrap">
-      <table class="summary-table">
-        <thead>
-          <tr>
-            <th>Date</th>
-            <th>From → To</th>
-            <th>Distance</th>
-            <th>Notes</th>
-            <th>Journal / expenses</th>
-          </tr>
-        </thead>
-        <tbody>
-          ${stages.map((stage, index) => summaryStageRowsHtml(stage, trip, index)).join('')}
-        </tbody>
-      </table>
-    </div>
-  `;
-}
-
-function summaryStageRowsHtml(stage, trip, index) {
-  const entries = STATE.entriesByStage[stage.id];
-  const expenses = expensesForTrip(trip.id).filter((expense) => expense.stage_id === stage.id);
-  const expanded = STATE.expandedSummaryStages.has(stage.id);
-  const entryCount = Array.isArray(entries) ? entries.length : (entries === 'loading' ? '…' : 0);
-  const expenseCount = expenses.length;
-  const warning = isStageDateOutsideTrip(stage, trip) ? `<div class="summary-warning">Outside trip dates</div>` : '';
-
-  const main = `
-    <tr class="summary-stage-row">
-      <td>${stage.planned_date ? esc(fmtDate(stage.planned_date)) : '—'}${warning}</td>
-      <td>${esc(stageRouteLabel(stage, index))}</td>
-      <td>${stage.distance_km != null ? `${esc(stage.distance_km)} km` : '—'}</td>
-      <td>${stage.notes ? esc(stage.notes) : '—'}</td>
-      <td>
-        <button class="summary-toggle" data-summary-stage-id="${esc(stage.id)}">
-          ${expanded ? '▾' : '▸'} ${esc(entryCount)} journal · ${esc(expenseCount)} expenses
-        </button>
-      </td>
-    </tr>
-  `;
-
-  if (!expanded) return main;
-
-  return main + `
-    <tr class="summary-entry-row">
-      <td colspan="5">
-        <div class="summary-review-grid">
-          <div>
-            <div class="summary-subtitle">Journal entries</div>
-            ${summaryEntriesHtml(entries)}
-          </div>
-          <div>
-            <div class="summary-subtitle">Expenses assigned to this stage</div>
-            ${summaryExpensesHtml(expenses, trip, 'No expenses assigned to this stage.')}
-          </div>
-        </div>
-      </td>
-    </tr>
-  `;
-}
-
-function summaryEntriesHtml(entries) {
-  if (entries === 'loading' || entries === undefined) return `<div class="empty-sub">Loading entries…</div>`;
-  if (!entries.length) return `<div class="empty-sub">No journal entries for this stage.</div>`;
-
-  return `
-    <div class="summary-entry-table-wrap">
-      <table class="summary-entry-table">
-        <thead>
-          <tr>
-            <th>Type</th>
-            <th>Time</th>
-            <th>Title</th>
-            <th>Location</th>
-            <th>Links</th>
-          </tr>
-        </thead>
-        <tbody>
-          ${entries.map(summaryEntryRowHtml).join('')}
-        </tbody>
-      </table>
-    </div>
-  `;
-}
-
-function summaryEntryRowHtml(entry) {
-  const meta = ENTRY_TYPE_META[entry.entry_type] || ENTRY_TYPE_META.note;
-  const location = entry.location_url
-    ? `<a href="${esc(entry.location_url)}" target="_blank" rel="noopener">${esc(entry.location || 'Map')} ${linkHostBadgeHtml(entry.location_url)}</a>`
-    : esc(entry.location || '—');
-  const links = [];
-  if (entry.info_url) links.push(`<a href="${esc(entry.info_url)}" target="_blank" rel="noopener">Website ${linkHostBadgeHtml(entry.info_url)}</a>`);
-  if (entry.photo_album_url) links.push(`<a href="${esc(entry.photo_album_url)}" target="_blank" rel="noopener">Album ${linkHostBadgeHtml(entry.photo_album_url)}</a>`);
-
-  return `
-    <tr>
-      <td>${esc(meta.icon)} ${esc(meta.label)}</td>
-      <td>${entry.timestamp ? esc(fmtDateTime(entry.timestamp)) : '—'}</td>
-      <td>${entry.title ? esc(entry.title) : '—'}${entry.description ? `<div class="summary-entry-desc">${esc(entry.description)}</div>` : ''}</td>
-      <td>${location}</td>
-      <td>${links.length ? links.join(' · ') : '—'}</td>
-    </tr>
-  `;
-}
-
-function summaryExpensesHtml(expenses, trip, emptyMessage = 'No expenses.') {
-  if (!expenses.length) return `<div class="empty-sub">${esc(emptyMessage)}</div>`;
-  return `
-    <div class="summary-expense-list">
-      ${expenses.map((expense) => summaryExpenseItemHtml(expense, trip)).join('')}
-    </div>
-  `;
-}
-
-function summaryExpenseItemHtml(expense, trip) {
-  const meta = EXPENSE_CATEGORY_META[expense.category] || EXPENSE_CATEGORY_META.other;
-  const payer = displayNameForUserId(expense.user_id);
-  const warning = isExpenseDateOutsideTrip(expense, trip)
-    ? `<div class="summary-warning">Expense date is outside the trip date range.</div>`
-    : '';
-  return `
-    <div class="summary-expense-item">
-      <div class="summary-expense-title">${esc(meta.icon)} ${esc(meta.label)} · ${esc(fmtEuro(expense.amount))}</div>
-      <div class="summary-expense-meta">Paid by ${esc(payer)}${expense.date ? ` · ${esc(fmtDate(expense.date))}` : ''}</div>
-      ${expense.description ? `<div class="summary-entry-desc">${esc(expense.description)}</div>` : ''}
-      ${warning}
-    </div>
-  `;
-}
-
-function summaryTripLevelExpensesHtml(trip) {
-  const expenses = expensesForTrip(trip.id).filter((expense) => !expense.stage_id);
-  if (!expenses.length) return '';
-  return `
-    <div class="summary-trip-expenses">
-      <div class="summary-subtitle">Trip-level expenses</div>
-      ${summaryExpensesHtml(expenses, trip, 'No trip-level expenses.')}
-    </div>
-  `;
-}
 
 // ---------- Forms ----------
 function tripFormHtml(trip = {}) {
@@ -1933,9 +1714,26 @@ function renderTab() {
   } else if (STATE.tab === 'account') {
     content.innerHTML = offlineBannerHtml() + renderAccount();
   } else if (STATE.view === 'detail') {
-    content.innerHTML = offlineBannerHtml() + renderTripDetail();
+    content.innerHTML = offlineBannerHtml() + renderTripDetailScreen({
+      currentTrip,
+      tripNotFoundHtml,
+      auditLineHtml,
+      tripStatsStripHtml,
+      renderStagesSection,
+      renderExpensesSection,
+      canDeleteTrip,
+      writeDisabledAttr,
+    });
   } else if (STATE.view === 'summary') {
-    content.innerHTML = offlineBannerHtml() + renderTripSummary();
+    content.innerHTML = offlineBannerHtml() + renderTripSummary({
+      currentTrip,
+      tripNotFoundHtml,
+      expensesForTrip,
+      tripStatsStripHtml,
+      expenseTotalsHtml,
+      expenseTotals,
+      stageRouteLabel,
+    });
   } else if (STATE.tab === 'archive') {
     content.innerHTML = offlineBannerHtml() + renderArchive();
   } else {
@@ -2148,20 +1946,7 @@ function bindContentEvents(content) {
     });
   });
 
-  content.querySelectorAll('[data-summary-stage-id]').forEach((btn) => {
-    btn.addEventListener('click', () => {
-      const stageId = btn.dataset.summaryStageId;
-      if (STATE.expandedSummaryStages.has(stageId)) {
-        STATE.expandedSummaryStages.delete(stageId);
-      } else {
-        STATE.expandedSummaryStages.add(stageId);
-        if (!STATE.entriesByStage[stageId] || STATE.entriesByStage[stageId] === 'loading') {
-          loadEntriesForStage(stageId, { quiet: true });
-        }
-      }
-      renderAll();
-    });
-  });
+  bindSummaryEvents(content, { loadEntriesForStage, renderAll });
 }
 
 function toggleStageJournal(stageId) {
