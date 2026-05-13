@@ -80,3 +80,6 @@ supabase/.temp/
 __pycache__/
 *.py[cod]
 .ipynb_checkpoints/
+
+.dev.vars*
+!.dev.vars.example
