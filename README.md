@@ -2,177 +2,94 @@
 
 A Progressive Web App for planning, journaling, and archiving motorcycle trips taken with friends.
 
-This README is updated for the current modularisation step. The app remains a no-build, plain HTML/CSS/JavaScript PWA using native ES modules.
+## Current development state
 
----
+This package includes the Phase 3.9H access-message hotfix and modularisation work. The app now checks database app membership before checking the schema version, so signed-in but non-allowed users see an explicit app-access message rather than a misleading migration warning.
 
-## Current step
+## App membership
 
-**Phase 3.9G — Trip Detail stage rendering extraction**
+Allowed users are defined in Supabase, in `public.app_members`. Google OAuth only controls who can sign in; `public.app_members` controls who can access app data.
 
-Implemented in this package:
+To list allowed users, run this in Supabase SQL Editor:
 
-- Extracted the Trip Detail screen shell to `screens/trip-detail-screen.js`.
-- Kept the tightly-coupled stage, journal, GPX, expense, modal, and write-handler logic in `app.js` for now.
-- Added `.gitignore` entry for `/docs/` so operational docs stay local/private while the GitHub repository remains public.
-- Rebuilt local operational docs under `docs/` as practical guides only.
-- Updated `index.html` and `sw.js` release strings for PWA cache refresh.
-- Updated `sw.js` shell assets so the new ES module is cached for installed-PWA use.
-
-This is intentionally conservative. Trip Detail is the dependency-heavy screen; extracting its shell first reduces risk before splitting the internal stage/journal/expense/GPX sections.
-
----
-
-## Documentation privacy
-
-The GitHub repository is public. A subdirectory inside a public repository cannot be made private.
-
-Operational docs under `docs/` are intentionally ignored by Git via `.gitignore`:
-
-```text
-/docs/
+```sql
+select email, role, active, created_at, updated_at
+from public.app_members
+order by active desc, lower(email);
 ```
 
-That means the docs are useful locally but should not be committed to GitHub. Do not store real member email lists, credentials, Supabase screenshots, or secrets in the public repository.
+To list signed-in users who are not active app members, run:
 
-If you already committed `docs/` before adding this ignore rule, remove it from Git tracking while keeping local files:
-
-```bash
-git rm -r --cached docs
-git commit -m "chore(docs): keep operational docs local"
+```sql
+select
+  u.email,
+  u.created_at as signed_up_at,
+  u.last_sign_in_at,
+  m.role,
+  m.active
+from auth.users u
+left join public.app_members m
+  on lower(m.email) = lower(u.email)
+where m.email is null
+   or m.active = false
+order by u.created_at desc;
 ```
 
----
+Do not commit real user lists to the public repository. Keep operational documentation in `/docs/`, which is ignored by Git.
 
-## Updated recommended implementation order
+## Database migrations
 
-### Done / effectively handled
+Run migrations in order. This package adds:
 
-- Add DB-level `app_members` allowlist — handled in the hardening package, assuming migration `010_app_membership_hardening.sql` has been applied.
-- Update RLS policies to require `is_app_member()` — handled in the hardening package, assuming migration `010_app_membership_hardening.sql` has been applied.
-- Add Cloudflare `_headers` with CSP/security headers — handled in the hardening package.
-- Remove `goo.gl` from allowed Maps hosts — handled in the hardening package and URL modules.
-- Add GPX coordinate range filtering — handled in the hardening package.
-- Split `app.js` into screens/components — in progress. State, constants, utilities, shared components, Trips, Account, Archive, Trip Summary, and the Trip Detail shell are now extracted.
-
-### Do now
-
-- Confirm Supabase production Site URL and redirect URLs are set for the deployed domain.
-- Smoke test DB membership hardening with one allowed user and one non-member account.
-- Continue reducing Trip Detail internals in small slices: stage section, journal section, expense section, GPX section.
-
-### Do next
-
-- Store simplified GPX geometry at upload time.
-- Cache archive heatmap calculations by track IDs + viewport.
-- Add Playwright smoke tests.
-- Add DB triggers for date consistency.
-
-### Defer
-
-- Offline write queue.
-- Realtime collaboration.
-- Full role/membership system with multiple groups.
-- Photo storage.
-- PDF export.
-
----
+- `011_app_access_state.sql` — adds `get_current_app_access()` and sets `schema_version = 011`.
 
 ## Project structure
 
 ```text
 routefolk/
+├── app.js
 ├── index.html
-├── style.css
-├── app.js                      # Coordinator, loaders, handlers, modal/write flows, detail internals for now
-├── .gitignore                  # Keeps local/private docs out of Git
-├── components/
-│   ├── feedback.js
-│   ├── modal.js
-│   ├── stats.js
-│   ├── toast.js
-│   └── trip-card.js
-├── constants/
-│   └── app-constants.js
-├── screens/
-│   ├── account-screen.js
-│   ├── archive-screen.js
-│   ├── summary-screen.js
-│   ├── trip-detail-screen.js
-│   └── trips-screen.js
-├── state/
-│   └── app-state.js
-├── utils/
-│   ├── datetime.js
-│   ├── dom.js
-│   ├── format.js
-│   ├── url.js
-│   └── user.js
-├── lib/
-│   ├── config.js
-│   ├── supabase.js
-│   ├── auth.js
-│   ├── meta.js
-│   ├── trips.js
-│   ├── stages.js
-│   ├── geocoding.js
-│   ├── weather.js
-│   ├── journal.js
-│   ├── profiles.js
-│   ├── expenses.js
-│   └── gpx.js
 ├── sw.js
-├── manifest.json
-├── schema.sql
+├── lib/
+│   ├── access.js
+│   ├── auth.js
+│   ├── expenses.js
+│   ├── gpx.js
+│   ├── journal.js
+│   ├── meta.js
+│   ├── profiles.js
+│   ├── stages.js
+│   └── trips.js
+├── components/
+├── constants/
+├── screens/
+├── state/
+├── utils/
 ├── migrations/
-└── docs/                       # Local-only operational docs, ignored by Git
+└── docs/              # local/private; ignored by Git
 ```
 
----
+## Refactor status
 
-## Deployment notes
+Extracted so far:
 
-For this step there is no database migration.
-
-After applying the files:
-
-1. Run syntax checks.
-2. Run a manual browser smoke test.
-3. Confirm Trips, Archive, Account, Trip Detail, and Trip Summary still load.
-4. Confirm stage/journal/expense/GPX actions still work.
-5. Commit the change.
-6. Deploy normally through Cloudflare Pages.
-7. Close and reopen installed PWA versions after deploy.
-
----
-
-## Suggested commit
-
-```bash
-git commit -m "refactor(detail): extract trip detail screen shell"
-```
-
-## Latest refactor state
-
-Phase 3.9G extracts Trip Detail stage rendering into `screens/trip-detail-stages.js` while keeping data loaders, write handlers, modal flows, and expense rendering in `app.js`.
-
-Current extracted areas:
-
-- Shared state/constants/utils/components
+- shared state/constants/utils
+- modal/toast/feedback/stats/trip-card components
 - Trips screen
 - Account screen
 - Archive screen
 - Trip Summary screen
 - Trip Detail shell
-- Trip Detail stage/journal/weather/GPX rendering
+- Trip Detail stage rendering
 
-The remaining Trip Detail work should continue in small slices: expenses first, then modal/controller handlers only after rendering is stable.
+Next safe development steps:
 
-## Private operational docs
+1. Extract Trip Detail expense rendering.
+2. Extract modal form rendering.
+3. Add Playwright smoke tests before deeper controller refactors.
 
-The `/docs/` directory is ignored by Git via `.gitignore`. It is intended for local/private admin guides only. Do not force-add it to the public repository.
+## Commit message
 
-
-## Hotfix note
-
-Phase 3.9G.1 fixes a startup-breaking import/local function name collision in `app.js` after extracting stage rendering.
+```bash
+git commit -m "fix(access): show explicit non-member message"
+```

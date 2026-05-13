@@ -1,6 +1,6 @@
 // ============================================================
 // routefolk — app.js
-// Phase 3.9G: extract Trip Detail stage rendering.
+// Phase 3.9H: clarify app membership access state.
 // ============================================================
 
 import { signInWithGoogle, signOut, getCurrentUser, onAuthChange } from './lib/auth.js';
@@ -11,6 +11,7 @@ import { fetchStageForecasts } from './lib/weather.js';
 import { listEntriesForStage, createEntry, updateEntry, deleteEntry } from './lib/journal.js';
 import { upsertCurrentProfile, listProfiles } from './lib/profiles.js';
 import { getSchemaVersion } from './lib/meta.js';
+import { getCurrentAppAccess } from './lib/access.js';
 import { listGpxTracksForTrip, uploadStageGpx, deleteGpxTrack, downloadAndParseGpxTrack, trackFileName } from './lib/gpx.js';
 import { STATE } from './state/app-state.js';
 import {
@@ -49,7 +50,7 @@ import { renderTripDetailScreen } from './screens/trip-detail-screen.js';
 import { renderStagesSection as renderStagesSectionView } from './screens/trip-detail-stages.js';
 import { userInitials, userDisplayName, userAvatarUrl, initialsFromName, displayNameForUserId } from './utils/user.js';
 
-const EXPECTED_SCHEMA_VERSION = '010';
+const EXPECTED_SCHEMA_VERSION = '011';
 
 function canDeleteTrip(trip) {
   return Boolean(STATE.user?.id && trip?.created_by === STATE.user.id);
@@ -180,6 +181,35 @@ async function loadProfiles() {
   }
 }
 
+
+async function ensureAppAccess() {
+  if (!STATE.user) return false;
+
+  STATE.accessLoading = true;
+  STATE.accessError = null;
+  renderAll();
+
+  try {
+    const access = await getCurrentAppAccess();
+    STATE.appAccess = access;
+
+    if (!access?.is_allowed) {
+      const email = access?.email || STATE.user?.email || 'this Google account';
+      STATE.accessError = `This Google account (${email}) is signed in, but it is not an active routefolk app member. Ask the app admin to add this email to public.app_members.`;
+      return false;
+    }
+
+    return true;
+  } catch (err) {
+    console.error(err);
+    STATE.accessError = 'Could not verify app access. Confirm migration 011 has been applied in Supabase, then try again.';
+    return false;
+  } finally {
+    STATE.accessLoading = false;
+    renderAll();
+  }
+}
+
 async function ensureSchemaCompatible() {
   if (!STATE.user) return false;
 
@@ -209,6 +239,9 @@ async function ensureSchemaCompatible() {
 
 async function loadSignedInData() {
   if (!STATE.user) return;
+
+  const accessOk = await ensureAppAccess();
+  if (!accessOk) return;
 
   const schemaOk = await ensureSchemaCompatible();
   if (!schemaOk) return;
@@ -1516,7 +1549,11 @@ function renderTab() {
   const content = $('content');
   if (!content) return;
 
-  if (STATE.user && STATE.schemaLoading) {
+  if (STATE.user && STATE.accessLoading) {
+    content.innerHTML = offlineBannerHtml() + `<div class="empty-state"><div class="empty-sub">Checking app access…</div></div>`;
+  } else if (STATE.user && STATE.accessError) {
+    content.innerHTML = offlineBannerHtml() + accessErrorHtml();
+  } else if (STATE.user && STATE.schemaLoading) {
     content.innerHTML = offlineBannerHtml() + `<div class="empty-state"><div class="empty-sub">Checking database schema…</div></div>`;
   } else if (STATE.user && STATE.schemaError) {
     content.innerHTML = offlineBannerHtml() + schemaErrorHtml();
@@ -1554,6 +1591,21 @@ function renderTab() {
   if (STATE.tab === 'archive' && STATE.archiveViewMode === 'map') ensureArchiveGpxGeometries();
 }
 
+
+function accessErrorHtml() {
+  return `
+    <div class="card">
+      <div class="card-title" style="color:#ef6262;">App access required</div>
+      <div style="color:#c5d0e0;font-size:14px;line-height:1.5;">${esc(STATE.accessError)}</div>
+      <div class="form-help" style="margin-top:8px;">Signing in with Google is not enough. The account must also be active in the database allowlist.</div>
+      <div style="display:flex;gap:8px;margin-top:12px;flex-wrap:wrap;">
+        <button class="btn btn-secondary" id="retryAccessBtn">Check again</button>
+        <button class="btn btn-secondary" id="signOutBtn">Sign out</button>
+      </div>
+    </div>
+  `;
+}
+
 function schemaErrorHtml() {
   return `
     <div class="card">
@@ -1576,6 +1628,7 @@ function bindContentEvents(content) {
   content.querySelector('#accountSignInBtn')?.addEventListener('click', handleSignIn);
   content.querySelector('#signOutBtn')?.addEventListener('click', handleSignOut);
   content.querySelector('#retryTripsBtn')?.addEventListener('click', loadTrips);
+  content.querySelector('#retryAccessBtn')?.addEventListener('click', loadSignedInData);
   content.querySelector('#retrySchemaBtn')?.addEventListener('click', loadSignedInData);
   content.querySelector('#retryStagesBtn')?.addEventListener('click', () => {
     if (STATE.viewTripId) loadStagesForTrip(STATE.viewTripId);
@@ -1820,6 +1873,9 @@ async function init() {
 
   onAuthChange(async (user) => {
     STATE.user = user;
+    STATE.appAccess = null;
+    STATE.accessLoading = false;
+    STATE.accessError = null;
     STATE.schemaVersion = null;
     STATE.schemaLoading = false;
     STATE.schemaError = null;

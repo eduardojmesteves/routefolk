@@ -30,6 +30,7 @@ const SHELL_ASSETS = [
   './lib/supabase.js',
   './lib/auth.js',
   './lib/meta.js',
+  './lib/access.js',
   './lib/trips.js',
   './lib/stages.js',
   './lib/geocoding.js',

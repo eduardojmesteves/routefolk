@@ -1,6 +1,6 @@
 // ============================================================
 // routefolk — state/app-state.js
-// Shared mutable app state. Imported by app.js during Phase 3.9A.
+// Shared mutable app state. Imported by app.js during Phase 3.9H.
 // ============================================================
 
 export const STATE = {
@@ -8,6 +8,9 @@ export const STATE = {
   view: 'list', // list | detail | summary
   viewTripId: null,
   user: null,
+  appAccess: null,
+  accessLoading: false,
+  accessError: null,
   schemaVersion: null,
   schemaLoading: false,
   schemaError: null,
