@@ -8,7 +8,7 @@ This README is updated for the current modularisation step. The app remains a no
 
 ## Current step
 
-**Phase 3.9F — Trip Detail screen shell extraction**
+**Phase 3.9G — Trip Detail stage rendering extraction**
 
 Implemented in this package:
 
@@ -151,3 +151,28 @@ After applying the files:
 ```bash
 git commit -m "refactor(detail): extract trip detail screen shell"
 ```
+
+## Latest refactor state
+
+Phase 3.9G extracts Trip Detail stage rendering into `screens/trip-detail-stages.js` while keeping data loaders, write handlers, modal flows, and expense rendering in `app.js`.
+
+Current extracted areas:
+
+- Shared state/constants/utils/components
+- Trips screen
+- Account screen
+- Archive screen
+- Trip Summary screen
+- Trip Detail shell
+- Trip Detail stage/journal/weather/GPX rendering
+
+The remaining Trip Detail work should continue in small slices: expenses first, then modal/controller handlers only after rendering is stable.
+
+## Private operational docs
+
+The `/docs/` directory is ignored by Git via `.gitignore`. It is intended for local/private admin guides only. Do not force-add it to the public repository.
+
+
+## Hotfix note
+
+Phase 3.9G.1 fixes a startup-breaking import/local function name collision in `app.js` after extracting stage rendering.

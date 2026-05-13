@@ -1,2 +1,82 @@
+# ============================================================
+# routefolk — .gitignore
+# Keep generated, local, private, and machine-specific files out of Git.
+# ============================================================
+
 # Local/private operational documentation.
+# The repository is public; keep admin docs and real user/admin notes local only.
 /docs/
+
+# Environment and secrets
+.env
+.env.*
+!.env.example
+*.local
+
+# Dependencies
+node_modules/
+
+# Build/output folders
+/dist/
+/build/
+/out/
+/public/build/
+
+# Hosting/platform folders
+.vercel/
+.netlify/
+.wrangler/
+.cloudflare/
+
+# Test and coverage output
+/coverage/
+/playwright-report/
+/test-results/
+/.nyc_output/
+
+# Caches and temporary files
+.cache/
+.parcel-cache/
+.vite/
+.tmp/
+tmp/
+temp/
+*.tmp
+*.temp
+
+# Logs
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+
+# OS files
+.DS_Store
+.AppleDouble
+.LSOverride
+Thumbs.db
+desktop.ini
+
+# Editor/IDE state
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# Local archives/exports
+*.zip
+*.tar
+*.tar.gz
+*.tgz
+
+# Supabase local development artifacts
+.supabase/
+supabase/.branches/
+supabase/.temp/
+
+# Python helper artifacts from local analysis scripts
+__pycache__/
+*.py[cod]
+.ipynb_checkpoints/

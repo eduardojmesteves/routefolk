@@ -4,8 +4,8 @@
 // Bump CACHE and RELEASE whenever shell assets change.
 // ============================================================
 
-const RELEASE = '20260513-phase39f-trip-detail-shell';
-const CACHE = 'routefolk-shell-v33';
+const RELEASE = '20260513-phase39g1-trip-detail-stages-hotfix';
+const CACHE = 'routefolk-shell-v35';
 
 const SHELL_ASSETS = [
   './',
@@ -42,6 +42,7 @@ const SHELL_ASSETS = [
   './screens/archive-screen.js',
   './screens/summary-screen.js',
   './screens/trip-detail-screen.js',
+  './screens/trip-detail-stages.js',
   './icons/icon-192.png',
   './icons/icon-512.png',
 ];

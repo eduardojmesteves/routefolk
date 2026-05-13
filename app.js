@@ -1,6 +1,6 @@
 // ============================================================
 // routefolk — app.js
-// Phase 3.9F: extract Trip Detail screen shell.
+// Phase 3.9G: extract Trip Detail stage rendering.
 // ============================================================
 
 import { signInWithGoogle, signOut, getCurrentUser, onAuthChange } from './lib/auth.js';
@@ -21,7 +21,7 @@ import {
   EXPENSE_CATEGORY_META,
 } from './constants/app-constants.js';
 import { $, esc, attr, boolAttr } from './utils/dom.js';
-import { linkHostBadgeHtml, validateEntryUrls } from './utils/url.js';
+import { validateEntryUrls } from './utils/url.js';
 import {
   fmtDate,
   fmtDateRange,
@@ -33,10 +33,9 @@ import {
   currentLocalTimeHHMM,
   journalDefaultDatetimeLocal,
   inclusiveDays,
-  isStageDateOutsideTrip,
   isExpenseDateOutsideTrip,
 } from './utils/datetime.js';
-import { fmtEuro, fmtDuration, fmtKm, parseAmount } from './utils/format.js';
+import { fmtEuro, parseAmount } from './utils/format.js';
 import { toast } from './components/toast.js';
 import { showModal, closeModal } from './components/modal.js';
 import { signedOutState, errorCard } from './components/feedback.js';
@@ -47,7 +46,8 @@ import { renderAccount } from './screens/account-screen.js';
 import { renderArchive, archiveResultsHtml, bindArchiveMapEvents } from './screens/archive-screen.js';
 import { renderTripSummary, bindSummaryEvents } from './screens/summary-screen.js';
 import { renderTripDetailScreen } from './screens/trip-detail-screen.js';
-import { userInitials, userDisplayName, userAvatarUrl, initialsFromName, displayNameForUserId, authorInitials, authorLabel } from './utils/user.js';
+import { renderStagesSection as renderStagesSectionView } from './screens/trip-detail-stages.js';
+import { userInitials, userDisplayName, userAvatarUrl, initialsFromName, displayNameForUserId } from './utils/user.js';
 
 const EXPECTED_SCHEMA_VERSION = '010';
 
@@ -459,201 +459,10 @@ function friendlyGpxError(action, err) {
   return friendlyError(action, err);
 }
 
-// ---------- Weather rendering ----------
-function weatherStripHtml(stage) {
-  const result = STATE.forecastsByStage[stage.id];
-  const hasAnyCoords =
-    (typeof stage.start_lat === 'number' && typeof stage.start_lng === 'number') ||
-    (typeof stage.end_lat === 'number' && typeof stage.end_lng === 'number');
-
-  if (!hasAnyCoords) {
-    const hasLocationText = Boolean(stage.start_location || stage.end_location);
-    return hasLocationText && stage.planned_date
-      ? `<div class="weather-strip muted">Weather unavailable. Check the stage location names or try again later.</div>`
-      : '';
-  }
-  if (!stage.planned_date) return `<div class="weather-strip muted">Set a planned date to see the weather forecast.</div>`;
-  if (result === 'loading' || result === undefined) return `<div class="weather-strip muted">Loading weather…</div>`;
-  if (!result.length) return `<div class="weather-strip muted">Weather unavailable for this stage. Check the location names or try again later.</div>`;
-
-  const usable = result.filter((p) => p.forecast);
-  if (!usable.length) return `<div class="weather-strip muted">No forecast available for this date (max 16 days ahead).</div>`;
-
-  const points = usable.map((p) => {
-    const f = p.forecast;
-    const tempRange = (f.tempMin != null && f.tempMax != null)
-      ? `${Math.round(f.tempMin)}–${Math.round(f.tempMax)}°`
-      : '—';
-    const precip = (f.precipProb != null)
-      ? `${Math.round(f.precipProb)}%`
-      : (f.precipMm != null ? `${f.precipMm} mm` : '—');
-    const wind = f.windKmh != null ? `${Math.round(f.windKmh)} km/h` : '—';
-    return `
-      <div class="wx-point">
-        <div class="wx-label">${esc(p.label)}</div>
-        <div class="wx-icon" title="${esc(f.label)}">${f.icon}</div>
-        <div class="wx-temp">${esc(tempRange)}</div>
-        <div class="wx-meta">💧 ${esc(precip)} · 💨 ${esc(wind)}</div>
-      </div>
-    `;
-  }).join('');
-
-  return `
-    <div class="weather-strip">
-      <div class="wx-points">${points}</div>
-      <div class="wx-attribution">Weather by <a href="https://open-meteo.com/" target="_blank" rel="noopener">Open-Meteo</a></div>
-    </div>
-  `;
-}
-
-// ---------- Journal rendering ----------
-function entryCardHtml(entry) {
-  const meta = ENTRY_TYPE_META[entry.entry_type] || ENTRY_TYPE_META.note;
-  const location = entry.location_url
-    ? `<a class="entry-meta-link" href="${esc(entry.location_url)}" target="_blank" rel="noopener">📍 ${esc(entry.location || 'Location')}${linkHostBadgeHtml(entry.location_url)}</a>`
-    : (entry.location ? `<span>📍 ${esc(entry.location)}</span>` : '');
-
-  return `
-    <div class="entry-card">
-      <div class="entry-head">
-        <div class="entry-type-icon" title="${esc(meta.label)}">${meta.icon}</div>
-        <div class="entry-head-text">
-          ${entry.title ? `<div class="entry-title">${esc(entry.title)}</div>` : `<div class="entry-title entry-title-muted">${esc(meta.label)}</div>`}
-          <div class="entry-meta">
-            <span class="entry-author" title="${esc(authorLabel(entry.author_id))}">${esc(authorInitials(entry.author_id))}</span>
-            ${entry.timestamp ? `<span>${esc(fmtDateTime(entry.timestamp))}</span>` : ''}
-            ${location}
-          </div>
-        </div>
-        <div class="entry-actions">
-          <button class="entry-icon-btn" data-entry-action="edit" data-id="${esc(entry.id)}" title="Edit"${writeDisabledAttr()}>✎</button>
-          <button class="entry-icon-btn entry-icon-danger" data-entry-action="delete" data-id="${esc(entry.id)}" title="Delete"${writeDisabledAttr()}>✕</button>
-        </div>
-      </div>
-      ${entry.description ? `<div class="entry-desc">${esc(entry.description)}</div>` : ''}
-      ${entryLinksHtml(entry)}
-    </div>
-  `;
-}
-
-function entryLinksHtml(entry) {
-  const links = [];
-  if (entry.info_url) links.push(`<a class="entry-link" href="${esc(entry.info_url)}" target="_blank" rel="noopener">🔗 Website ${linkHostBadgeHtml(entry.info_url)}</a>`);
-  if (entry.photo_album_url) links.push(`<a class="entry-link" href="${esc(entry.photo_album_url)}" target="_blank" rel="noopener">📷 Photo album ${linkHostBadgeHtml(entry.photo_album_url)}</a>`);
-  return links.length ? `<div class="entry-links">${links.join('')}</div>` : '';
-}
-
-function journalSectionHtml(stage) {
-  const expanded = STATE.expandedStages.has(stage.id);
-  const entries = STATE.entriesByStage[stage.id];
-  const count = Array.isArray(entries) ? entries.length : null;
-
-  const summary = `
-    <button class="journal-toggle" data-stage-id="${esc(stage.id)}">
-      <span>${expanded ? '▾' : '▸'} Journal${count !== null ? ` (${count})` : ''}</span>
-    </button>
-  `;
-
-  if (!expanded) return summary;
-
-  let body;
-  if (entries === 'loading' || entries === undefined) {
-    body = `<div class="empty-sub" style="padding:8px 0;">Loading entries…</div>`;
-  } else if (!entries.length) {
-    body = `<div class="empty-sub" style="padding:8px 0;">No entries yet.</div>`;
-  } else {
-    body = `<div class="entry-list">${entries.map(entryCardHtml).join('')}</div>`;
-  }
-
-  return `
-    ${summary}
-    <div class="journal-body">
-      ${body}
-      <button class="btn btn-secondary btn-sm btn-block" data-stage-add-entry="${esc(stage.id)}" style="margin-top:8px;"${writeDisabledAttr()}>+ Add entry</button>
-    </div>
-  `;
-}
-
-// ---------- GPX rendering ----------
+// ---------- GPX helpers ----------
 function gpxTracksForTrip(tripId) {
   const tracks = STATE.gpxByTrip[tripId];
   return Array.isArray(tracks) ? tracks : [];
-}
-
-function gpxTracksForStage(trip, stage) {
-  return gpxTracksForTrip(trip.id).filter((track) => track.stage_id === stage.id);
-}
-
-function gpxTrackMeta(track) {
-  const parts = [];
-  if (track.distance_km != null) parts.push(fmtKm(track.distance_km));
-  if (track.duration_seconds != null) parts.push(fmtDuration(track.duration_seconds));
-  return parts.join(' · ');
-}
-
-function gpxUploadButtonHtml(stage, label = 'Upload GPX') {
-  return `
-    <button class="btn btn-secondary btn-sm gpx-upload-btn" data-stage-gpx-upload="${esc(stage.id)}"${writeDisabledAttr()}>
-      ${esc(label)}
-    </button>
-  `;
-}
-
-function gpxStageSectionHtml(stage, trip) {
-  const tracksRaw = STATE.gpxByTrip[trip.id];
-  const tracks = gpxTracksForStage(trip, stage);
-  const expanded = STATE.expandedGpxStages.has(stage.id);
-  const totalDistance = tracks.reduce((sum, track) => sum + (Number(track.distance_km) || 0), 0);
-  const summary = tracksRaw === 'loading' || STATE.gpxLoading
-    ? 'Loading…'
-    : tracks.length
-      ? `${tracks.length} track${tracks.length === 1 ? '' : 's'}${totalDistance ? ` · ${fmtKm(totalDistance)}` : ''}`
-      : 'No track yet';
-
-  let body = '';
-  if (expanded) {
-    if (tracksRaw === 'loading' || STATE.gpxLoading) {
-      body = `<div class="empty-sub gpx-section-body">Loading GPX tracks…</div>`;
-    } else if (!tracks.length) {
-      body = `
-        <div class="gpx-section-body">
-          <div class="empty-sub">Upload one or more GPX files for this stage. Multiple files are expected when GPS recording was stopped during breaks.</div>
-          <div class="gpx-actions-row">${gpxUploadButtonHtml(stage, 'Upload GPX')}</div>
-        </div>
-      `;
-    } else {
-      body = `
-        <div class="gpx-track-list gpx-section-body">
-          ${tracks.map((track) => `
-            <div class="gpx-track-row">
-              <div class="gpx-track-main">
-                <div class="gpx-track-name">${esc(trackFileName(track))}</div>
-                <div class="gpx-track-meta">${esc(gpxTrackMeta(track) || 'GPX track')}</div>
-              </div>
-              <button class="entry-icon-btn entry-icon-danger" data-gpx-action="delete" data-id="${esc(track.id)}" title="Delete GPX"${writeDisabledAttr()}>✕</button>
-            </div>
-          `).join('')}
-        </div>
-        <div class="gpx-actions-row">${gpxUploadButtonHtml(stage, 'Upload another GPX')}</div>
-      `;
-    }
-  }
-
-  return `
-    <div class="gpx-section ${expanded ? 'open' : ''}">
-      <div class="gpx-section-head">
-        <button class="gpx-summary-toggle" data-gpx-toggle="${esc(stage.id)}" aria-expanded="${expanded ? 'true' : 'false'}">
-          <span class="gpx-caret">${expanded ? '▾' : '▸'}</span>
-          <span class="gpx-summary-copy">
-            <span class="gpx-section-title">GPX</span>
-            <span class="gpx-summary-text">${esc(summary)}</span>
-          </span>
-        </button>
-      </div>
-      ${STATE.gpxError ? `<div class="stage-warn">${esc(STATE.gpxError)}</div>` : ''}
-      ${body}
-    </div>
-  `;
 }
 
 // ---------- Trip detail ----------
@@ -1719,7 +1528,7 @@ function renderTab() {
       tripNotFoundHtml,
       auditLineHtml,
       tripStatsStripHtml,
-      renderStagesSection,
+      renderStagesSection: renderStagesSectionView,
       renderExpensesSection,
       canDeleteTrip,
       writeDisabledAttr,
