@@ -1,7 +1,7 @@
-
 // ============================================================
 // routefolk — content-events.js
 // Main content event binding for app views.
+// Phase 3: restores Summary table expand/collapse binding.
 // ============================================================
 
 import { STATE } from '../state/app-state.js';
@@ -44,15 +44,14 @@ export function createContentEvents(actions) {
     showDeleteGpxConfirm,
   } = actions;
 
+  function tripForCurrentView() {
+    return currentTrip() || STATE.trips.find((trip) => trip.id === STATE.viewTripId) || null;
+  }
 
-function tripForCurrentView() {
-  return currentTrip() || STATE.trips.find((trip) => trip.id === STATE.viewTripId) || null;
-}
-
-function tripForStage(stage) {
-  if (!stage) return tripForCurrentView();
-  return tripForCurrentView() || STATE.trips.find((trip) => trip.id === stage.trip_id) || null;
-}
+  function tripForStage(stage) {
+    if (!stage) return tripForCurrentView();
+    return tripForCurrentView() || STATE.trips.find((trip) => trip.id === stage.trip_id) || null;
+  }
 
   function bindTripCards(root) {
     root.querySelectorAll('[data-trip-id]').forEach((btn) => {
@@ -73,6 +72,26 @@ function tripForStage(stage) {
     } else {
       renderAll();
     }
+  }
+
+  function toggleSummaryStage(stageId) {
+    if (!stageId) return;
+
+    if (STATE.expandedSummaryStages.has(stageId)) {
+      STATE.expandedSummaryStages.delete(stageId);
+      renderAll();
+      return;
+    }
+
+    STATE.expandedSummaryStages.add(stageId);
+    if (!STATE.entriesByStage[stageId] || STATE.entriesByStage[stageId] === 'loading') {
+      STATE.entriesByStage[stageId] = 'loading';
+      renderAll();
+      loadEntriesForStage(stageId, { quiet: true });
+      return;
+    }
+
+    renderAll();
   }
 
   function toggleStageGpx(stageId) {
@@ -209,6 +228,10 @@ function tripForStage(stage) {
 
     bindTripCards(content);
 
+    content.querySelectorAll('[data-summary-stage-id]').forEach((btn) => {
+      btn.addEventListener('click', () => toggleSummaryStage(btn.dataset.summaryStageId));
+    });
+
     content.querySelectorAll('[data-stage-action]').forEach((btn) => {
       btn.addEventListener('click', () => {
         const action = btn.dataset.stageAction;
@@ -279,5 +302,5 @@ function tripForStage(stage) {
     });
   }
 
-  return { bindContentEvents, bindTripCards, toggleStageJournal, toggleStageGpx };
+  return { bindContentEvents, bindTripCards, toggleStageJournal, toggleStageGpx, toggleSummaryStage };
 }
