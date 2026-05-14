@@ -1,6 +1,6 @@
 // ============================================================
 // routefolk — app.js
-// Phase 3.23: GPX upload form extraction.
+// Phase 3.25.1: expense form export hotfix.
 // ============================================================
 
 import { signInWithGoogle, signOut, getCurrentUser, onAuthChange } from './lib/auth.js';
@@ -14,6 +14,7 @@ import { getSchemaVersion } from './lib/meta.js';
 import { getCurrentAppAccess } from './lib/access.js';
 import { listGpxTracksForTrip, uploadStageGpx, deleteGpxTrack, downloadAndParseGpxTrack, geometryFromGpxTrackRecord, trackFileName } from './lib/gpx.js';
 import { STATE } from './state/app-state.js';
+import { currentTrip, findStageById } from './utils/state-selectors.js';
 import {
   STATUS_META,
   TRIPS_SCREEN_STATUSES,
@@ -47,6 +48,7 @@ import { entryFormHtml, bindEntryTimeToggle, readEntryForm } from './components/
 import { expenseFormHtml, readExpenseForm } from './components/expense-form.js';
 import { gpxUploadFormHtml } from './components/gpx-form.js';
 import { signedOutState, errorCard } from './components/feedback.js';
+import { tripNotFoundHtml } from './components/trip-not-found.js';
 import { statItemHtml } from './components/stats.js';
 import { tripVisibility, visibilityPillHtml, tripCardHtml } from './components/trip-card.js';
 import { renderTrips, tripResultsHtml } from './screens/trips-screen.js';
@@ -404,21 +406,6 @@ async function openTrip(tripId, view = 'detail') {
 }
 
 // ---------- Trip detail ----------
-function currentTrip() {
-  return STATE.trips.find((t) => t.id === STATE.viewTripId) || null;
-}
-
-function tripNotFoundHtml() {
-  return `
-    <button class="btn btn-secondary btn-sm" id="backToTripsBtn" style="margin-bottom:12px;">← Back</button>
-    <div class="empty-state">
-      <div class="empty-title">Trip not found</div>
-      <div class="empty-sub">It may have been deleted.</div>
-    </div>
-  `;
-}
-
-
 // ---------- Forms ----------
 function showNewTripModal() {
   showModal('New trip', tripFormHtml({ status: 'planning', visibility: 'group' }), [
@@ -472,15 +459,6 @@ function showDeleteStageConfirm(stage) {
       { label: 'Delete', cls: 'btn-danger', fn: () => handleDeleteStage(stage.id) },
       { label: 'Cancel', cls: 'btn-secondary', fn: closeModal },
     ]);
-}
-
-function findStageById(stageId) {
-  for (const stages of Object.values(STATE.stagesByTrip)) {
-    if (!Array.isArray(stages)) continue;
-    const stage = stages.find((s) => s.id === stageId);
-    if (stage) return stage;
-  }
-  return null;
 }
 
 function showNewEntryModal(stageId) {

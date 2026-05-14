@@ -61,7 +61,7 @@ function payerOptionsHtml(trip, selectedUserId) {
   }).join('');
 }
 
-function expenseFormHtml(trip, expense = {}) {
+export function expenseFormHtml(trip, expense = {}) {
   const isPrivate = tripVisibility(trip) === 'private';
   const amount = expense.amount != null ? String(expense.amount) : '';
   return `
@@ -101,7 +101,7 @@ function expenseFormHtml(trip, expense = {}) {
   `;
 }
 
-function readExpenseForm(trip) {
+export function readExpenseForm(trip) {
   const amount = parseAmount($('efAmount')?.value);
   const fields = {
     user_id: tripVisibility(trip) === 'private' ? STATE.user?.id : ($('efPayer')?.value || STATE.user?.id),
