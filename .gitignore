@@ -1,20 +1,32 @@
 # ============================================================
 # routefolk — .gitignore
-# Keep generated, local, private, and machine-specific files out of Git.
 # ============================================================
 
 # Local/private operational documentation.
 # The repository is public; keep admin docs and real user/admin notes local only.
 /docs/
 
+# Local-only maintenance and development tooling.
+# The production repo should remain static-app-first unless this decision changes.
+/tools/
+/local-tests/
+
 # Environment and secrets
 .env
 .env.*
 !.env.example
 *.local
+.dev.vars*
+!.dev.vars.example
 
 # Dependencies
 node_modules/
+
+# Local npm/test tooling if created in the project root
+package.json
+package-lock.json
+playwright.config.js
+/tests/
 
 # Build/output folders
 /dist/
@@ -80,14 +92,3 @@ supabase/.temp/
 __pycache__/
 *.py[cod]
 .ipynb_checkpoints/
-
-.dev.vars*
-!.dev.vars.example
-
-# Local-only test/dev tooling
-# The app is intentionally no-build and production should stay static-only.
-package.json
-package-lock.json
-playwright.config.js
-/tests/
-/tools/check-local-modules.mjs
