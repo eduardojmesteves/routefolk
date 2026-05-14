@@ -4,7 +4,7 @@
 // Bump CACHE and RELEASE whenever shell assets change.
 // ============================================================
 
-const RELEASE = '20260514-phase326-find-entry-selector';
+const RELEASE = '20260514-phase327-action-modals';
 const CACHE = 'routefolk-shell-v45';
 
 const SHELL_ASSETS = [
