@@ -1,13 +1,26 @@
 {
+  "id": "./",
   "name": "routefolk",
   "short_name": "routefolk",
   "description": "Plan, journal, and archive motorcycle trips with friends.",
   "start_url": "./",
   "scope": "./",
   "display": "standalone",
+  "display_override": [
+    "standalone",
+    "browser"
+  ],
   "background_color": "#e7e4d8",
   "theme_color": "#171a26",
   "orientation": "portrait",
+  "lang": "en-GB",
+  "dir": "ltr",
+  "categories": [
+    "travel",
+    "productivity",
+    "navigation"
+  ],
+  "prefer_related_applications": false,
   "icons": [
     {
       "src": "icons/icon-192.png",
@@ -20,6 +33,32 @@
       "sizes": "512x512",
       "type": "image/png",
       "purpose": "any maskable"
+    }
+  ],
+  "shortcuts": [
+    {
+      "name": "Trips",
+      "short_name": "Trips",
+      "description": "Open the trip planner.",
+      "url": "./?tab=trips",
+      "icons": [
+        {
+          "src": "icons/icon-192.png",
+          "sizes": "192x192"
+        }
+      ]
+    },
+    {
+      "name": "Archive",
+      "short_name": "Archive",
+      "description": "Open archived trips and maps.",
+      "url": "./?tab=archive",
+      "icons": [
+        {
+          "src": "icons/icon-192.png",
+          "sizes": "192x192"
+        }
+      ]
     }
   ]
 }

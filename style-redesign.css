@@ -1,6 +1,6 @@
 /* ============================================================
    routefolk — style-redesign.css
-   Phase 1 foundation + Phase 2 shell + Phase 3 components + Phase 4 trips screen + Phase 5 trip detail/stages + Phase 6 journal + Phase 7 expenses + Phase 8 archive + Phase 9 account + Phase 10 responsive layouts.
+   Phase 1 foundation + Phase 2 shell + Phase 3 components + Phase 4 trips screen + Phase 5 trip detail/stages + Phase 6 journal + Phase 7 expenses + Phase 8 archive + Phase 9 account + Phase 10 responsive layouts + Phase 11 PWA polish.
    Loaded after style.css to avoid a risky full CSS rewrite.
    ============================================================ */
 
@@ -3539,5 +3539,191 @@ input:focus {
   .rf-detail-title,
   .rf-account-title {
     font-size: 34px;
+  }
+}
+
+
+/* ---------- Phase 11: PWA polish ---------- */
+
+/* App-safe viewport handling for installed PWA and mobile browsers. */
+html {
+  min-height: 100%;
+  background: var(--rf-bg);
+}
+
+body {
+  min-height: 100dvh;
+  overscroll-behavior-y: none;
+  -webkit-tap-highlight-color: rgba(184, 90, 46, 0.18);
+  text-rendering: optimizeLegibility;
+  -webkit-font-smoothing: antialiased;
+}
+
+#app {
+  min-height: 100dvh;
+}
+
+/* Touch targets: not pretty if tiny, and tiny buttons are trash on the road. */
+button,
+.btn,
+.nav-btn,
+.account-avatar,
+.entry-icon-btn,
+.expense-icon-btn,
+.stage-order-btn,
+.gpx-summary-toggle,
+.journal-toggle,
+summary {
+  touch-action: manipulation;
+}
+
+.btn,
+.btn-sm,
+.nav-btn,
+.rf-primary-action,
+.rf-shell-signin,
+.rf-google-btn,
+.rf-signout-btn,
+.archive-view-btn,
+.archive-layer-btn {
+  min-height: 44px;
+}
+
+.entry-icon-btn,
+.expense-icon-btn,
+.stage-order-btn {
+  min-height: 36px;
+  min-width: 36px;
+}
+
+/* Installed-PWA safe areas. */
+#header.rf-app-header,
+#header {
+  padding-top: max(12px, env(safe-area-inset-top));
+}
+
+#nav {
+  padding-bottom: max(6px, env(safe-area-inset-bottom));
+}
+
+@media (max-width: 959px) {
+  #content {
+    padding-bottom: calc(104px + env(safe-area-inset-bottom));
+  }
+}
+
+/* Offline/readability states. */
+.offline-banner,
+.rf-offline-banner {
+  background:
+    linear-gradient(135deg, rgba(184, 90, 46, 0.96), rgba(125, 52, 88, 0.94));
+  border: 1px solid rgba(243, 240, 228, 0.28);
+  box-shadow: 0 16px 34px rgba(125, 52, 88, 0.22);
+  color: var(--rf-surface);
+  font-family: var(--rf-font-mono);
+  font-size: 11px;
+  font-weight: 800;
+  letter-spacing: 0.05em;
+  line-height: 1.35;
+}
+
+/* Better install/read-only behaviour on iOS. */
+img,
+svg {
+  -webkit-user-drag: none;
+}
+
+input,
+textarea,
+select {
+  font-size: 16px;
+}
+
+/* Avoid layout shift and unreadable compressed SVG/maps in installed mode. */
+.archive-geo-svg,
+svg.archive-geo-svg {
+  min-height: 260px;
+}
+
+@media (display-mode: standalone) {
+  body {
+    background-color: var(--rf-bg);
+  }
+
+  #header.rf-app-header,
+  #header {
+    padding-top: max(16px, env(safe-area-inset-top));
+  }
+
+  .rf-app-header::after {
+    content: "PWA";
+    border: 1px solid rgba(184, 90, 46, 0.32);
+    border-radius: 999px;
+    color: var(--rf-accent);
+    font-family: var(--rf-font-mono);
+    font-size: 8px;
+    font-weight: 900;
+    letter-spacing: 0.12em;
+    padding: 3px 6px;
+    position: absolute;
+    right: 12px;
+    top: max(8px, env(safe-area-inset-top));
+    text-transform: uppercase;
+  }
+
+  .hdr-right {
+    padding-right: 42px;
+  }
+}
+
+/* Prefer reduced motion for travel use, low battery, and accessibility. */
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation: none !important;
+    scroll-behavior: auto !important;
+    transition-duration: 0.001ms !important;
+  }
+}
+
+/* Print/export fallback: useful for quick paper checks even before PDF export exists. */
+@media print {
+  body {
+    background: #fff;
+    color: #111;
+  }
+
+  #header,
+  #nav,
+  #toast,
+  .trip-detail-actions,
+  .stage-actions,
+  .entry-actions,
+  .expense-actions,
+  .archive-view-toggle,
+  .archive-layer-toggle,
+  .btn,
+  button {
+    display: none !important;
+  }
+
+  #app {
+    display: block;
+    max-width: none;
+    padding: 0;
+  }
+
+  #content {
+    padding: 0;
+  }
+
+  .card,
+  .rf-card,
+  .stage-card,
+  .expense-card,
+  .entry-card {
+    break-inside: avoid;
+    box-shadow: none !important;
   }
 }
