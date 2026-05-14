@@ -1,17 +1,14 @@
 // ============================================================
 // routefolk — app.js
-// Phase 3.30: write handlers extraction.
+// Phase 3.31: session controller extraction.
 // ============================================================
 
-import { signInWithGoogle, signOut, getCurrentUser, onAuthChange } from './lib/auth.js';
+import { getCurrentUser, onAuthChange } from './lib/auth.js';
 import { listTrips, createTrip, updateTrip, deleteTrip } from './lib/trips.js';
 import { listExpensesForTrip, createExpense, updateExpense, deleteExpense } from './lib/expenses.js';
 import { listStages, createStage, updateStage, deleteStage, swapStageOrder } from './lib/stages.js';
 import { fetchStageForecasts } from './lib/weather.js';
 import { listEntriesForStage, createEntry, updateEntry, deleteEntry } from './lib/journal.js';
-import { upsertCurrentProfile, listProfiles } from './lib/profiles.js';
-import { getSchemaVersion } from './lib/meta.js';
-import { getCurrentAppAccess } from './lib/access.js';
 import { listGpxTracksForTrip, uploadStageGpx, deleteGpxTrack, downloadAndParseGpxTrack, geometryFromGpxTrackRecord, trackFileName } from './lib/gpx.js';
 import { STATE } from './state/app-state.js';
 import { currentTrip, findStageById, findEntry } from './utils/state-selectors.js';
@@ -49,6 +46,7 @@ import { readExpenseForm } from './components/expense-form.js';
 import { createActionModals } from './components/action-modals.js';
 import { createContentEvents } from './components/content-events.js';
 import { createDataLoaders } from './state/data-loaders.js';
+import { createSessionController } from './state/session-controller.js';
 import { createWriteHandlers } from './handlers/write-handlers.js';
 import { signedOutState, errorCard } from './components/feedback.js';
 import { tripNotFoundHtml } from './components/trip-not-found.js';
@@ -77,6 +75,19 @@ const {
   ensureArchiveData,
   openTrip,
 } = createDataLoaders({ renderAll });
+
+const {
+  handleSignIn,
+  handleSignOut,
+  loadSignedInData,
+  ensureAppAccess,
+  ensureSchemaCompatible,
+} = createSessionController({
+  expectedSchemaVersion: EXPECTED_SCHEMA_VERSION,
+  renderAll,
+  loadProfiles,
+  loadTrips,
+});
 
 const {
   handleCreateTrip,
@@ -172,102 +183,10 @@ function goTo(tab) {
 }
 
 // ---------- Data loaders ----------
-async function ensureAppAccess() {
-  if (!STATE.user) return false;
-
-  STATE.accessLoading = true;
-  STATE.accessError = null;
-  renderAll();
-
-  try {
-    const access = await getCurrentAppAccess();
-    STATE.appAccess = access;
-
-    if (!access?.is_allowed) {
-      const email = access?.email || STATE.user?.email || 'this Google account';
-      STATE.accessError = `This Google account (${email}) is signed in, but it is not an active routefolk app member. Ask the app admin to add this email to public.app_members.`;
-      return false;
-    }
-
-    return true;
-  } catch (err) {
-    console.error(err);
-    STATE.accessError = 'Could not verify app access. Confirm migration 011 has been applied in Supabase, then try again.';
-    return false;
-  } finally {
-    STATE.accessLoading = false;
-    renderAll();
-  }
-}
-
-async function ensureSchemaCompatible() {
-  if (!STATE.user) return false;
-
-  STATE.schemaLoading = true;
-  STATE.schemaError = null;
-  renderAll();
-
-  try {
-    const version = await getSchemaVersion();
-    STATE.schemaVersion = version;
-
-    if (version !== EXPECTED_SCHEMA_VERSION) {
-      STATE.schemaError = `Database migration required. Expected schema version ${EXPECTED_SCHEMA_VERSION}, but found ${version || 'none'}.`;
-      return false;
-    }
-
-    return true;
-  } catch (err) {
-    console.error(err);
-    STATE.schemaError = 'Could not verify database schema version. Check the connection and confirm migrations are applied.';
-    return false;
-  } finally {
-    STATE.schemaLoading = false;
-    renderAll();
-  }
-}
-
-async function loadSignedInData() {
-  if (!STATE.user) return;
-
-  const accessOk = await ensureAppAccess();
-  if (!accessOk) return;
-
-  const schemaOk = await ensureSchemaCompatible();
-  if (!schemaOk) return;
-
-  try {
-    await upsertCurrentProfile(STATE.user);
-  } catch (err) {
-    console.warn('Profile upsert failed:', err);
-    toast('Signed in, but profile sync failed.');
-  }
-  await loadProfiles();
-  await loadTrips();
-}
-
 // ---------- Trip detail ----------
 // ---------- Forms ----------
 // ---------- Expenses ----------
 // ---------- Handlers ----------
-async function handleSignIn() {
-  try {
-    await signInWithGoogle();
-  } catch (err) {
-    console.error(err);
-    toast(err.message || 'Sign-in failed.');
-  }
-}
-
-async function handleSignOut() {
-  try {
-    await signOut();
-  } catch (err) {
-    console.error(err);
-    toast(err.message || 'Sign-out failed.');
-  }
-}
-
 async function handleCreateStage(tripId) {
   if (!ensureOnline()) return;
   const trip = STATE.trips.find((t) => t.id === tripId) || currentTrip();
