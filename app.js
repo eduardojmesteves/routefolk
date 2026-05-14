@@ -1,66 +1,41 @@
 // ============================================================
 // routefolk — app.js
-// Phase 3.32: access/schema card extraction.
+// Phase 3.33: final controller cleanup.
 // ============================================================
 
 import { getCurrentUser, onAuthChange } from './lib/auth.js';
-import { listTrips, createTrip, updateTrip, deleteTrip } from './lib/trips.js';
-import { listExpensesForTrip, createExpense, updateExpense, deleteExpense } from './lib/expenses.js';
-import { listStages, createStage, updateStage, deleteStage, swapStageOrder } from './lib/stages.js';
-import { fetchStageForecasts } from './lib/weather.js';
-import { listEntriesForStage, createEntry, updateEntry, deleteEntry } from './lib/journal.js';
-import { listGpxTracksForTrip, uploadStageGpx, deleteGpxTrack, downloadAndParseGpxTrack, geometryFromGpxTrackRecord, trackFileName } from './lib/gpx.js';
+import { createStage, updateStage, deleteStage, swapStageOrder } from './lib/stages.js';
 import { STATE } from './state/app-state.js';
-import { currentTrip, findStageById, findEntry } from './utils/state-selectors.js';
-import {
-  STATUS_META,
-  TRIPS_SCREEN_STATUSES,
-  VISIBILITY_META,
-  ENTRY_TYPE_META,
-  EXPENSE_CATEGORY_META,
-} from './constants/app-constants.js';
-import { $, esc, attr, boolAttr } from './utils/dom.js';
+import { resetSessionState } from './state/session-reset.js';
+import { currentTrip, findStageById } from './utils/state-selectors.js';
+import { $, esc } from './utils/dom.js';
 import { renderHeader, renderNav, bindNav, offlineBannerHtml } from './components/app-shell.js';
 import { auditLineHtml } from './components/audit.js';
-import { canDeleteTrip, canWrite, writeDisabledAttr, ensureOnline, friendlyError, friendlyGpxError } from './utils/write-guards.js';
-import { gpxTracksForTrip, stageNavigateUrl, stageRouteLabel, stageLabelForExpense } from './utils/trip-detail.js';
-import { tripStats, tripStatsStripHtml } from './utils/trip-stats.js';
-import { validateEntryUrls } from './utils/url.js';
-import {
-  fmtDate,
-  fmtDateRange,
-  fmtDateTime,
-  datetimeLocalToIso,
-  nowAsDatetimeLocal,
-  todayIsoDate,
-  journalDefaultTimeLocal,
-  inclusiveDays,
-} from './utils/datetime.js';
-import { fmtEuro, parseAmount } from './utils/format.js';
+import { canDeleteTrip, writeDisabledAttr, ensureOnline, friendlyError } from './utils/write-guards.js';
+import { stageRouteLabel } from './utils/trip-detail.js';
+import { tripStatsStripHtml } from './utils/trip-stats.js';
 import { toast } from './components/toast.js';
 import { showModal, closeModal } from './components/modal.js';
-import { readTripForm } from './components/trip-form.js';
 import { stageFormHtml, readStageForm, validateStageFormAgainstTrip } from './components/stage-form.js';
-import { readEntryForm } from './components/journal-form.js';
-import { readExpenseForm } from './components/expense-form.js';
 import { createActionModals } from './components/action-modals.js';
 import { createContentEvents } from './components/content-events.js';
 import { createDataLoaders } from './state/data-loaders.js';
 import { createSessionController } from './state/session-controller.js';
 import { createWriteHandlers } from './handlers/write-handlers.js';
-import { signedOutState, errorCard } from './components/feedback.js';
 import { accessErrorHtml, schemaErrorHtml } from './components/access-schema-cards.js';
 import { tripNotFoundHtml } from './components/trip-not-found.js';
-import { statItemHtml } from './components/stats.js';
-import { tripVisibility, visibilityPillHtml, tripCardHtml } from './components/trip-card.js';
-import { renderTrips, tripResultsHtml } from './screens/trips-screen.js';
+import { renderTrips } from './screens/trips-screen.js';
 import { renderAccount } from './screens/account-screen.js';
-import { renderArchive, archiveResultsHtml, bindArchiveMapEvents } from './screens/archive-screen.js';
-import { renderTripSummary, bindSummaryEvents } from './screens/summary-screen.js';
+import { renderArchive, bindArchiveMapEvents } from './screens/archive-screen.js';
+import { renderTripSummary } from './screens/summary-screen.js';
 import { renderTripDetailScreen } from './screens/trip-detail-screen.js';
 import { renderStagesSection as renderStagesSectionView } from './screens/trip-detail-stages.js';
-import { renderExpensesSection as renderExpensesSectionView, expensesForTrip as expensesForTripView, expenseTotals as expenseTotalsView, expenseTotalsHtml as expenseTotalsHtmlView } from './screens/trip-detail-expenses.js';
-import { userDisplayName, userAvatarUrl, displayNameForUserId } from './utils/user.js';
+import {
+  renderExpensesSection as renderExpensesSectionView,
+  expensesForTrip as expensesForTripView,
+  expenseTotals as expenseTotalsView,
+  expenseTotalsHtml as expenseTotalsHtmlView,
+} from './screens/trip-detail-expenses.js';
 
 const EXPECTED_SCHEMA_VERSION = '013';
 
@@ -457,28 +432,7 @@ async function init() {
   if (STATE.user) await loadSignedInData();
 
   onAuthChange(async (user) => {
-    STATE.user = user;
-    STATE.appAccess = null;
-    STATE.accessLoading = false;
-    STATE.accessError = null;
-    STATE.schemaVersion = null;
-    STATE.schemaLoading = false;
-    STATE.schemaError = null;
-    STATE.trips = [];
-    STATE.stagesByTrip = {};
-    STATE.entriesByStage = {};
-    STATE.forecastsByStage = {};
-    STATE.profiles = [];
-    STATE.profilesById = {};
-    STATE.profilesError = null;
-    STATE.expensesByTrip = {};
-    STATE.expensesError = null;
-    STATE.expandedStages.clear();
-    STATE.expandedGpxStages.clear();
-    STATE.expandedSummaryStages.clear();
-    STATE.tripFiltersOpen = false;
-    STATE.view = 'list';
-    STATE.viewTripId = null;
+    resetSessionState(user);
     renderAll();
     if (STATE.user) await loadSignedInData();
   });

@@ -4,7 +4,7 @@
 // Bump CACHE and RELEASE whenever shell assets change.
 // ============================================================
 
-const RELEASE = '20260514-phase332-access-schema-cards';
+const RELEASE = '20260514-phase333-final-controller-cleanup';
 const CACHE = 'routefolk-shell-v45';
 
 const SHELL_ASSETS = [
