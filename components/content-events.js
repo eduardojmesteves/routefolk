@@ -1,7 +1,7 @@
 // ============================================================
 // routefolk — content-events.js
 // Main content event binding for app views.
-// Phase 3: restores Summary table expand/collapse binding.
+// Phase 4: robust Summary table expand/collapse binding.
 // ============================================================
 
 import { STATE } from '../state/app-state.js';
@@ -94,6 +94,19 @@ export function createContentEvents(actions) {
     renderAll();
   }
 
+
+function bindSummaryToggleDelegation(content) {
+  content.addEventListener('click', (event) => {
+    const target = event.target instanceof Element ? event.target : null;
+    const btn = target?.closest('[data-summary-stage-id]');
+    if (!btn || !content.contains(btn)) return;
+
+    event.preventDefault();
+    event.stopPropagation();
+    toggleSummaryStage(btn.dataset.summaryStageId);
+  }, true);
+}
+
   function toggleStageGpx(stageId) {
     if (!stageId) return;
 
@@ -114,6 +127,7 @@ export function createContentEvents(actions) {
   }
 
   function bindContentEvents(content) {
+    bindSummaryToggleDelegation(content);
     content.querySelector('#emptySignInBtn')?.addEventListener('click', handleSignIn);
     content.querySelector('#accountSignInBtn')?.addEventListener('click', handleSignIn);
     content.querySelector('#signOutBtn')?.addEventListener('click', handleSignOut);
