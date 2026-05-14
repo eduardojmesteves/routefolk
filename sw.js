@@ -4,7 +4,7 @@
 // Bump CACHE and RELEASE whenever shell assets change.
 // ============================================================
 
-const RELEASE = '20260514-phase317-write-guards-audit';
+const RELEASE = '20260514-phase318-trip-stats';
 const CACHE = 'routefolk-shell-v45';
 
 const SHELL_ASSETS = [
