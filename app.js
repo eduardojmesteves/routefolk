@@ -1,6 +1,6 @@
 // ============================================================
 // routefolk — app.js
-// Phase 3.31: session controller extraction.
+// Phase 3.32: access/schema card extraction.
 // ============================================================
 
 import { getCurrentUser, onAuthChange } from './lib/auth.js';
@@ -49,6 +49,7 @@ import { createDataLoaders } from './state/data-loaders.js';
 import { createSessionController } from './state/session-controller.js';
 import { createWriteHandlers } from './handlers/write-handlers.js';
 import { signedOutState, errorCard } from './components/feedback.js';
+import { accessErrorHtml, schemaErrorHtml } from './components/access-schema-cards.js';
 import { tripNotFoundHtml } from './components/trip-not-found.js';
 import { statItemHtml } from './components/stats.js';
 import { tripVisibility, visibilityPillHtml, tripCardHtml } from './components/trip-card.js';
@@ -285,11 +286,11 @@ function renderTab() {
   if (STATE.user && STATE.accessLoading) {
     content.innerHTML = offlineBannerHtml() + `<div class="empty-state"><div class="empty-sub">Checking app access…</div></div>`;
   } else if (STATE.user && STATE.accessError) {
-    content.innerHTML = offlineBannerHtml() + accessErrorHtml();
+    content.innerHTML = offlineBannerHtml() + accessErrorHtml(STATE.accessError);
   } else if (STATE.user && STATE.schemaLoading) {
     content.innerHTML = offlineBannerHtml() + `<div class="empty-state"><div class="empty-sub">Checking database schema…</div></div>`;
   } else if (STATE.user && STATE.schemaError) {
-    content.innerHTML = offlineBannerHtml() + schemaErrorHtml();
+    content.innerHTML = offlineBannerHtml() + schemaErrorHtml(STATE.schemaError, EXPECTED_SCHEMA_VERSION);
   } else if (STATE.tab === 'account') {
     content.innerHTML = offlineBannerHtml() + renderAccount();
   } else if (STATE.view === 'detail') {
@@ -329,33 +330,6 @@ function renderTab() {
   bindArchiveMapEvents(content, openTrip);
   if (STATE.tab === 'archive' && STATE.archiveViewMode === 'map') ensureArchiveGpxGeometries();
 }
-
-
-function accessErrorHtml() {
-  return `
-    <div class="card">
-      <div class="card-title" style="color:#ef6262;">App access required</div>
-      <div style="color:#c5d0e0;font-size:14px;line-height:1.5;">${esc(STATE.accessError)}</div>
-      <div class="form-help" style="margin-top:8px;">Signing in with Google is not enough. The account must also be active in the database allowlist.</div>
-      <div style="display:flex;gap:8px;margin-top:12px;flex-wrap:wrap;">
-        <button class="btn btn-secondary" id="retryAccessBtn">Check again</button>
-        <button class="btn btn-secondary" id="signOutBtn">Sign out</button>
-      </div>
-    </div>
-  `;
-}
-
-function schemaErrorHtml() {
-  return `
-    <div class="card">
-      <div class="card-title" style="color:#ef6262;">Database migration required</div>
-      <div style="color:#c5d0e0;font-size:14px;line-height:1.5;">${esc(STATE.schemaError)}</div>
-      <div class="form-help" style="margin-top:8px;">Expected schema version: ${esc(EXPECTED_SCHEMA_VERSION)}</div>
-      <button class="btn btn-secondary btn-block" style="margin-top:12px;" id="retrySchemaBtn">Check again</button>
-    </div>
-  `;
-}
-
 
 
 function showNewStageModalFallback(trip) {
