@@ -4,7 +4,7 @@
 // Bump CACHE and RELEASE whenever shell assets change.
 // ============================================================
 
-const RELEASE = '20260514-phase3293-stage-action-fallback';
+const RELEASE = '20260514-phase3294-direct-stage-modal';
 const CACHE = 'routefolk-shell-v45';
 
 const SHELL_ASSETS = [

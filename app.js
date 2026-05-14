@@ -1,6 +1,6 @@
 // ============================================================
 // routefolk — app.js
-// Phase 3.29.3: stage action fallback hotfix.
+// Phase 3.29.4: direct stage modal hotfix.
 // ============================================================
 
 import { signInWithGoogle, signOut, getCurrentUser, onAuthChange } from './lib/auth.js';
@@ -41,9 +41,9 @@ import {
 } from './utils/datetime.js';
 import { fmtEuro, parseAmount } from './utils/format.js';
 import { toast } from './components/toast.js';
-import { closeModal } from './components/modal.js';
+import { showModal, closeModal } from './components/modal.js';
 import { readTripForm } from './components/trip-form.js';
-import { readStageForm, validateStageFormAgainstTrip } from './components/stage-form.js';
+import { stageFormHtml, readStageForm, validateStageFormAgainstTrip } from './components/stage-form.js';
 import { readEntryForm } from './components/journal-form.js';
 import { readExpenseForm } from './components/expense-form.js';
 import { createActionModals } from './components/action-modals.js';
@@ -300,13 +300,18 @@ async function handleDeleteTrip(tripId) {
 
 async function handleCreateStage(tripId) {
   if (!ensureOnline()) return;
-  const trip = STATE.trips.find((t) => t.id === tripId);
+  const trip = STATE.trips.find((t) => t.id === tripId) || currentTrip();
+  if (!trip?.id) {
+    toast('Trip is still loading. Try again in a moment.');
+    return;
+  }
+
   try {
     const fields = readStageForm();
     validateStageFormAgainstTrip(fields, trip || {});
-    await createStage(tripId, fields);
+    await createStage(trip.id, fields);
     closeModal();
-    await loadStagesForTrip(tripId);
+    await loadStagesForTrip(trip.id);
     toast('Stage added.');
   } catch (err) {
     console.error(err);
@@ -316,13 +321,19 @@ async function handleCreateStage(tripId) {
 
 async function handleUpdateStage(stageId) {
   if (!ensureOnline()) return;
-  const trip = currentTrip();
+  const stage = findStageById(stageId);
+  const trip = tripForStageAction(stage);
+  if (!stage?.id) {
+    toast('Stage is still loading. Try again in a moment.');
+    return;
+  }
+
   try {
     const fields = readStageForm();
     validateStageFormAgainstTrip(fields, trip || {});
     await updateStage(stageId, fields);
     closeModal();
-    if (trip) await loadStagesForTrip(trip.id);
+    await loadStagesForTrip(stage.trip_id || trip?.id || STATE.viewTripId);
     toast('Stage updated.');
   } catch (err) {
     console.error(err);
@@ -332,14 +343,17 @@ async function handleUpdateStage(stageId) {
 
 async function handleDeleteStage(stageId) {
   if (!ensureOnline()) return;
-  const trip = currentTrip();
+  const stage = findStageById(stageId);
+  const trip = tripForStageAction(stage);
+
   try {
     await deleteStage(stageId);
     closeModal();
     STATE.expandedStages.delete(stageId);
     STATE.expandedSummaryStages.delete(stageId);
     delete STATE.entriesByStage[stageId];
-    if (trip) await loadStagesForTrip(trip.id);
+    const reloadTripId = stage?.trip_id || trip?.id || STATE.viewTripId;
+    if (reloadTripId) await loadStagesForTrip(reloadTripId);
     toast('Stage deleted.');
   } catch (err) {
     console.error(err);
@@ -547,8 +561,13 @@ function renderTab() {
     content.innerHTML = offlineBannerHtml() + renderTrips();
   }
 
-  bindContentEvents(content);
   bindStageActionFallbacks(content);
+  try {
+    bindContentEvents(content);
+  } catch (err) {
+    console.error('Content event binding failed:', err);
+    toast('Some controls failed to initialise. Stage controls are still available.');
+  }
   bindArchiveMapEvents(content, openTrip);
   if (STATE.tab === 'archive' && STATE.archiveViewMode === 'map') ensureArchiveGpxGeometries();
 }
@@ -580,6 +599,49 @@ function schemaErrorHtml() {
 }
 
 
+
+function showNewStageModalFallback(trip) {
+  if (!trip?.id) {
+    toast('Trip is still loading. Try again in a moment.');
+    return;
+  }
+
+  showModal('Add stage', stageFormHtml({}, trip), [
+    { label: 'Add stage', cls: 'btn-primary', fn: () => handleCreateStage(trip.id) },
+    { label: 'Cancel', cls: 'btn-secondary', fn: closeModal },
+  ]);
+
+  setTimeout(() => $('sfStartLoc')?.focus(), 50);
+}
+
+function showEditStageModalFallback(stage, trip = {}) {
+  if (!stage?.id) {
+    toast('Stage is still loading. Try again in a moment.');
+    return;
+  }
+
+  showModal('Edit stage', stageFormHtml(stage, trip || {}), [
+    { label: 'Save', cls: 'btn-primary', fn: () => handleUpdateStage(stage.id) },
+    { label: 'Cancel', cls: 'btn-secondary', fn: closeModal },
+  ]);
+}
+
+function showDeleteStageConfirmFallback(stage) {
+  if (!stage?.id) {
+    toast('Stage is still loading. Try again in a moment.');
+    return;
+  }
+
+  showModal('Delete stage',
+    `<div style="font-size:14px;line-height:1.5;color:#c5d0e0;">
+      Delete <strong>${esc(stageRouteLabel(stage))}</strong>? This also deletes its journal entries.
+    </div>`,
+    [
+      { label: 'Delete', cls: 'btn-danger', fn: () => handleDeleteStage(stage.id) },
+      { label: 'Cancel', cls: 'btn-secondary', fn: closeModal },
+    ]);
+}
+
 function tripForStageAction(stage = null) {
   if (stage?.trip_id) {
     return STATE.trips.find((trip) => trip.id === stage.trip_id) || currentTrip();
@@ -604,7 +666,7 @@ function bindStageActionFallbacks(content) {
         toast('Trip is still loading. Try again in a moment.');
         return;
       }
-      showNewStageModal(trip);
+      showNewStageModalFallback(trip);
       return;
     }
 
@@ -635,12 +697,12 @@ function bindStageActionFallbacks(content) {
     const trip = tripForStageAction(stage);
 
     if (action === 'edit') {
-      showEditStageModal(stage, trip || {});
+      showEditStageModalFallback(stage, trip || {});
       return;
     }
 
     if (action === 'delete') {
-      showDeleteStageConfirm(stage);
+      showDeleteStageConfirmFallback(stage);
     }
   }, true);
 }
