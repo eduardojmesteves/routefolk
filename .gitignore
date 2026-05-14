@@ -9,6 +9,7 @@
 # Local-only maintenance and development tooling.
 # The production repo should remain static-app-first unless this decision changes.
 /tools/
+/test-tools/
 /local-tests/
 
 # Environment and secrets
@@ -38,7 +39,7 @@ playwright.config.js
 .vercel/
 .netlify/
 .wrangler/
-.cloudflare/
+/.cloudflare/
 
 # Test and coverage output
 /coverage/

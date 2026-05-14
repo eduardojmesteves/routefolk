@@ -67,6 +67,7 @@ The app is intentionally simple. It is not trying to replace Google Maps, Splitw
 - Installable app shell.
 - Works as a mobile-first web app.
 - Online-only writes; write actions are disabled while offline.
+- Cloudflare Pages security headers are defined in `_headers`.
 
 ---
 
@@ -92,6 +93,7 @@ Access is limited to the intended group. New users must be approved by the app a
 | Frontend | Plain HTML, CSS, and JavaScript |
 | App style | Native ES modules, no build step |
 | Hosting | Cloudflare Pages |
+| Security headers | Cloudflare Pages `_headers` |
 | Backend | Supabase Auth, Postgres, and Storage |
 | Auth | Google sign-in through Supabase |
 | Maps/navigation | Google Maps links |
@@ -104,6 +106,7 @@ Access is limited to the intended group. New users must be approved by the app a
 
 ```text
 routefolk/
+├── _headers
 ├── index.html
 ├── style.css
 ├── app.js
@@ -130,17 +133,19 @@ routefolk/
 
 Near-term:
 
-- Continue reducing `app.js` into smaller stable modules.
+- Maintain the small `app.js` controller and continue improving focused modules around it.
 - Improve GPX handling after more real ride data is available.
-- Add safer local-only smoke-test tooling for development.
+- Keep local-only smoke-test tooling available without committing npm/test files.
 - Add more archive polish after the current performance work settles.
+- Design the trip packing/item list feature.
+- Refresh the app colour palette after the functional refactor is stable.
 
 Later:
 
 - Offline write queue.
 - Realtime collaboration.
 - Multiple groups and richer roles.
-- Photo storage.
+- Image attachments for trips and journal entries.
 - PDF/shareable trip export.
 - Custom date picker if native browser date pickers become a real limitation.
 
@@ -181,3 +186,7 @@ This project uses the **Routefolk Source-Available License v1.0**.
 Personal and non-commercial use, study, and modification are allowed. Commercial use, redistribution, sublicensing, publication of modified versions, hosted/SaaS use, and selling copies require prior written permission from the copyright holder.
 
 See [`LICENSE`](./LICENSE) for the full terms.
+
+## Final stability closure
+
+The app has been split into focused modules while keeping `app.js` as the controller. Stage handlers and the direct stage fallback intentionally remain in `app.js` because that path is sensitive and has been stabilised there.

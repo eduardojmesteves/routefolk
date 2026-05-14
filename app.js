@@ -1,6 +1,6 @@
 // ============================================================
 // routefolk — app.js
-// Phase 3.33: final controller cleanup.
+// Phase 3.34: final stability closure.
 // ============================================================
 
 import { getCurrentUser, onAuthChange } from './lib/auth.js';

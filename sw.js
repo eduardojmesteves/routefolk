@@ -4,22 +4,32 @@
 // Bump CACHE and RELEASE whenever shell assets change.
 // ============================================================
 
-const RELEASE = '20260514-phase333-final-controller-cleanup';
-const CACHE = 'routefolk-shell-v45';
+const RELEASE = '20260514-phase334-final-stability-closure';
+const CACHE = 'routefolk-shell-v46';
 
 const SHELL_ASSETS = [
   './',
   './index.html',
   `./style.css?v=${RELEASE}`,
   `./app.js?v=${RELEASE}`,
-  './state/app-state.js',
+  './manifest.json',
+  './icons/icon-192.png',
+  './icons/icon-512.png',
   './constants/app-constants.js',
+  './state/app-state.js',
+  './state/session-reset.js',
+  './state/session-controller.js',
+  './state/data-loaders.js',
+  './handlers/write-handlers.js',
   './utils/dom.js',
   './utils/url.js',
   './utils/datetime.js',
   './utils/format.js',
   './utils/user.js',
   './utils/trip-detail.js',
+  './utils/trip-stats.js',
+  './utils/state-selectors.js',
+  './utils/write-guards.js',
   './components/toast.js',
   './components/modal.js',
   './components/stage-form.js',
@@ -28,13 +38,22 @@ const SHELL_ASSETS = [
   './components/gpx-form.js',
   './components/trip-form.js',
   './components/feedback.js',
+  './components/access-schema-cards.js',
   './components/trip-not-found.js',
   './components/app-shell.js',
+  './components/audit.js',
   './components/trip-card.js',
+  './components/stats.js',
   './components/forms.js',
+  './components/action-modals.js',
+  './components/content-events.js',
   './screens/trips-screen.js',
   './screens/account-screen.js',
-  './manifest.json',
+  './screens/archive-screen.js',
+  './screens/summary-screen.js',
+  './screens/trip-detail-screen.js',
+  './screens/trip-detail-stages.js',
+  './screens/trip-detail-expenses.js',
   './lib/config.js',
   './lib/supabase.js',
   './lib/auth.js',
@@ -48,14 +67,6 @@ const SHELL_ASSETS = [
   './lib/profiles.js',
   './lib/expenses.js',
   './lib/gpx.js',
-  './components/stats.js',
-  './screens/archive-screen.js',
-  './screens/summary-screen.js',
-  './screens/trip-detail-screen.js',
-  './screens/trip-detail-stages.js',
-  './screens/trip-detail-expenses.js',
-  './icons/icon-192.png',
-  './icons/icon-512.png',
 ];
 
 self.addEventListener('install', (event) => {
