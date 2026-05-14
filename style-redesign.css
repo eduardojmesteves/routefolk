@@ -1,6 +1,6 @@
 /* ============================================================
    routefolk — style-redesign.css
-   Phase 1 foundation + Phase 2 shell + Phase 3 components + Phase 4 trips screen.
+   Phase 1 foundation + Phase 2 shell + Phase 3 components + Phase 4 trips screen + Phase 5 trip detail/stages.
    Loaded after style.css to avoid a risky full CSS rewrite.
    ============================================================ */
 
@@ -1439,5 +1439,480 @@ input:focus {
 
   .rf-trip-card-pills {
     justify-content: flex-start;
+  }
+}
+
+
+/* ---------- Phase 5: Trip detail and stages ---------- */
+
+.rf-detail-shell {
+  display: grid;
+  gap: 14px;
+}
+
+.rf-detail-back-row {
+  display: flex;
+  justify-content: flex-start;
+}
+
+.rf-back-btn {
+  border-style: dashed;
+}
+
+.rf-map-card,
+.rf-ledger-card {
+  position: relative;
+  overflow: hidden;
+}
+
+.rf-map-card::before,
+.rf-ledger-card::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  background:
+    radial-gradient(circle at 12% 16%, rgba(184, 90, 46, 0.12), transparent 22%),
+    radial-gradient(circle at 84% 10%, rgba(38, 52, 94, 0.10), transparent 24%),
+    repeating-linear-gradient(
+      135deg,
+      rgba(23, 26, 38, 0.030) 0,
+      rgba(23, 26, 38, 0.030) 1px,
+      transparent 1px,
+      transparent 16px
+    );
+  opacity: 0.72;
+}
+
+.rf-trip-detail-hero > * {
+  position: relative;
+  z-index: 1;
+}
+
+.rf-trip-detail-plate {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  gap: 12px;
+  align-items: start;
+}
+
+.rf-detail-kicker,
+.rf-section-kicker {
+  color: var(--rf-accent);
+  font-family: var(--rf-font-mono);
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+}
+
+.rf-detail-title {
+  color: var(--rf-ink);
+  font-family: var(--rf-font-serif);
+  font-size: clamp(32px, 9vw, 56px);
+  font-weight: 650;
+  letter-spacing: -0.045em;
+  line-height: 0.92;
+  margin: 6px 0 0;
+}
+
+.rf-detail-dates {
+  color: var(--rf-ink-2);
+  font-family: var(--rf-font-mono);
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  margin-top: 10px;
+  text-transform: uppercase;
+}
+
+.rf-detail-desc {
+  color: var(--rf-ink-2);
+  font-family: var(--rf-font-serif);
+  font-size: 16px;
+  font-style: italic;
+  line-height: 1.45;
+  margin-top: 12px;
+}
+
+.rf-trip-detail-stamps {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  justify-content: flex-start;
+}
+
+.rf-status-stamp {
+  transform: rotate(-1.5deg);
+}
+
+.rf-route-sketch {
+  align-items: center;
+  border-block: 1px dashed var(--rf-rule-2);
+  display: flex;
+  gap: 9px;
+  margin: 18px 0 12px;
+  min-height: 34px;
+  padding: 12px 0;
+}
+
+.rf-route-dot {
+  background: var(--rf-primary);
+  border: 3px solid var(--rf-primary-soft);
+  border-radius: 999px;
+  box-shadow: 0 0 0 1px var(--rf-primary);
+  display: inline-block;
+  height: 14px;
+  width: 14px;
+}
+
+.rf-route-dot-end {
+  background: var(--rf-accent);
+  border-color: var(--rf-accent-soft);
+  box-shadow: 0 0 0 1px var(--rf-accent);
+}
+
+.rf-route-line {
+  border-top: 2px dashed rgba(38, 52, 94, 0.42);
+  flex: 1 1 auto;
+  min-width: 34px;
+}
+
+.rf-route-line-short {
+  flex: 0.45 1 auto;
+}
+
+.rf-route-mountain {
+  border-left: 13px solid transparent;
+  border-right: 13px solid transparent;
+  border-bottom: 22px solid rgba(38, 52, 94, 0.82);
+  display: inline-block;
+  height: 0;
+  position: relative;
+  transform: translateY(-2px);
+  width: 0;
+}
+
+.rf-route-mountain::after {
+  border-left: 5px solid transparent;
+  border-right: 5px solid transparent;
+  border-bottom: 8px solid var(--rf-surface);
+  content: "";
+  left: -5px;
+  position: absolute;
+  top: 7px;
+}
+
+.rf-detail-actions {
+  border-top: 1px solid var(--rf-rule);
+  margin-top: 14px;
+  padding-top: 12px;
+}
+
+.rf-section-head {
+  align-items: center;
+  display: flex;
+  gap: 12px;
+  justify-content: space-between;
+  margin-bottom: 12px;
+  position: relative;
+  z-index: 1;
+}
+
+.rf-section-title {
+  color: var(--rf-ink);
+  font-family: var(--rf-font-serif);
+  font-size: 26px;
+  letter-spacing: -0.035em;
+  margin-top: 2px;
+}
+
+.stage-list {
+  counter-reset: rf-stage;
+  display: grid;
+  gap: 12px;
+}
+
+.stage-card {
+  background:
+    linear-gradient(180deg, rgba(243, 240, 228, 0.94), rgba(231, 228, 216, 0.92)),
+    radial-gradient(circle at 95% 0%, rgba(184, 90, 46, 0.12), transparent 32%);
+  border: 1px solid var(--rf-rule-2);
+  border-radius: 26px;
+  box-shadow: 0 16px 34px rgba(23, 26, 38, 0.08);
+  counter-increment: rf-stage;
+  overflow: hidden;
+  padding: 14px;
+  position: relative;
+}
+
+.stage-card::before {
+  border: 1px solid rgba(184, 90, 46, 0.38);
+  border-radius: 999px;
+  color: var(--rf-accent);
+  content: "No. " counter(rf-stage, decimal-leading-zero);
+  font-family: var(--rf-font-mono);
+  font-size: 10px;
+  font-weight: 800;
+  letter-spacing: 0.12em;
+  padding: 4px 8px;
+  position: absolute;
+  right: 12px;
+  text-transform: uppercase;
+  top: 12px;
+  transform: rotate(1.5deg);
+  z-index: 2;
+}
+
+.stage-card-row {
+  align-items: stretch;
+  display: grid;
+  gap: 12px;
+  grid-template-columns: 38px minmax(0, 1fr);
+}
+
+.stage-order {
+  align-items: center;
+  border-right: 1px dashed var(--rf-rule-2);
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  justify-content: center;
+  padding-right: 10px;
+}
+
+.stage-order-btn {
+  background: var(--rf-surface);
+  border: 1px solid var(--rf-rule-2);
+  border-radius: 999px;
+  color: var(--rf-ink-2);
+  font-family: var(--rf-font-mono);
+  font-size: 12px;
+  min-height: 30px;
+  min-width: 30px;
+}
+
+.stage-order-btn:disabled {
+  opacity: 0.38;
+}
+
+.stage-body {
+  min-width: 0;
+  padding-right: 68px;
+}
+
+.stage-title {
+  color: var(--rf-ink);
+  font-family: var(--rf-font-serif);
+  font-size: 22px;
+  font-weight: 650;
+  letter-spacing: -0.035em;
+  line-height: 1.05;
+}
+
+.stage-meta {
+  color: var(--rf-ink-2);
+  font-family: var(--rf-font-mono);
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  margin-top: 8px;
+  text-transform: uppercase;
+}
+
+.stage-notes {
+  color: var(--rf-ink-2);
+  font-size: 14px;
+  line-height: 1.45;
+  margin-top: 10px;
+}
+
+.stage-warn {
+  background: rgba(184, 90, 46, 0.11);
+  border: 1px dashed rgba(184, 90, 46, 0.42);
+  border-radius: 16px;
+  color: var(--rf-accent);
+  font-family: var(--rf-font-mono);
+  font-size: 11px;
+  line-height: 1.4;
+  margin-top: 10px;
+  padding: 8px 10px;
+}
+
+.weather-strip {
+  background: rgba(38, 52, 94, 0.06);
+  border: 1px solid rgba(38, 52, 94, 0.14);
+  border-radius: 20px;
+  margin-top: 12px;
+  padding: 10px;
+}
+
+.weather-strip.muted {
+  color: var(--rf-muted);
+  font-family: var(--rf-font-mono);
+  font-size: 11px;
+}
+
+.wx-points {
+  display: grid;
+  gap: 8px;
+  grid-template-columns: repeat(auto-fit, minmax(96px, 1fr));
+}
+
+.wx-point {
+  background: rgba(243, 240, 228, 0.72);
+  border: 1px solid var(--rf-rule);
+  border-radius: 16px;
+  padding: 8px;
+  text-align: center;
+}
+
+.wx-label,
+.wx-meta,
+.wx-attribution {
+  color: var(--rf-muted);
+  font-family: var(--rf-font-mono);
+  font-size: 10px;
+}
+
+.wx-temp {
+  color: var(--rf-ink);
+  font-family: var(--rf-font-mono);
+  font-size: 13px;
+  font-weight: 800;
+}
+
+.gpx-section,
+.journal-section {
+  border-top: 1px dashed var(--rf-rule-2);
+  margin-top: 12px;
+  padding-top: 10px;
+}
+
+.gpx-summary-toggle,
+.journal-toggle {
+  align-items: center;
+  background: transparent;
+  border: 0;
+  color: var(--rf-ink);
+  cursor: pointer;
+  display: flex;
+  font-family: var(--rf-font-mono);
+  font-size: 11px;
+  font-weight: 800;
+  justify-content: space-between;
+  letter-spacing: 0.08em;
+  padding: 6px 0;
+  text-align: left;
+  text-transform: uppercase;
+  width: 100%;
+}
+
+.gpx-summary-text {
+  color: var(--rf-muted);
+  display: block;
+  font-weight: 600;
+  letter-spacing: 0.02em;
+  margin-top: 2px;
+  text-transform: none;
+}
+
+.gpx-section-body,
+.journal-body {
+  margin-top: 8px;
+}
+
+.entry-list {
+  display: grid;
+  gap: 10px;
+}
+
+.entry-card,
+.gpx-track-row {
+  background: rgba(243, 240, 228, 0.74);
+  border: 1px solid var(--rf-rule);
+  border-radius: 20px;
+  padding: 10px;
+}
+
+.entry-title {
+  color: var(--rf-ink);
+  font-family: var(--rf-font-serif);
+  font-size: 18px;
+  font-weight: 620;
+}
+
+.entry-meta,
+.entry-desc,
+.entry-links,
+.gpx-track-meta {
+  color: var(--rf-muted);
+}
+
+.entry-meta,
+.gpx-track-meta {
+  font-family: var(--rf-font-mono);
+  font-size: 10px;
+}
+
+.stage-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-top: 12px;
+}
+
+.rf-expenses-panel .expense-summary,
+.rf-expenses-panel .expense-row,
+.rf-expenses-panel .expense-card {
+  position: relative;
+  z-index: 1;
+}
+
+@media (min-width: 720px) {
+  .rf-trip-detail-plate {
+    grid-template-columns: minmax(0, 1fr) auto;
+  }
+
+  .rf-trip-detail-stamps {
+    justify-content: flex-end;
+  }
+
+  .stage-card {
+    padding: 16px;
+  }
+
+  .stage-title {
+    font-size: 26px;
+  }
+}
+
+@media (max-width: 520px) {
+  .stage-card {
+    border-radius: 22px;
+    padding: 12px;
+  }
+
+  .stage-card-row {
+    grid-template-columns: 30px minmax(0, 1fr);
+  }
+
+  .stage-body {
+    padding-right: 0;
+    padding-top: 26px;
+  }
+
+  .stage-card::before {
+    left: 50px;
+    right: auto;
+    top: 12px;
+  }
+
+  .rf-detail-title {
+    font-size: clamp(34px, 13vw, 48px);
+  }
+
+  .rf-route-sketch {
+    gap: 6px;
   }
 }
