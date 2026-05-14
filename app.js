@@ -1,6 +1,6 @@
 // ============================================================
 // routefolk — app.js
-// Phase 3.15: app shell rendering extraction.
+// Phase 3.16: trip detail helper extraction.
 // ============================================================
 
 import { signInWithGoogle, signOut, getCurrentUser, onAuthChange } from './lib/auth.js';
@@ -23,6 +23,7 @@ import {
 } from './constants/app-constants.js';
 import { $, esc, attr, boolAttr } from './utils/dom.js';
 import { renderHeader, renderNav, bindNav, offlineBannerHtml } from './components/app-shell.js';
+import { gpxTracksForTrip, stageNavigateUrl, stageRouteLabel, stageLabelForExpense, expenseStageMeta } from './utils/trip-detail.js';
 import { validateEntryUrls } from './utils/url.js';
 import {
   fmtDate,
@@ -450,104 +451,7 @@ function friendlyGpxError(action, err) {
   return friendlyError(action, err);
 }
 
-// ---------- GPX helpers ----------
-function gpxTracksForTrip(tripId) {
-  const tracks = STATE.gpxByTrip[tripId];
-  return Array.isArray(tracks) ? tracks : [];
-}
-
 // ---------- Trip detail ----------
-function stageNavigateUrl(stage) {
-  return stage.custom_route_url || stage.gmaps_url || null;
-}
-
-function stageRouteLabel(stage, index = 0) {
-  return [stage.start_location, stage.end_location].filter(Boolean).join(' → ') || stage.title || `Stage ${index + 1}`;
-}
-
-function stageLabelForExpense(stage, index = 0) {
-  if (!stage) return 'Whole trip';
-  const date = stage.planned_date ? fmtDate(stage.planned_date) : 'No date';
-  return `${stageRouteLabel(stage, index)} · ${date}`;
-}
-
-function stageForExpense(expense, trip) {
-  if (!expense?.stage_id || !trip?.id) return null;
-  const stages = STATE.stagesByTrip[trip.id] || [];
-  return stages.find((stage) => stage.id === expense.stage_id) || null;
-}
-
-function expenseStageMeta(expense, trip) {
-  const stages = STATE.stagesByTrip[trip.id] || [];
-  const index = stages.findIndex((stage) => stage.id === expense.stage_id);
-  const stage = index >= 0 ? stages[index] : null;
-  return { stage, index };
-}
-
-function stageDateWarningHtml(stage, trip) {
-  if (!isStageDateOutsideTrip(stage, trip)) return '';
-  return `<div class="stage-warn">Planned date is outside the trip date range.</div>`;
-}
-
-function stageCardHtml(stage, trip, index, total) {
-  const route = stageRouteLabel(stage, index);
-  const meta = [];
-  if (stage.planned_date) meta.push(fmtDate(stage.planned_date));
-  if (stage.distance_km != null) meta.push(`${stage.distance_km} km`);
-  const hasCoords = stage.start_lat != null && stage.start_lng != null;
-  const navUrl = stageNavigateUrl(stage);
-
-  return `
-    <div class="stage-card">
-      <div class="stage-card-row">
-        <div class="stage-order">
-          <button class="stage-order-btn" data-stage-action="up" data-id="${esc(stage.id)}" ${index === 0 || !canWrite() ? 'disabled' : ''} title="Move up">↑</button>
-          <button class="stage-order-btn" data-stage-action="down" data-id="${esc(stage.id)}" ${index === total - 1 || !canWrite() ? 'disabled' : ''} title="Move down">↓</button>
-        </div>
-        <div class="stage-body">
-          <div class="stage-title">${esc(route)}</div>
-          ${meta.length ? `<div class="stage-meta">${esc(meta.join(' · '))}</div>` : ''}
-          ${stage.notes ? `<div class="stage-notes">${esc(stage.notes)}</div>` : ''}
-          ${auditLineHtml(stage, 'Edited')}
-          ${stageDateWarningHtml(stage, trip)}
-          ${!hasCoords ? `<div class="stage-warn">No coordinates — type a city name and we'll look it up automatically.</div>` : ''}
-        </div>
-      </div>
-      ${weatherStripHtml(stage)}
-      ${gpxStageSectionHtml(stage, trip)}
-      <div class="stage-actions">
-        ${navUrl ? `<a class="btn btn-secondary btn-sm" href="${esc(navUrl)}" target="_blank" rel="noopener">Navigate</a>` : ''}
-        <button class="btn btn-secondary btn-sm" data-stage-action="edit" data-id="${esc(stage.id)}"${writeDisabledAttr()}>Edit</button>
-        <button class="btn btn-danger btn-sm" data-stage-action="delete" data-id="${esc(stage.id)}"${writeDisabledAttr()}>Delete</button>
-      </div>
-      <div class="journal-section">
-        ${journalSectionHtml(stage)}
-      </div>
-    </div>
-  `;
-}
-
-function renderStagesSection(trip) {
-  const stages = STATE.stagesByTrip[trip.id];
-
-  if (STATE.stagesLoading && !stages) return `<div class="empty-sub">Loading stages…</div>`;
-  if (STATE.stagesError) return errorCard(STATE.stagesError, 'retryStagesBtn');
-
-  if (!stages || !stages.length) {
-    return `
-      <div class="empty-sub" style="margin-bottom:12px;">No stages yet. Add one to start planning the route.</div>
-      <button class="btn btn-primary btn-block" id="addStageBtn"${writeDisabledAttr()}>+ Add stage</button>
-    `;
-  }
-
-  return `
-    <div class="stage-list">
-      ${stages.map((s, i) => stageCardHtml(s, trip, i, stages.length)).join('')}
-    </div>
-    <button class="btn btn-primary btn-block" style="margin-top:12px;" id="addStageBtn"${writeDisabledAttr()}>+ Add stage</button>
-  `;
-}
-
 function currentTrip() {
   return STATE.trips.find((t) => t.id === STATE.viewTripId) || null;
 }
