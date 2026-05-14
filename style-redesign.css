@@ -1,6 +1,6 @@
 /* ============================================================
    routefolk — style-redesign.css
-   Phase 1 foundation + Phase 2 shell + Phase 3 components + Phase 4 trips screen + Phase 5 trip detail/stages + Phase 6 journal + Phase 7 expenses.
+   Phase 1 foundation + Phase 2 shell + Phase 3 components + Phase 4 trips screen + Phase 5 trip detail/stages + Phase 6 journal + Phase 7 expenses + Phase 8 archive.
    Loaded after style.css to avoid a risky full CSS rewrite.
    ============================================================ */
 
@@ -2560,5 +2560,266 @@ input:focus {
 
   .expense-actions {
     justify-content: flex-end;
+  }
+}
+
+
+/* ---------- Phase 8: Archive as stamped travel collection ---------- */
+
+.archive-stats {
+  display: grid;
+  gap: 10px;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  position: relative;
+  z-index: 1;
+}
+
+.archive-stats .stat-item,
+.archive-stats .rf-stat {
+  background:
+    linear-gradient(180deg, rgba(243, 240, 228, 0.94), rgba(231, 228, 216, 0.84));
+  border: 1px solid rgba(23, 26, 38, 0.14);
+  border-radius: 22px;
+  box-shadow: 0 10px 24px rgba(23, 26, 38, 0.055);
+}
+
+.archive-view-toggle,
+.archive-layer-toggle {
+  align-items: center;
+  background: rgba(23, 26, 38, 0.06);
+  border: 1px solid rgba(23, 26, 38, 0.12);
+  border-radius: 999px;
+  display: inline-flex;
+  flex-wrap: wrap;
+  gap: 4px;
+  padding: 4px;
+}
+
+.archive-view-btn,
+.archive-layer-btn {
+  background: transparent;
+  border: 0;
+  border-radius: 999px;
+  color: var(--rf-ink-2);
+  cursor: pointer;
+  font-family: var(--rf-font-mono);
+  font-size: 10px;
+  font-weight: 800;
+  letter-spacing: 0.10em;
+  min-height: 34px;
+  padding: 8px 12px;
+  text-transform: uppercase;
+}
+
+.archive-view-btn.active,
+.archive-layer-btn.active {
+  background: var(--rf-primary);
+  box-shadow: 0 8px 18px rgba(38, 52, 94, 0.20);
+  color: var(--rf-surface);
+}
+
+.archive-view-btn:hover,
+.archive-layer-btn:hover,
+.archive-view-btn:focus-visible,
+.archive-layer-btn:focus-visible {
+  color: var(--rf-accent);
+  outline: none;
+}
+
+.archive-view-btn.active:hover,
+.archive-layer-btn.active:hover,
+.archive-view-btn.active:focus-visible,
+.archive-layer-btn.active:focus-visible {
+  color: var(--rf-surface);
+}
+
+.archive-map-wrap {
+  background:
+    linear-gradient(180deg, rgba(243, 240, 228, 0.96), rgba(231, 228, 216, 0.90)),
+    radial-gradient(circle at 18% 20%, rgba(184, 90, 46, 0.13), transparent 28%),
+    radial-gradient(circle at 80% 0%, rgba(38, 52, 94, 0.12), transparent 30%);
+  border: 1px solid rgba(23, 26, 38, 0.16);
+  border-radius: 30px;
+  box-shadow: 0 18px 38px rgba(23, 26, 38, 0.08);
+  margin-top: 14px;
+  overflow: hidden;
+  padding: 14px;
+  position: relative;
+}
+
+.archive-map-wrap::before {
+  border: 1px solid rgba(184, 90, 46, 0.36);
+  border-radius: 999px;
+  color: var(--rf-accent);
+  content: "Archive map";
+  font-family: var(--rf-font-mono);
+  font-size: 9px;
+  font-weight: 800;
+  letter-spacing: 0.16em;
+  padding: 5px 9px;
+  position: absolute;
+  right: 16px;
+  text-transform: uppercase;
+  top: 14px;
+  transform: rotate(1.5deg);
+  z-index: 2;
+}
+
+.archive-map-heading {
+  align-items: flex-start;
+  display: grid;
+  gap: 12px;
+  grid-template-columns: minmax(0, 1fr);
+  margin-bottom: 12px;
+  padding-right: 108px;
+  position: relative;
+  z-index: 1;
+}
+
+.archive-map-heading .card-title {
+  color: var(--rf-ink);
+  font-family: var(--rf-font-serif);
+  font-size: 28px;
+  letter-spacing: -0.04em;
+}
+
+.archive-geo-svg {
+  background:
+    linear-gradient(180deg, rgba(231, 228, 216, 0.98), rgba(206, 199, 179, 0.88));
+  border: 1px solid rgba(23, 26, 38, 0.20);
+  border-radius: 24px;
+  box-shadow: inset 0 0 0 1px rgba(243, 240, 228, 0.36);
+  display: block;
+  height: auto;
+  max-height: 560px;
+  position: relative;
+  width: 100%;
+  z-index: 1;
+}
+
+.archive-map-sea {
+  fill: #d7d2c1;
+}
+
+.archive-map-land {
+  fill: #eee9d8;
+  stroke: rgba(23, 26, 38, 0.24);
+  stroke-width: 1.4;
+}
+
+.archive-country-line {
+  fill: none;
+  opacity: 0.58;
+  stroke: rgba(38, 52, 94, 0.42);
+  stroke-dasharray: 5 7;
+  stroke-width: 1.15;
+}
+
+.archive-route-line {
+  fill: none;
+  opacity: 0.88;
+  pointer-events: stroke;
+  stroke: var(--rf-accent);
+  stroke-linecap: round;
+  stroke-linejoin: round;
+  stroke-width: 4.2;
+}
+
+.archive-route-line:hover {
+  stroke: var(--rf-primary);
+  stroke-width: 5.2;
+}
+
+.archive-trip-point circle:first-child {
+  fill: rgba(184, 90, 46, 0.20);
+  stroke: var(--rf-accent);
+  stroke-width: 1.5;
+}
+
+.archive-trip-point circle:last-child {
+  fill: var(--rf-primary);
+  stroke: var(--rf-surface);
+  stroke-width: 1.2;
+}
+
+.archive-map-empty {
+  align-items: center;
+  background:
+    linear-gradient(180deg, rgba(243, 240, 228, 0.94), rgba(231, 228, 216, 0.82));
+  border: 1px dashed rgba(23, 26, 38, 0.22);
+  border-radius: 26px;
+  display: flex;
+  justify-content: center;
+  min-height: 220px;
+  padding: 22px;
+  text-align: center;
+}
+
+.archive-map-empty-tall {
+  min-height: 360px;
+}
+
+.archive-results,
+.archive-list,
+.archive-trip-list {
+  display: grid;
+  gap: 12px;
+}
+
+.trip-filter-toggle-row {
+  display: flex;
+  justify-content: flex-start;
+}
+
+#archiveFiltersPanel {
+  background:
+    linear-gradient(180deg, rgba(243, 240, 228, 0.94), rgba(231, 228, 216, 0.86));
+  border: 1px solid rgba(23, 26, 38, 0.12);
+  border-radius: 24px;
+  box-shadow: 0 12px 28px rgba(23, 26, 38, 0.055);
+  margin-top: 10px;
+  padding: 12px;
+}
+
+#archiveSearchInput,
+#archiveStatusFilter {
+  background: rgba(243, 240, 228, 0.96);
+}
+
+@media (min-width: 720px) {
+  .archive-stats {
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+  }
+
+  .archive-map-heading {
+    align-items: center;
+    grid-template-columns: minmax(0, 1fr) auto;
+  }
+}
+
+@media (max-width: 520px) {
+  .archive-map-wrap {
+    border-radius: 24px;
+    padding: 12px;
+  }
+
+  .archive-map-wrap::before {
+    left: 14px;
+    right: auto;
+  }
+
+  .archive-map-heading {
+    padding-right: 0;
+    padding-top: 30px;
+  }
+
+  .archive-view-toggle,
+  .archive-layer-toggle {
+    width: 100%;
+  }
+
+  .archive-view-btn,
+  .archive-layer-btn {
+    flex: 1 1 auto;
   }
 }

@@ -1,8 +1,7 @@
-
 // ============================================================
-// routefolk — expense-form.js
-// Expense form rendering, reading, and validation helpers.
-// ============================================================
+ // routefolk — expense-form.js
+ // Expense form rendering, reading, and validation helpers.
+ // ============================================================
 
 import { STATE } from '../state/app-state.js';
 import { $, esc, attr, boolAttr } from '../utils/dom.js';
@@ -24,14 +23,30 @@ export function stageOptionsHtml(trip, selectedStageId) {
 }
 
 function expenseDateAttrs(trip) {
-  return `${attr('min', trip.start_date || '')}${attr('max', trip.end_date || '')}`;
+  return `${attr('min', trip.start_date || '')}${attr('max', trip.end_date || '')} required`;
+}
+
+function expenseDateDefault(trip, expense = {}) {
+  if (expense.date) return expense.date;
+  if (trip.start_date) return trip.start_date;
+  return todayIsoDate();
+}
+
+function expenseDateHelpText(trip) {
+  if (trip.start_date && trip.end_date) return `Required. Choose a date between ${trip.start_date} and ${trip.end_date}.`;
+  if (trip.start_date) return `Required. Choose a date on or after ${trip.start_date}.`;
+  if (trip.end_date) return `Required. Choose a date on or before ${trip.end_date}.`;
+  return 'Required. Choose the date when this expense happened.';
 }
 
 function validateExpenseForTrip(trip, fields) {
-  if (fields.date) {
-    if (trip.start_date && fields.date < trip.start_date) throw new Error('Expense date must be on or after the trip start date.');
-    if (trip.end_date && fields.date > trip.end_date) throw new Error('Expense date must be on or before the trip end date.');
+  if (!fields.date) {
+    throw new Error('Expense date is required. Choose a date within the trip date range.');
   }
+
+  if (trip.start_date && fields.date < trip.start_date) throw new Error('Expense date must be on or after the trip start date.');
+  if (trip.end_date && fields.date > trip.end_date) throw new Error('Expense date must be on or before the trip end date.');
+
   if (fields.stage_id) {
     const stages = STATE.stagesByTrip[trip.id] || [];
     if (!stages.some((stage) => stage.id === fields.stage_id)) throw new Error('Selected stage does not belong to this trip.');
@@ -92,7 +107,8 @@ export function expenseFormHtml(trip, expense = {}) {
     </div>
     <div class="form-row">
       <label class="form-label" for="efDate">Date</label>
-      <input class="inp" id="efDate" type="date" value="${esc(expense.date || todayIsoDate())}"${expenseDateAttrs(trip)}>
+      <input class="inp" id="efDate" type="date" value="${esc(expenseDateDefault(trip, expense))}"${expenseDateAttrs(trip)}>
+      <div class="form-help">${esc(expenseDateHelpText(trip))}</div>
     </div>
     <div class="form-row">
       <label class="form-label" for="efDesc">Description (optional)</label>
@@ -103,15 +119,16 @@ export function expenseFormHtml(trip, expense = {}) {
 
 export function readExpenseForm(trip) {
   const amount = parseAmount($('efAmount')?.value);
+  const date = $('efDate')?.value || '';
+
   const fields = {
     user_id: tripVisibility(trip) === 'private' ? STATE.user?.id : ($('efPayer')?.value || STATE.user?.id),
     category: $('efCategory')?.value || 'food_drinks',
     stage_id: $('efStage')?.value || null,
     amount,
-    date: $('efDate')?.value || todayIsoDate(),
+    date,
     description: $('efDesc')?.value.trim() || '',
     currency: 'EUR',
   };
   return validateExpenseForTrip(trip, fields);
 }
-
