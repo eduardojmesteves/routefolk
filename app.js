@@ -1,6 +1,6 @@
 // ============================================================
 // routefolk — app.js
-// Phase 3.28: content event extraction.
+// Phase 3.29.3: stage action fallback hotfix.
 // ============================================================
 
 import { signInWithGoogle, signOut, getCurrentUser, onAuthChange } from './lib/auth.js';
@@ -48,6 +48,7 @@ import { readEntryForm } from './components/journal-form.js';
 import { readExpenseForm } from './components/expense-form.js';
 import { createActionModals } from './components/action-modals.js';
 import { createContentEvents } from './components/content-events.js';
+import { createDataLoaders } from './state/data-loaders.js';
 import { signedOutState, errorCard } from './components/feedback.js';
 import { tripNotFoundHtml } from './components/trip-not-found.js';
 import { statItemHtml } from './components/stats.js';
@@ -97,6 +98,19 @@ const {
 });
 
 
+
+const {
+  loadTrips,
+  loadProfiles,
+  loadStagesForTrip,
+  loadEntriesForStage,
+  loadExpensesForTrip,
+  loadGpxForTrip,
+  ensureArchiveGpxGeometries,
+  ensureArchiveData,
+  openTrip,
+} = createDataLoaders({ renderAll });
+
 const { bindContentEvents } = createContentEvents({
   handleSignIn,
   handleSignOut,
@@ -139,46 +153,6 @@ function goTo(tab) {
 }
 
 // ---------- Data loaders ----------
-async function loadTrips() {
-  if (!STATE.user) return;
-  STATE.tripsLoading = true;
-  STATE.tripsError = null;
-  renderAll();
-
-  try {
-    STATE.trips = await listTrips();
-  } catch (err) {
-    console.error(err);
-    STATE.tripsError = err.message || 'Failed to load trips.';
-  } finally {
-    STATE.tripsLoading = false;
-    renderAll();
-    if (STATE.tab === 'archive') ensureArchiveData();
-  }
-}
-
-async function loadProfiles() {
-  if (!STATE.user) return;
-  STATE.profilesLoading = true;
-  STATE.profilesError = null;
-  renderAll();
-
-  try {
-    const profiles = await listProfiles();
-    STATE.profiles = profiles;
-    STATE.profilesById = Object.fromEntries(profiles.map((p) => [p.id, p]));
-  } catch (err) {
-    console.error(err);
-    STATE.profiles = [];
-    STATE.profilesById = {};
-    STATE.profilesError = err.message || 'Failed to load people.';
-  } finally {
-    STATE.profilesLoading = false;
-    renderAll();
-  }
-}
-
-
 async function ensureAppAccess() {
   if (!STATE.user) return false;
 
@@ -251,224 +225,6 @@ async function loadSignedInData() {
   }
   await loadProfiles();
   await loadTrips();
-}
-
-async function loadStagesForTrip(tripId) {
-  STATE.stagesLoading = true;
-  STATE.stagesError = null;
-  renderAll();
-
-  try {
-    const stages = await listStages(tripId);
-    STATE.stagesByTrip[tripId] = stages;
-    stages.forEach(loadForecastForStage);
-    stages.forEach((stage) => {
-      if (!STATE.entriesByStage[stage.id]) loadEntriesForStage(stage.id, { quiet: true });
-    });
-  } catch (err) {
-    console.error(err);
-    STATE.stagesError = err.message || 'Failed to load stages.';
-  } finally {
-    STATE.stagesLoading = false;
-    renderAll();
-  }
-}
-
-async function loadForecastForStage(stage) {
-  if (!stage?.id) return;
-  if (STATE.forecastsByStage[stage.id]) return;
-  STATE.forecastsByStage[stage.id] = 'loading';
-
-  try {
-    const forecasts = await fetchStageForecasts(stage);
-    STATE.forecastsByStage[stage.id] = forecasts;
-  } catch (err) {
-    console.warn('Forecast load failed:', err);
-    STATE.forecastsByStage[stage.id] = [];
-  }
-
-  if (STATE.viewTripId === stage.trip_id) renderAll();
-}
-
-async function loadEntriesForStage(stageId, options = {}) {
-  STATE.entriesByStage[stageId] = 'loading';
-  if (!options.quiet) renderAll();
-
-  try {
-    const entries = await listEntriesForStage(stageId);
-    STATE.entriesByStage[stageId] = entries;
-  } catch (err) {
-    console.error(err);
-    STATE.entriesByStage[stageId] = [];
-    if (!options.quiet) toast('Failed to load journal entries.');
-  }
-
-  renderAll();
-}
-
-
-
-async function loadExpensesForTrip(tripId, options = {}) {
-  STATE.expensesLoading = true;
-  STATE.expensesError = null;
-  STATE.expensesByTrip[tripId] = STATE.expensesByTrip[tripId] || 'loading';
-  if (!options.quiet) renderAll();
-
-  try {
-    const expenses = await listExpensesForTrip(tripId);
-    STATE.expensesByTrip[tripId] = expenses;
-  } catch (err) {
-    console.error(err);
-    STATE.expensesByTrip[tripId] = [];
-    STATE.expensesError = err.message || 'Failed to load expenses.';
-    if (!options.quiet) toast('Failed to load expenses.');
-  } finally {
-    STATE.expensesLoading = false;
-    renderAll();
-  }
-}
-
-
-async function loadGpxForTrip(tripId, options = {}) {
-  STATE.gpxLoading = true;
-  STATE.gpxError = null;
-  STATE.gpxByTrip[tripId] = STATE.gpxByTrip[tripId] || 'loading';
-  if (!options.quiet) renderAll();
-
-  try {
-    const tracks = await listGpxTracksForTrip(tripId);
-    STATE.gpxByTrip[tripId] = tracks;
-    tracks.forEach((track) => {
-      const cachedGeometry = geometryFromGpxTrackRecord(track);
-      if (cachedGeometry && !STATE.gpxGeometryByTrack[track.id]) {
-        STATE.gpxGeometryByTrack[track.id] = cachedGeometry;
-      }
-    });
-  } catch (err) {
-    console.error(err);
-    STATE.gpxByTrip[tripId] = [];
-    STATE.gpxError = err.message || 'Failed to load GPX tracks.';
-    if (!options.quiet) toast('Failed to load GPX tracks.');
-  } finally {
-    STATE.gpxLoading = false;
-    renderAll();
-  }
-}
-
-async function ensureGpxGeometry(track) {
-  if (!track?.id) return null;
-  const existing = STATE.gpxGeometryByTrack[track.id];
-  if (existing && existing !== 'loading') return existing;
-  if (existing === 'loading') return null;
-
-  const cachedGeometry = geometryFromGpxTrackRecord(track);
-  if (cachedGeometry) {
-    STATE.gpxGeometryByTrack[track.id] = cachedGeometry;
-    return cachedGeometry;
-  }
-
-  STATE.gpxGeometryByTrack[track.id] = 'loading';
-  try {
-    const geometry = await downloadAndParseGpxTrack(track);
-    STATE.gpxGeometryByTrack[track.id] = geometry;
-    return geometry;
-  } catch (err) {
-    console.warn('GPX parse failed:', err);
-    STATE.gpxGeometryByTrack[track.id] = { points: [], error: err.message || 'Failed to load GPX file.' };
-    return STATE.gpxGeometryByTrack[track.id];
-  }
-}
-
-async function ensureArchiveGpxGeometries() {
-  if (STATE.archiveGpxLoading) return;
-
-  const completed = STATE.trips.filter((trip) => trip.status === 'completed');
-  const tracks = completed.flatMap((trip) => gpxTracksForTrip(trip.id));
-  const missing = tracks.filter((track) => !STATE.gpxGeometryByTrack[track.id]);
-  if (!missing.length) return;
-
-  STATE.archiveGpxLoading = true;
-  STATE.archiveGpxError = null;
-  renderAll();
-
-  try {
-    for (const track of missing) {
-      await ensureGpxGeometry(track);
-    }
-  } catch (err) {
-    console.error(err);
-    STATE.archiveGpxError = err.message || 'Failed to load GPX geometry.';
-  } finally {
-    STATE.archiveGpxLoading = false;
-    renderAll();
-  }
-}
-
-
-async function ensureArchiveData() {
-  if (!STATE.user || STATE.archiveDataLoading) return;
-  const archived = STATE.trips.filter((t) => t.status === 'completed' || t.status === 'cancelled');
-  if (!archived.length) return;
-
-  const needsWork = archived.some((trip) => {
-    const stages = STATE.stagesByTrip[trip.id];
-    if (!Array.isArray(stages)) return true;
-    if (!Array.isArray(STATE.expensesByTrip[trip.id])) return true;
-    if (!Array.isArray(STATE.gpxByTrip[trip.id])) return true;
-    return stages.some((stage) => !Array.isArray(STATE.entriesByStage[stage.id]));
-  });
-  if (!needsWork) return;
-
-  STATE.archiveDataLoading = true;
-  STATE.archiveDataError = null;
-  renderAll();
-
-  try {
-    for (const trip of archived) {
-      let stages = STATE.stagesByTrip[trip.id];
-      if (!Array.isArray(stages)) {
-        stages = await listStages(trip.id);
-        STATE.stagesByTrip[trip.id] = stages;
-      }
-
-      if (!Array.isArray(STATE.expensesByTrip[trip.id])) {
-        STATE.expensesByTrip[trip.id] = await listExpensesForTrip(trip.id);
-      }
-
-      if (!Array.isArray(STATE.gpxByTrip[trip.id])) {
-        STATE.gpxByTrip[trip.id] = await listGpxTracksForTrip(trip.id);
-      }
-
-      for (const stage of stages) {
-        if (!Array.isArray(STATE.entriesByStage[stage.id])) {
-          STATE.entriesByStage[stage.id] = await listEntriesForStage(stage.id);
-        }
-      }
-    }
-  } catch (err) {
-    console.error(err);
-    STATE.archiveDataError = err.message || 'Failed to load archive details.';
-  } finally {
-    STATE.archiveDataLoading = false;
-    renderAll();
-  }
-}
-
-async function openTrip(tripId, view = 'detail') {
-  STATE.viewTripId = tripId;
-  STATE.view = view;
-  renderAll();
-  if (!STATE.stagesByTrip[tripId]) {
-    await loadStagesForTrip(tripId);
-  } else {
-    const stages = STATE.stagesByTrip[tripId] || [];
-    stages.forEach(loadForecastForStage);
-    stages.forEach((stage) => {
-      if (!STATE.entriesByStage[stage.id]) loadEntriesForStage(stage.id, { quiet: true });
-    });
-  }
-  if (!Array.isArray(STATE.expensesByTrip[tripId])) await loadExpensesForTrip(tripId, { quiet: true });
-  if (!Array.isArray(STATE.gpxByTrip[tripId])) await loadGpxForTrip(tripId, { quiet: true });
 }
 
 // ---------- Trip detail ----------
@@ -792,6 +548,7 @@ function renderTab() {
   }
 
   bindContentEvents(content);
+  bindStageActionFallbacks(content);
   bindArchiveMapEvents(content, openTrip);
   if (STATE.tab === 'archive' && STATE.archiveViewMode === 'map') ensureArchiveGpxGeometries();
 }
@@ -820,6 +577,72 @@ function schemaErrorHtml() {
       <button class="btn btn-secondary btn-block" style="margin-top:12px;" id="retrySchemaBtn">Check again</button>
     </div>
   `;
+}
+
+
+function tripForStageAction(stage = null) {
+  if (stage?.trip_id) {
+    return STATE.trips.find((trip) => trip.id === stage.trip_id) || currentTrip();
+  }
+  return currentTrip() || STATE.trips.find((trip) => trip.id === STATE.viewTripId) || null;
+}
+
+function bindStageActionFallbacks(content) {
+  content.addEventListener('click', (event) => {
+    const target = event.target instanceof Element ? event.target : null;
+    if (!target) return;
+
+    const addStageBtn = target.closest('#addStageBtn');
+    if (addStageBtn && content.contains(addStageBtn)) {
+      event.preventDefault();
+      event.stopPropagation();
+      event.stopImmediatePropagation();
+
+      if (!ensureOnline()) return;
+      const trip = tripForStageAction();
+      if (!trip) {
+        toast('Trip is still loading. Try again in a moment.');
+        return;
+      }
+      showNewStageModal(trip);
+      return;
+    }
+
+    const stageActionBtn = target.closest('[data-stage-action]');
+    if (!stageActionBtn || !content.contains(stageActionBtn)) return;
+
+    const action = stageActionBtn.dataset.stageAction;
+    const stageId = stageActionBtn.dataset.id;
+    if (!stageId || !action) return;
+
+    event.preventDefault();
+    event.stopPropagation();
+    event.stopImmediatePropagation();
+
+    if (!ensureOnline()) return;
+
+    if (action === 'up' || action === 'down') {
+      handleMoveStage(stageId, action);
+      return;
+    }
+
+    const stage = findStageById(stageId);
+    if (!stage) {
+      toast('Stage is still loading. Try again in a moment.');
+      return;
+    }
+
+    const trip = tripForStageAction(stage);
+
+    if (action === 'edit') {
+      showEditStageModal(stage, trip || {});
+      return;
+    }
+
+    if (action === 'delete') {
+      showDeleteStageConfirm(stage);
+    }
+  }, true);
 }
 
 async function init() {

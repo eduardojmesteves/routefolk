@@ -9,7 +9,7 @@ import { TRIPS_SCREEN_STATUSES } from '../constants/app-constants.js';
 import { tripResultsHtml } from '../screens/trips-screen.js';
 import { archiveResultsHtml, bindArchiveMapEvents } from '../screens/archive-screen.js';
 import { expensesForTrip as expensesForTripView } from '../screens/trip-detail-expenses.js';
-import { currentTrip, findEntry } from '../utils/state-selectors.js';
+import { currentTrip, findEntry, findStageById } from '../utils/state-selectors.js';
 import { gpxTracksForTrip } from '../utils/trip-detail.js';
 
 export function createContentEvents(actions) {
@@ -43,6 +43,16 @@ export function createContentEvents(actions) {
     showGpxUploadModal,
     showDeleteGpxConfirm,
   } = actions;
+
+
+function tripForCurrentView() {
+  return currentTrip() || STATE.trips.find((trip) => trip.id === STATE.viewTripId) || null;
+}
+
+function tripForStage(stage) {
+  if (!stage) return tripForCurrentView();
+  return tripForCurrentView() || STATE.trips.find((trip) => trip.id === stage.trip_id) || null;
+}
 
   function bindTripCards(root) {
     root.querySelectorAll('[data-trip-id]').forEach((btn) => {
@@ -188,7 +198,7 @@ export function createContentEvents(actions) {
     });
     content.querySelector('#addStageBtn')?.addEventListener('click', () => {
       if (!ensureOnline()) return;
-      const trip = currentTrip();
+      const trip = tripForCurrentView();
       if (trip) showNewStageModal(trip);
     });
     content.querySelector('#addExpenseBtn')?.addEventListener('click', () => {
@@ -203,13 +213,13 @@ export function createContentEvents(actions) {
       btn.addEventListener('click', () => {
         const action = btn.dataset.stageAction;
         const id = btn.dataset.id;
-        const trip = currentTrip();
-        const stage = (trip ? (STATE.stagesByTrip[trip.id] || []) : []).find((s) => s.id === id);
+        const stage = findStageById(id);
+        const trip = tripForStage(stage);
         if (!stage && action !== 'up' && action !== 'down') return;
         if (!ensureOnline()) return;
         if (action === 'up' || action === 'down') handleMoveStage(id, action);
-        if (action === 'edit') showEditStageModal(stage, trip);
-        if (action === 'delete') showDeleteStageConfirm(stage);
+        if (action === 'edit' && stage) showEditStageModal(stage, trip || {});
+        if (action === 'delete' && stage) showDeleteStageConfirm(stage);
       });
     });
 
@@ -228,8 +238,8 @@ export function createContentEvents(actions) {
     content.querySelectorAll('[data-stage-gpx-upload]').forEach((btn) => {
       btn.addEventListener('click', () => {
         if (!ensureOnline()) return;
-        const trip = currentTrip();
-        const stage = (trip ? (STATE.stagesByTrip[trip.id] || []) : []).find((s) => s.id === btn.dataset.stageGpxUpload);
+        const stage = findStageById(btn.dataset.stageGpxUpload);
+        const trip = tripForStage(stage);
         if (trip && stage) showGpxUploadModal(trip, stage);
       });
     });

@@ -1,10 +1,9 @@
-
 // ============================================================
 // routefolk — stage-form.js
 // Stage form rendering, reading, and validation helpers.
 // ============================================================
 
-import { $, esc } from '../utils/dom.js';
+import { $, esc, attr, boolAttr } from '../utils/dom.js';
 import { fmtDate } from '../utils/datetime.js';
 
 export function stageFormHtml(stage = {}, trip = {}) {
@@ -67,7 +66,6 @@ export function stageFormHtml(stage = {}, trip = {}) {
   `;
 }
 
-
 export function readStageForm() {
   const fields = {
     title: $('sfTitle')?.value.trim() || '',
@@ -90,8 +88,7 @@ export function readStageForm() {
   return fields;
 }
 
-
-export function validateStageFormAgainstTrip(fields, trip) {
+export function validateStageFormAgainstTrip(fields, trip = {}) {
   if (!fields.planned_date) return;
   if (trip.start_date && fields.planned_date < trip.start_date) {
     throw new Error(`Stage date cannot be before the trip starts (${fmtDate(trip.start_date)}).`);
@@ -100,4 +97,3 @@ export function validateStageFormAgainstTrip(fields, trip) {
     throw new Error(`Stage date cannot be after the trip ends (${fmtDate(trip.end_date)}).`);
   }
 }
-
