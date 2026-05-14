@@ -1,6 +1,6 @@
 /* ============================================================
    routefolk — style-redesign.css
-   Phase 1 foundation + Phase 2 shell + Phase 3 components + Phase 4 trips screen + Phase 5 trip detail/stages.
+   Phase 1 foundation + Phase 2 shell + Phase 3 components + Phase 4 trips screen + Phase 5 trip detail/stages + Phase 6 journal.
    Loaded after style.css to avoid a risky full CSS rewrite.
    ============================================================ */
 
@@ -1914,5 +1914,312 @@ input:focus {
 
   .rf-route-sketch {
     gap: 6px;
+  }
+}
+
+
+/* ---------- Phase 6: Journal as field notes ---------- */
+
+.journal-section {
+  background:
+    linear-gradient(180deg, rgba(243, 240, 228, 0.66), rgba(231, 228, 216, 0.40));
+  border: 1px dashed rgba(23, 26, 38, 0.16);
+  border-radius: 22px;
+  margin-top: 14px;
+  padding: 10px 12px;
+}
+
+.journal-toggle {
+  border-radius: 16px;
+  color: var(--rf-ink);
+  min-height: 38px;
+  padding: 8px 2px;
+  transition: background-color 140ms ease, color 140ms ease;
+}
+
+.journal-toggle:hover,
+.journal-toggle:focus-visible {
+  background: rgba(184, 90, 46, 0.08);
+  color: var(--rf-accent);
+  outline: none;
+}
+
+.journal-body {
+  border-top: 1px dotted var(--rf-rule-2);
+  margin-top: 8px;
+  padding-top: 10px;
+}
+
+.entry-list {
+  display: grid;
+  gap: 12px;
+}
+
+.entry-card {
+  background:
+    linear-gradient(180deg, rgba(243, 240, 228, 0.96), rgba(231, 228, 216, 0.88)),
+    repeating-linear-gradient(
+      0deg,
+      transparent 0,
+      transparent 23px,
+      rgba(23, 26, 38, 0.035) 24px
+    );
+  border: 1px solid rgba(23, 26, 38, 0.15);
+  border-radius: 24px;
+  box-shadow: 0 14px 28px rgba(23, 26, 38, 0.075);
+  padding: 12px;
+  position: relative;
+}
+
+.entry-card::before {
+  border: 1px solid rgba(184, 90, 46, 0.34);
+  border-radius: 999px;
+  color: var(--rf-accent);
+  content: "Field note";
+  font-family: var(--rf-font-mono);
+  font-size: 9px;
+  font-weight: 800;
+  letter-spacing: 0.14em;
+  padding: 4px 7px;
+  position: absolute;
+  right: 12px;
+  text-transform: uppercase;
+  top: 12px;
+  transform: rotate(1.8deg);
+}
+
+.entry-head {
+  align-items: flex-start;
+  display: grid;
+  gap: 10px;
+  grid-template-columns: 34px minmax(0, 1fr) auto;
+}
+
+.entry-type-icon {
+  align-items: center;
+  background: var(--rf-accent-soft);
+  border: 1px solid rgba(184, 90, 46, 0.35);
+  border-radius: 999px;
+  color: var(--rf-accent);
+  display: inline-flex;
+  font-size: 16px;
+  height: 34px;
+  justify-content: center;
+  width: 34px;
+}
+
+.entry-head-text {
+  min-width: 0;
+  padding-right: 70px;
+}
+
+.entry-title {
+  color: var(--rf-ink);
+  font-family: var(--rf-font-serif);
+  font-size: 20px;
+  font-weight: 650;
+  letter-spacing: -0.035em;
+  line-height: 1.05;
+}
+
+.entry-title-muted {
+  color: var(--rf-muted);
+  font-style: italic;
+}
+
+.entry-meta {
+  align-items: center;
+  color: var(--rf-muted);
+  display: flex;
+  flex-wrap: wrap;
+  font-family: var(--rf-font-mono);
+  font-size: 10px;
+  gap: 6px;
+  letter-spacing: 0.04em;
+  margin-top: 7px;
+}
+
+.entry-author {
+  align-items: center;
+  background: var(--rf-primary);
+  border-radius: 999px;
+  color: var(--rf-surface);
+  display: inline-flex;
+  font-family: var(--rf-font-mono);
+  font-size: 9px;
+  font-weight: 800;
+  height: 22px;
+  justify-content: center;
+  min-width: 22px;
+  padding: 0 6px;
+}
+
+.entry-meta-link,
+.entry-link {
+  align-items: center;
+  background: rgba(38, 52, 94, 0.07);
+  border: 1px solid rgba(38, 52, 94, 0.12);
+  border-radius: 999px;
+  color: var(--rf-primary);
+  display: inline-flex;
+  font-family: var(--rf-font-mono);
+  font-size: 10px;
+  font-weight: 700;
+  gap: 4px;
+  padding: 4px 8px;
+  text-decoration: none;
+}
+
+.entry-meta-link:hover,
+.entry-link:hover {
+  background: rgba(184, 90, 46, 0.10);
+  border-color: rgba(184, 90, 46, 0.25);
+  color: var(--rf-accent);
+}
+
+.entry-actions {
+  display: flex;
+  gap: 6px;
+  position: relative;
+  z-index: 1;
+}
+
+.entry-icon-btn {
+  align-items: center;
+  background: rgba(243, 240, 228, 0.90);
+  border: 1px solid var(--rf-rule-2);
+  border-radius: 999px;
+  color: var(--rf-ink-2);
+  cursor: pointer;
+  display: inline-flex;
+  font-family: var(--rf-font-mono);
+  font-size: 12px;
+  font-weight: 800;
+  height: 30px;
+  justify-content: center;
+  transition: transform 120ms ease, border-color 120ms ease, color 120ms ease;
+  width: 30px;
+}
+
+.entry-icon-btn:hover,
+.entry-icon-btn:focus-visible {
+  border-color: var(--rf-accent);
+  color: var(--rf-accent);
+  outline: none;
+  transform: translateY(-1px);
+}
+
+.entry-icon-danger {
+  color: var(--rf-danger);
+}
+
+.entry-icon-danger:hover,
+.entry-icon-danger:focus-visible {
+  border-color: var(--rf-danger);
+  color: var(--rf-danger);
+}
+
+.entry-desc {
+  color: var(--rf-ink-2);
+  font-family: var(--rf-font-serif);
+  font-size: 15px;
+  line-height: 1.48;
+  margin-top: 10px;
+  white-space: pre-wrap;
+}
+
+.entry-links {
+  border-top: 1px dotted var(--rf-rule-2);
+  display: flex;
+  flex-wrap: wrap;
+  gap: 7px;
+  margin-top: 11px;
+  padding-top: 9px;
+}
+
+.journal-body > .btn,
+.journal-section .btn-block {
+  margin-top: 10px;
+}
+
+/* Journal modal/form polish without changing form markup or IDs. */
+#jfType,
+#jfTitle,
+#jfDesc,
+#jfLocation,
+#jfLocationUrl,
+#jfInfoUrl,
+#jfTime,
+#jfAlbum {
+  background:
+    linear-gradient(180deg, rgba(243, 240, 228, 0.96), rgba(231, 228, 216, 0.72));
+  border-color: rgba(23, 26, 38, 0.20);
+}
+
+#jfDesc {
+  min-height: 112px;
+}
+
+#jfUseTime {
+  accent-color: var(--rf-accent);
+}
+
+.choice-option:has(#jfUseTime) {
+  background: rgba(184, 90, 46, 0.07);
+  border: 1px dashed rgba(184, 90, 46, 0.28);
+  border-radius: 18px;
+  padding: 10px 12px;
+}
+
+.choice-option:has(#jfUseTime) strong {
+  color: var(--rf-ink);
+  font-family: var(--rf-font-mono);
+  font-size: 11px;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.choice-option:has(#jfUseTime) small {
+  color: var(--rf-muted);
+  display: block;
+  font-size: 12px;
+  margin-top: 3px;
+}
+
+#jfTimeWrap {
+  background: rgba(38, 52, 94, 0.06);
+  border: 1px solid rgba(38, 52, 94, 0.12);
+  border-radius: 18px;
+  padding: 10px;
+}
+
+@media (max-width: 520px) {
+  .entry-card {
+    border-radius: 22px;
+    padding: 12px;
+  }
+
+  .entry-card::before {
+    left: 46px;
+    right: auto;
+    top: 12px;
+  }
+
+  .entry-head {
+    grid-template-columns: 34px minmax(0, 1fr);
+  }
+
+  .entry-head-text {
+    padding-right: 0;
+    padding-top: 28px;
+  }
+
+  .entry-actions {
+    grid-column: 1 / -1;
+    justify-content: flex-end;
+  }
+
+  .entry-title {
+    font-size: 19px;
   }
 }
