@@ -1,6 +1,6 @@
 // ============================================================
 // routefolk — app.js
-// Phase 3.29.4: direct stage modal hotfix.
+// Phase 3.30: write handlers extraction.
 // ============================================================
 
 import { signInWithGoogle, signOut, getCurrentUser, onAuthChange } from './lib/auth.js';
@@ -49,6 +49,7 @@ import { readExpenseForm } from './components/expense-form.js';
 import { createActionModals } from './components/action-modals.js';
 import { createContentEvents } from './components/content-events.js';
 import { createDataLoaders } from './state/data-loaders.js';
+import { createWriteHandlers } from './handlers/write-handlers.js';
 import { signedOutState, errorCard } from './components/feedback.js';
 import { tripNotFoundHtml } from './components/trip-not-found.js';
 import { statItemHtml } from './components/stats.js';
@@ -64,6 +65,39 @@ import { userDisplayName, userAvatarUrl, displayNameForUserId } from './utils/us
 
 const EXPECTED_SCHEMA_VERSION = '013';
 
+
+const {
+  loadTrips,
+  loadProfiles,
+  loadStagesForTrip,
+  loadEntriesForStage,
+  loadExpensesForTrip,
+  loadGpxForTrip,
+  ensureArchiveGpxGeometries,
+  ensureArchiveData,
+  openTrip,
+} = createDataLoaders({ renderAll });
+
+const {
+  handleCreateTrip,
+  handleUpdateTrip,
+  handleDeleteTrip,
+  handleCreateEntry,
+  handleUpdateEntry,
+  handleDeleteEntry,
+  handleUploadStageGpx,
+  handleDeleteGpx,
+  handleCreateExpense,
+  handleUpdateExpense,
+  handleDeleteExpense,
+} = createWriteHandlers({
+  loadTrips,
+  openTrip,
+  renderAll,
+  loadEntriesForStage,
+  loadGpxForTrip,
+  loadExpensesForTrip,
+});
 
 const {
   showNewTripModal,
@@ -97,20 +131,6 @@ const {
   handleDeleteGpx,
 });
 
-
-
-const {
-  loadTrips,
-  loadProfiles,
-  loadStagesForTrip,
-  loadEntriesForStage,
-  loadExpensesForTrip,
-  loadGpxForTrip,
-  ensureArchiveGpxGeometries,
-  ensureArchiveData,
-  openTrip,
-} = createDataLoaders({ renderAll });
-
 const { bindContentEvents } = createContentEvents({
   handleSignIn,
   handleSignOut,
@@ -141,7 +161,6 @@ const { bindContentEvents } = createContentEvents({
   showGpxUploadModal,
   showDeleteGpxConfirm,
 });
-
 
 // ---------- Navigation ----------
 function goTo(tab) {
@@ -249,55 +268,6 @@ async function handleSignOut() {
   }
 }
 
-async function handleCreateTrip() {
-  if (!ensureOnline()) return;
-  try {
-    const trip = await createTrip(readTripForm());
-    closeModal();
-    await loadTrips();
-    await openTrip(trip.id);
-    toast('Trip created.');
-  } catch (err) {
-    console.error(err);
-    toast(friendlyError('save trip', err));
-  }
-}
-
-async function handleUpdateTrip(tripId) {
-  if (!ensureOnline()) return;
-  try {
-    await updateTrip(tripId, readTripForm());
-    closeModal();
-    await loadTrips();
-    renderAll();
-    toast('Trip updated.');
-  } catch (err) {
-    console.error(err);
-    toast(friendlyError('save trip', err));
-  }
-}
-
-async function handleDeleteTrip(tripId) {
-  if (!ensureOnline()) return;
-  const trip = STATE.trips.find((t) => t.id === tripId);
-  if (trip && !canDeleteTrip(trip)) {
-    toast('Only the trip creator can delete this trip.');
-    closeModal();
-    return;
-  }
-  try {
-    await deleteTrip(tripId);
-    closeModal();
-    STATE.view = 'list';
-    STATE.viewTripId = null;
-    await loadTrips();
-    toast('Trip deleted.');
-  } catch (err) {
-    console.error(err);
-    toast(friendlyError('delete trip', err));
-  }
-}
-
 async function handleCreateStage(tripId) {
   if (!ensureOnline()) return;
   const trip = STATE.trips.find((t) => t.id === tripId) || currentTrip();
@@ -376,137 +346,6 @@ async function handleMoveStage(stageId, direction) {
   } catch (err) {
     console.error(err);
     toast(friendlyError('reorder stages', err));
-  }
-}
-
-async function handleCreateEntry(stageId) {
-  if (!ensureOnline()) return;
-  try {
-    await createEntry(stageId, readEntryForm(findStageById(stageId)));
-    closeModal();
-    await loadEntriesForStage(stageId, { quiet: true });
-    toast('Entry added.');
-  } catch (err) {
-    console.error(err);
-    const msg = String(err?.message || '');
-    toast(msg.startsWith('Journal entry') ? msg : friendlyError('save journal entry', err));
-  }
-}
-
-async function handleUpdateEntry(stageId, entryId) {
-  if (!ensureOnline()) return;
-  try {
-    await updateEntry(entryId, readEntryForm(findStageById(stageId)));
-    closeModal();
-    await loadEntriesForStage(stageId, { quiet: true });
-    toast('Entry updated.');
-  } catch (err) {
-    console.error(err);
-    const msg = String(err?.message || '');
-    toast(msg.startsWith('Journal entry') ? msg : friendlyError('save journal entry', err));
-  }
-}
-
-async function handleDeleteEntry(stageId, entryId) {
-  if (!ensureOnline()) return;
-  try {
-    await deleteEntry(entryId);
-    closeModal();
-    await loadEntriesForStage(stageId, { quiet: true });
-    toast('Entry deleted.');
-  } catch (err) {
-    console.error(err);
-    toast(friendlyError('delete journal entry', err));
-  }
-}
-
-
-async function handleUploadStageGpx(tripId, stageId) {
-  if (!ensureOnline()) return;
-  const file = $('gpxFileInput')?.files?.[0];
-  if (!file) {
-    toast('Choose a GPX file first.');
-    return;
-  }
-  if (!file.name.toLowerCase().endsWith('.gpx')) {
-    toast('Choose a valid .gpx file.');
-    return;
-  }
-  if (file.size <= 0) {
-    toast('This GPX file is empty. Choose another file.');
-    return;
-  }
-  if (file.size > 8 * 1024 * 1024) {
-    toast('This GPX file is too large. Keep GPX files under 8 MB for now.');
-    return;
-  }
-
-  try {
-    const { record, geometry } = await uploadStageGpx({ tripId, stageId, file });
-    STATE.gpxGeometryByTrack[record.id] = geometry;
-    closeModal();
-    await loadGpxForTrip(tripId, { quiet: true });
-    toast('GPX uploaded.');
-  } catch (err) {
-    console.error(err);
-    toast(friendlyGpxError('upload GPX', err));
-  }
-}
-
-async function handleDeleteGpx(track) {
-  if (!ensureOnline()) return;
-  try {
-    await deleteGpxTrack(track);
-    delete STATE.gpxGeometryByTrack[track.id];
-    closeModal();
-    await loadGpxForTrip(track.trip_id, { quiet: true });
-    toast('GPX deleted.');
-  } catch (err) {
-    console.error(err);
-    toast(friendlyGpxError('delete GPX', err));
-  }
-}
-
-async function handleCreateExpense(tripId) {
-  if (!ensureOnline()) return;
-  const trip = STATE.trips.find((t) => t.id === tripId);
-  if (!trip) return;
-  try {
-    await createExpense(tripId, readExpenseForm(trip));
-    closeModal();
-    await loadExpensesForTrip(tripId, { quiet: true });
-    toast('Expense added.');
-  } catch (err) {
-    console.error(err);
-    toast(friendlyError('save expense', err));
-  }
-}
-
-async function handleUpdateExpense(tripId, expenseId) {
-  if (!ensureOnline()) return;
-  const trip = STATE.trips.find((t) => t.id === tripId);
-  if (!trip) return;
-  try {
-    await updateExpense(expenseId, readExpenseForm(trip));
-    closeModal();
-    await loadExpensesForTrip(tripId, { quiet: true });
-    toast('Expense updated.');
-  } catch (err) {
-    console.error(err);
-    toast(friendlyError('save expense', err));
-  }
-}
-
-async function handleDeleteExpense(tripId, expenseId) {
-  if (!ensureOnline()) return;
-  try {
-    await deleteExpense(expenseId);
-    closeModal();
-    await loadExpensesForTrip(tripId, { quiet: true });
-    toast('Expense deleted.');
-  } catch (err) {
-    console.error(err);
-    toast(friendlyError('delete expense', err));
   }
 }
 
