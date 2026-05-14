@@ -4,8 +4,8 @@
 // Bump CACHE and RELEASE whenever shell assets change.
 // ============================================================
 
-const RELEASE = '20260514-redesign-phase1-ink-rust-foundation';
-const CACHE = 'routefolk-shell-v47-ink-rust-phase1';
+const RELEASE = '20260514-redesign-phase2-app-shell';
+const CACHE = 'routefolk-shell-v48-ink-rust-phase2';
 
 const SHELL_ASSETS = [
   './',
