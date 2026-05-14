@@ -4,13 +4,14 @@
 // Bump CACHE and RELEASE whenever shell assets change.
 // ============================================================
 
-const RELEASE = '20260514-phase334-final-stability-closure';
-const CACHE = 'routefolk-shell-v46';
+const RELEASE = '20260514-redesign-phase1-ink-rust-foundation';
+const CACHE = 'routefolk-shell-v47-ink-rust-phase1';
 
 const SHELL_ASSETS = [
   './',
   './index.html',
   `./style.css?v=${RELEASE}`,
+  `./style-redesign.css?v=${RELEASE}`,
   `./app.js?v=${RELEASE}`,
   './manifest.json',
   './icons/icon-192.png',
