@@ -1,6 +1,6 @@
 // ============================================================
 // routefolk — app.js
-// Phase 3.22: expense form extraction.
+// Phase 3.23: GPX upload form extraction.
 // ============================================================
 
 import { signInWithGoogle, signOut, getCurrentUser, onAuthChange } from './lib/auth.js';
@@ -45,6 +45,7 @@ import { tripFormHtml, readTripForm } from './components/trip-form.js';
 import { stageFormHtml, readStageForm, validateStageFormAgainstTrip } from './components/stage-form.js';
 import { entryFormHtml, bindEntryTimeToggle, readEntryForm } from './components/journal-form.js';
 import { expenseFormHtml, readExpenseForm } from './components/expense-form.js';
+import { gpxUploadFormHtml } from './components/gpx-form.js';
 import { signedOutState, errorCard } from './components/feedback.js';
 import { statItemHtml } from './components/stats.js';
 import { tripVisibility, visibilityPillHtml, tripCardHtml } from './components/trip-card.js';
@@ -541,19 +542,6 @@ function showDeleteExpenseConfirm(trip, expense) {
     ]);
 }
 
-
-function gpxUploadFormHtml(stage) {
-  return `
-    <div style="font-size:14px;line-height:1.5;color:#c5d0e0;margin-bottom:12px;">
-      Upload the GPX file for <strong>${esc(stageRouteLabel(stage))}</strong>. GPX tracks are linked to stages, not directly to whole trips.
-    </div>
-    <div class="form-row">
-      <label class="form-label" for="gpxFileInput">GPX file</label>
-      <input class="inp" id="gpxFileInput" type="file" accept=".gpx,application/gpx+xml,application/xml,text/xml">
-      <div class="form-help">Use the real track exported from your GPS/Wahoo/Intervals/etc. Max 8 MB for now.</div>
-    </div>
-  `;
-}
 
 function showGpxUploadModal(trip, stage) {
   showModal('Upload GPX', gpxUploadFormHtml(stage), [

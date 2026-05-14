@@ -4,7 +4,7 @@
 // Bump CACHE and RELEASE whenever shell assets change.
 // ============================================================
 
-const RELEASE = '20260514-phase322-expense-form';
+const RELEASE = '20260514-phase323-gpx-form';
 const CACHE = 'routefolk-shell-v45';
 
 const SHELL_ASSETS = [
@@ -25,6 +25,7 @@ const SHELL_ASSETS = [
   './components/stage-form.js',
   './components/journal-form.js',
   './components/expense-form.js',
+  './components/gpx-form.js',
   './components/trip-form.js',
   './components/feedback.js',
   './components/app-shell.js',
