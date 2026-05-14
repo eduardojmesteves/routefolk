@@ -1,6 +1,6 @@
 /* ============================================================
    routefolk — style-redesign.css
-   Phase 1 foundation + Phase 2 shell + Phase 3 components + Phase 4 trips screen + Phase 5 trip detail/stages + Phase 6 journal + Phase 7 expenses + Phase 8 archive + Phase 9 account.
+   Phase 1 foundation + Phase 2 shell + Phase 3 components + Phase 4 trips screen + Phase 5 trip detail/stages + Phase 6 journal + Phase 7 expenses + Phase 8 archive + Phase 9 account + Phase 10 responsive layouts.
    Loaded after style.css to avoid a risky full CSS rewrite.
    ============================================================ */
 
@@ -3196,5 +3196,348 @@ input:focus {
 
   .rf-account-name {
     font-size: 23px;
+  }
+}
+
+
+/* ---------- Phase 10: Responsive layouts ---------- */
+
+/*
+  Mobile remains the default:
+  - sticky field-journal header
+  - bottom tab navigation
+  - single-column trip/detail/account/archive layout
+
+  Phase 10 adds:
+  - tablet breathing room
+  - desktop navigation rail
+  - desktop trip-detail split
+  - safer map/account/trip grids
+*/
+
+@media (min-width: 720px) {
+  :root {
+    --rf-page-gutter: clamp(20px, 4vw, 42px);
+  }
+
+  body {
+    background-attachment: fixed;
+  }
+
+  #content {
+    padding-inline: var(--rf-page-gutter);
+  }
+
+  #header.rf-app-header,
+  #header {
+    padding-inline: var(--rf-page-gutter);
+  }
+
+  .rf-field-index,
+  .rf-detail-shell,
+  .rf-account-shell,
+  .archive-results,
+  .archive-list,
+  .archive-trip-list {
+    gap: 16px;
+  }
+
+  .rf-trip-grid,
+  .trip-grid,
+  .trip-list,
+  .archive-results,
+  .archive-list,
+  .archive-trip-list {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .rf-trip-card,
+  .trip-card {
+    min-height: 188px;
+  }
+
+  .modal-card,
+  .rf-modal {
+    max-width: min(720px, calc(100vw - 48px));
+  }
+
+  .form-grid,
+  .form-two-col {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .archive-map-wrap,
+  .rf-map-card {
+    border-radius: 32px;
+  }
+}
+
+@media (min-width: 960px) {
+  body {
+    min-height: 100dvh;
+  }
+
+  #app {
+    display: grid;
+    grid-template-columns: 214px minmax(0, 1fr);
+    grid-template-rows: auto minmax(0, 1fr);
+    grid-template-areas:
+      "nav header"
+      "nav content";
+    gap: 18px;
+    max-width: 1360px;
+    min-height: 100dvh;
+    margin: 0 auto;
+    padding: 18px;
+  }
+
+  #header.rf-app-header,
+  #header {
+    grid-area: header;
+    align-self: start;
+    position: sticky;
+    top: 18px;
+    border: 1px solid var(--rf-rule-2);
+    border-radius: 28px;
+    padding: 16px 18px;
+    z-index: 60;
+  }
+
+  #content {
+    grid-area: content;
+    min-width: 0;
+    padding: 0 0 24px;
+  }
+
+  #nav {
+    grid-area: nav;
+    position: sticky;
+    top: 18px;
+    bottom: auto;
+    align-self: start;
+    width: auto;
+    height: calc(100dvh - 36px);
+    padding: 12px;
+    border: 1px solid var(--rf-rule-2);
+    border-radius: 30px;
+    background:
+      linear-gradient(180deg, rgba(243, 240, 228, 0.96), rgba(225, 221, 208, 0.92)),
+      radial-gradient(circle at 24% 10%, rgba(184, 90, 46, 0.10), transparent 40%);
+    box-shadow: 0 18px 42px rgba(23, 26, 38, 0.10);
+  }
+
+  #nav::before {
+    content: "routefolk";
+    display: block;
+    color: var(--rf-accent);
+    font-family: var(--rf-font-mono);
+    font-size: 10px;
+    font-weight: 900;
+    letter-spacing: 0.18em;
+    padding: 10px 10px 18px;
+    text-transform: uppercase;
+  }
+
+  #nav::after {
+    content: "Field journal";
+    position: absolute;
+    left: 22px;
+    right: 22px;
+    bottom: 18px;
+    border-top: 1px dashed var(--rf-rule-2);
+    color: var(--rf-muted);
+    font-family: var(--rf-font-mono);
+    font-size: 10px;
+    font-weight: 700;
+    letter-spacing: 0.10em;
+    padding-top: 14px;
+    text-transform: uppercase;
+  }
+
+  #nav-inner {
+    display: grid;
+    gap: 8px;
+    max-width: none;
+    margin: 0;
+  }
+
+  .nav-btn {
+    align-items: center;
+    display: grid;
+    grid-template-columns: 28px minmax(0, 1fr);
+    gap: 10px;
+    justify-content: start;
+    min-height: 50px;
+    padding: 10px 12px;
+    text-align: left;
+  }
+
+  .nav-btn svg {
+    height: 22px;
+    width: 22px;
+  }
+
+  .nav-btn span {
+    display: inline;
+    line-height: 1;
+  }
+
+  .nav-btn.active {
+    background:
+      linear-gradient(135deg, rgba(38, 52, 94, 0.98), rgba(23, 26, 38, 0.96));
+    border-color: rgba(23, 26, 38, 0.28);
+    color: var(--rf-surface);
+  }
+
+  .nav-btn.active::before {
+    display: none;
+  }
+
+  .hdr-title {
+    font-size: 28px;
+  }
+
+  .hdr-sub {
+    font-size: 11px;
+  }
+
+  .rf-field-index,
+  .rf-account-shell,
+  .rf-detail-shell {
+    max-width: none;
+  }
+
+  .rf-trip-grid,
+  .trip-grid,
+  .trip-list {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .rf-account-shell {
+    grid-template-columns: minmax(0, 1.1fr) minmax(340px, 0.9fr);
+    align-items: start;
+  }
+
+  .rf-account-passport {
+    position: sticky;
+    top: 126px;
+  }
+
+  .archive-map-wrap {
+    min-height: 520px;
+  }
+
+  .archive-geo-svg {
+    max-height: 680px;
+  }
+
+  .offline-banner,
+  .rf-offline-banner {
+    border-radius: 999px;
+    margin-inline: 0;
+  }
+}
+
+@media (min-width: 1120px) {
+  #app {
+    grid-template-columns: 232px minmax(0, 1fr);
+    gap: 22px;
+  }
+
+  .rf-trip-grid,
+  .trip-grid,
+  .trip-list {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+
+  .rf-detail-shell {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) minmax(320px, 420px);
+    gap: 18px;
+    align-items: start;
+  }
+
+  .rf-detail-back-row,
+  .rf-trip-detail-hero {
+    grid-column: 1 / -1;
+  }
+
+  .rf-stages-panel {
+    grid-column: 1;
+  }
+
+  .rf-expenses-panel {
+    grid-column: 2;
+    position: sticky;
+    top: 126px;
+  }
+
+  .stage-list {
+    gap: 14px;
+  }
+
+  .archive-map-wrap {
+    padding: 18px;
+  }
+
+  .archive-map-heading {
+    padding-right: 116px;
+  }
+}
+
+@media (min-width: 1360px) {
+  #app {
+    grid-template-columns: 248px minmax(0, 1fr);
+    max-width: 1480px;
+  }
+
+  .rf-trip-grid,
+  .trip-grid,
+  .trip-list {
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+  }
+
+  .rf-detail-shell {
+    grid-template-columns: minmax(0, 1fr) 440px;
+  }
+}
+
+@media (max-width: 959px) {
+  #nav {
+    padding-bottom: max(0px, env(safe-area-inset-bottom));
+  }
+
+  #content {
+    padding-bottom: calc(92px + env(safe-area-inset-bottom));
+  }
+}
+
+@media (max-width: 380px) {
+  .hdr-title {
+    font-size: 20px;
+  }
+
+  .hdr-sub {
+    max-width: 220px;
+  }
+
+  .nav-btn {
+    font-size: 9px;
+  }
+
+  .nav-btn svg {
+    height: 19px;
+    width: 19px;
+  }
+
+  .btn,
+  .btn-sm,
+  .rf-primary-action {
+    min-height: 42px;
+  }
+
+  .rf-detail-title,
+  .rf-account-title {
+    font-size: 34px;
   }
 }
