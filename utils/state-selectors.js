@@ -18,3 +18,14 @@ export function findStageById(stageId) {
   }
   return null;
 }
+
+export function findEntry(entryId) {
+  for (const [stageId, entries] of Object.entries(STATE.entriesByStage)) {
+    if (!Array.isArray(entries)) continue;
+    const entry = entries.find((e) => e.id === entryId);
+    if (entry) return { stageId, entry };
+  }
+  return { stageId: null, entry: null };
+}
+
+

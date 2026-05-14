@@ -4,7 +4,7 @@
 // Bump CACHE and RELEASE whenever shell assets change.
 // ============================================================
 
-const RELEASE = '20260514-phase3251-expense-form-export-hotfix';
+const RELEASE = '20260514-phase326-find-entry-selector';
 const CACHE = 'routefolk-shell-v45';
 
 const SHELL_ASSETS = [

@@ -1,6 +1,6 @@
 // ============================================================
 // routefolk — app.js
-// Phase 3.25.1: expense form export hotfix.
+// Phase 3.26: find-entry selector extraction.
 // ============================================================
 
 import { signInWithGoogle, signOut, getCurrentUser, onAuthChange } from './lib/auth.js';
@@ -14,7 +14,7 @@ import { getSchemaVersion } from './lib/meta.js';
 import { getCurrentAppAccess } from './lib/access.js';
 import { listGpxTracksForTrip, uploadStageGpx, deleteGpxTrack, downloadAndParseGpxTrack, geometryFromGpxTrackRecord, trackFileName } from './lib/gpx.js';
 import { STATE } from './state/app-state.js';
-import { currentTrip, findStageById } from './utils/state-selectors.js';
+import { currentTrip, findStageById, findEntry } from './utils/state-selectors.js';
 import {
   STATUS_META,
   TRIPS_SCREEN_STATUSES,
@@ -1114,15 +1114,6 @@ function toggleStageGpx(stageId) {
   } else {
     renderAll();
   }
-}
-
-function findEntry(entryId) {
-  for (const [stageId, entries] of Object.entries(STATE.entriesByStage)) {
-    if (!Array.isArray(entries)) continue;
-    const entry = entries.find((e) => e.id === entryId);
-    if (entry) return { stageId, entry };
-  }
-  return { stageId: null, entry: null };
 }
 
 async function init() {
