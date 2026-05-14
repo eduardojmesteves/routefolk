@@ -1,6 +1,6 @@
 /* ============================================================
    routefolk — style-redesign.css
-   Phase 1 foundation + Phase 2 shell + Phase 3 components + Phase 4 trips screen + Phase 5 trip detail/stages + Phase 6 journal.
+   Phase 1 foundation + Phase 2 shell + Phase 3 components + Phase 4 trips screen + Phase 5 trip detail/stages + Phase 6 journal + Phase 7 expenses.
    Loaded after style.css to avoid a risky full CSS rewrite.
    ============================================================ */
 
@@ -2221,5 +2221,344 @@ input:focus {
 
   .entry-title {
     font-size: 19px;
+  }
+}
+
+
+/* ---------- Phase 7: Expenses as road ledger ---------- */
+
+.rf-expenses-panel {
+  --rf-expense-green: #425846;
+  --rf-expense-blue: #26345e;
+  --rf-expense-rust: #b85a2e;
+}
+
+.rf-expenses-panel .empty-sub {
+  position: relative;
+  z-index: 1;
+}
+
+.expense-total-box {
+  background:
+    linear-gradient(135deg, rgba(23, 26, 38, 0.96), rgba(38, 52, 94, 0.94)),
+    radial-gradient(circle at 12% 12%, rgba(237, 205, 184, 0.18), transparent 35%);
+  border: 1px solid rgba(243, 240, 228, 0.16);
+  border-radius: 28px;
+  box-shadow:
+    0 20px 42px rgba(23, 26, 38, 0.18),
+    inset 0 0 0 1px rgba(243, 240, 228, 0.06);
+  color: var(--rf-surface);
+  overflow: hidden;
+  padding: 18px;
+  position: relative;
+  z-index: 1;
+}
+
+.expense-total-box::before {
+  border: 1px solid rgba(237, 205, 184, 0.38);
+  border-radius: 999px;
+  color: var(--rf-accent-soft);
+  content: "Road ledger";
+  font-family: var(--rf-font-mono);
+  font-size: 9px;
+  font-weight: 800;
+  letter-spacing: 0.16em;
+  padding: 4px 8px;
+  position: absolute;
+  right: 14px;
+  text-transform: uppercase;
+  top: 14px;
+  transform: rotate(1.8deg);
+}
+
+.expense-total-box::after {
+  background:
+    linear-gradient(90deg, transparent, rgba(237, 205, 184, 0.16), transparent),
+    repeating-linear-gradient(
+      0deg,
+      transparent 0,
+      transparent 18px,
+      rgba(243, 240, 228, 0.045) 19px
+    );
+  content: "";
+  inset: 0;
+  pointer-events: none;
+  position: absolute;
+}
+
+.expense-total-label {
+  color: rgba(243, 240, 228, 0.74);
+  font-family: var(--rf-font-mono);
+  font-size: 10px;
+  font-weight: 800;
+  letter-spacing: 0.16em;
+  position: relative;
+  text-transform: uppercase;
+  z-index: 1;
+}
+
+.expense-total-value {
+  color: var(--rf-accent-soft);
+  font-family: var(--rf-font-serif);
+  font-size: clamp(42px, 12vw, 64px);
+  font-weight: 700;
+  letter-spacing: -0.055em;
+  line-height: 0.95;
+  margin-top: 8px;
+  position: relative;
+  z-index: 1;
+}
+
+.expense-breakdowns {
+  display: grid;
+  gap: 12px;
+  margin-top: 12px;
+  position: relative;
+  z-index: 1;
+}
+
+.expense-breakdown {
+  background:
+    linear-gradient(180deg, rgba(243, 240, 228, 0.94), rgba(231, 228, 216, 0.86)),
+    repeating-linear-gradient(
+      0deg,
+      transparent 0,
+      transparent 25px,
+      rgba(23, 26, 38, 0.035) 26px
+    );
+  border: 1px solid rgba(23, 26, 38, 0.14);
+  border-radius: 24px;
+  box-shadow: 0 12px 28px rgba(23, 26, 38, 0.07);
+  overflow: hidden;
+  padding: 13px;
+  position: relative;
+}
+
+.expense-breakdown::before {
+  background: var(--rf-accent);
+  content: "";
+  height: 100%;
+  left: 0;
+  opacity: 0.82;
+  position: absolute;
+  top: 0;
+  width: 4px;
+}
+
+.expense-breakdown-title {
+  color: var(--rf-accent);
+  font-family: var(--rf-font-mono);
+  font-size: 10px;
+  font-weight: 800;
+  letter-spacing: 0.16em;
+  margin-bottom: 8px;
+  padding-left: 4px;
+  text-transform: uppercase;
+}
+
+.expense-breakdown-row {
+  align-items: baseline;
+  border-top: 1px dotted rgba(23, 26, 38, 0.18);
+  color: var(--rf-ink-2);
+  display: flex;
+  font-family: var(--rf-font-mono);
+  font-size: 11px;
+  gap: 10px;
+  justify-content: space-between;
+  padding: 8px 0 0;
+}
+
+.expense-breakdown-row:first-of-type {
+  border-top: 0;
+}
+
+.expense-breakdown-row strong {
+  color: var(--rf-ink);
+  font-size: 12px;
+  white-space: nowrap;
+}
+
+#addExpenseBtn {
+  border-radius: 999px;
+  box-shadow: 0 12px 24px rgba(38, 52, 94, 0.18);
+  font-family: var(--rf-font-mono);
+  font-size: 11px;
+  font-weight: 800;
+  letter-spacing: 0.12em;
+  margin: 14px 0 !important;
+  min-height: 46px;
+  position: relative;
+  text-transform: uppercase;
+  z-index: 1;
+}
+
+.expense-list {
+  display: grid;
+  gap: 12px;
+  position: relative;
+  z-index: 1;
+}
+
+.expense-card {
+  background:
+    linear-gradient(180deg, rgba(243, 240, 228, 0.96), rgba(231, 228, 216, 0.90)),
+    radial-gradient(circle at 100% 0%, rgba(184, 90, 46, 0.10), transparent 32%);
+  border: 1px solid rgba(23, 26, 38, 0.15);
+  border-radius: 24px;
+  box-shadow: 0 14px 30px rgba(23, 26, 38, 0.075);
+  overflow: hidden;
+  padding: 13px;
+  position: relative;
+}
+
+.expense-card::before {
+  border: 1px solid rgba(38, 52, 94, 0.28);
+  border-radius: 999px;
+  color: var(--rf-primary);
+  content: "Receipt";
+  font-family: var(--rf-font-mono);
+  font-size: 9px;
+  font-weight: 800;
+  letter-spacing: 0.14em;
+  padding: 4px 7px;
+  position: absolute;
+  right: 12px;
+  text-transform: uppercase;
+  top: 12px;
+  transform: rotate(-1.5deg);
+}
+
+.expense-card-head {
+  align-items: flex-start;
+  display: grid;
+  gap: 10px;
+  grid-template-columns: minmax(0, 1fr) auto;
+}
+
+.expense-title {
+  color: var(--rf-ink);
+  font-family: var(--rf-font-serif);
+  font-size: 21px;
+  font-weight: 680;
+  letter-spacing: -0.035em;
+  line-height: 1.05;
+  padding-right: 72px;
+}
+
+.expense-meta {
+  color: var(--rf-muted);
+  font-family: var(--rf-font-mono);
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  line-height: 1.45;
+  margin-top: 7px;
+}
+
+.expense-actions {
+  display: flex;
+  gap: 6px;
+  position: relative;
+  z-index: 1;
+}
+
+.expense-desc {
+  border-top: 1px dotted rgba(23, 26, 38, 0.18);
+  color: var(--rf-ink-2);
+  font-family: var(--rf-font-serif);
+  font-size: 15px;
+  line-height: 1.45;
+  margin-top: 11px;
+  padding-top: 10px;
+}
+
+/* Expense modal/form polish without changing form IDs or behaviour. */
+#efPayer,
+#efCategory,
+#efStage,
+#efAmount,
+#efDate,
+#efDesc {
+  background:
+    linear-gradient(180deg, rgba(243, 240, 228, 0.96), rgba(231, 228, 216, 0.72));
+  border-color: rgba(23, 26, 38, 0.20);
+}
+
+#efAmount {
+  color: var(--rf-accent);
+  font-family: var(--rf-font-serif);
+  font-size: 24px;
+  font-weight: 700;
+  letter-spacing: -0.03em;
+}
+
+#efAmount::placeholder {
+  color: rgba(184, 90, 46, 0.42);
+}
+
+#efDesc {
+  min-height: 104px;
+}
+
+.form-row:has(#efAmount) {
+  background: rgba(184, 90, 46, 0.07);
+  border: 1px dashed rgba(184, 90, 46, 0.24);
+  border-radius: 20px;
+  padding: 10px;
+}
+
+.form-row:has(#efPayer),
+.form-row:has(#efCategory),
+.form-row:has(#efStage),
+.form-row:has(#efDate) {
+  background: rgba(38, 52, 94, 0.045);
+  border: 1px solid rgba(38, 52, 94, 0.08);
+  border-radius: 18px;
+  padding: 10px;
+}
+
+@media (min-width: 760px) {
+  .expense-breakdowns {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
+@media (max-width: 520px) {
+  .expense-total-box {
+    border-radius: 24px;
+    padding: 16px;
+  }
+
+  .expense-total-box::before {
+    left: 14px;
+    right: auto;
+    top: 12px;
+  }
+
+  .expense-total-label {
+    padding-top: 28px;
+  }
+
+  .expense-card {
+    border-radius: 22px;
+  }
+
+  .expense-card::before {
+    left: 12px;
+    right: auto;
+  }
+
+  .expense-title {
+    font-size: 19px;
+    padding-right: 0;
+    padding-top: 28px;
+  }
+
+  .expense-card-head {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .expense-actions {
+    justify-content: flex-end;
   }
 }
