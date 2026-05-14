@@ -150,12 +150,19 @@ Later:
 
 Feature requests and bug reports are welcome through GitHub Issues.
 
-Please use the appropriate label:
+Use the issue templates when opening a new issue:
 
-- `bug` for broken behaviour, crashes, confusing errors, or incorrect results.
-- `enhancement` for new features, UX improvements, or workflow ideas.
+- **Bug report** — for broken behaviour, crashes, confusing errors, or incorrect results. Use the `bug` label.
+- **Feature request** — for new features, UX improvements, or workflow ideas. Use the `enhancement` label.
 
-Include enough detail to reproduce the problem or understand the proposed improvement.
+Useful reports include:
+
+- what happened;
+- what you expected;
+- steps to reproduce;
+- screenshots, if relevant;
+- device/browser/PWA context;
+- whether the problem happens locally, in production, or both.
 
 ---
 

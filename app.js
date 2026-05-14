@@ -1,6 +1,6 @@
 // ============================================================
 // routefolk — app.js
-// Phase 3.12: cached GPX geometry for archive maps.
+// Phase 3.15: app shell rendering extraction.
 // ============================================================
 
 import { signInWithGoogle, signOut, getCurrentUser, onAuthChange } from './lib/auth.js';
@@ -22,6 +22,7 @@ import {
   EXPENSE_CATEGORY_META,
 } from './constants/app-constants.js';
 import { $, esc, attr, boolAttr } from './utils/dom.js';
+import { renderHeader, renderNav, bindNav, offlineBannerHtml } from './components/app-shell.js';
 import { validateEntryUrls } from './utils/url.js';
 import {
   fmtDate,
@@ -47,7 +48,7 @@ import { renderTripSummary, bindSummaryEvents } from './screens/summary-screen.j
 import { renderTripDetailScreen } from './screens/trip-detail-screen.js';
 import { renderStagesSection as renderStagesSectionView } from './screens/trip-detail-stages.js';
 import { renderExpensesSection as renderExpensesSectionView, expensesForTrip as expensesForTripView, expenseTotals as expenseTotalsView, expenseTotalsHtml as expenseTotalsHtmlView } from './screens/trip-detail-expenses.js';
-import { userInitials, userDisplayName, userAvatarUrl, initialsFromName, displayNameForUserId } from './utils/user.js';
+import { userDisplayName, userAvatarUrl, displayNameForUserId } from './utils/user.js';
 
 const EXPECTED_SCHEMA_VERSION = '013';
 
@@ -77,61 +78,7 @@ function auditLineHtml(record, label = 'Last edited') {
 
 
 
-// ---------- Online/offline ----------
-function offlineBannerHtml() {
-  if (STATE.isOnline !== false) return '';
-  return `
-    <div class="offline-banner" role="status">
-      You are offline. You can view cached content, but changes are disabled until you reconnect.
-    </div>
-  `;
-}
-
-// ---------- Header/nav ----------
-function renderHeader() {
-  const right = $('hdrRight');
-  const sub = $('hdrSub');
-  if (sub) sub.textContent = headerSubtitle();
-  if (!right) return;
-
-  if (!STATE.user) {
-    right.innerHTML = `<button class="btn btn-secondary btn-sm" id="signInBtn">Sign in</button>`;
-    $('signInBtn')?.addEventListener('click', handleSignIn);
-    return;
-  }
-
-  const avatar = userAvatarUrl(STATE.user);
-  right.innerHTML = `
-    <button class="account-avatar" id="hdrAvatarBtn" title="${esc(userDisplayName(STATE.user))}" style="cursor:pointer;">
-      ${avatar
-        ? `<img src="${esc(avatar)}" alt="" referrerpolicy="no-referrer">`
-        : esc(userInitials(STATE.user))}
-    </button>
-  `;
-  $('hdrAvatarBtn')?.addEventListener('click', () => goTo('account'));
-}
-
-function headerSubtitle() {
-  if (!STATE.user) return 'Sign in to plan trips';
-  if (STATE.tab === 'account') return 'Account';
-  if (STATE.view === 'summary') return 'Trip summary review';
-  if (STATE.view === 'detail') return 'Trip detail';
-  if (STATE.tab === 'archive') return 'Archive';
-  return 'Trips';
-}
-
-function renderNav() {
-  document.querySelectorAll('.nav-btn').forEach((btn) => {
-    btn.classList.toggle('active', btn.dataset.tab === STATE.tab);
-  });
-}
-
-function bindNav() {
-  document.querySelectorAll('.nav-btn').forEach((btn) => {
-    btn.addEventListener('click', () => goTo(btn.dataset.tab));
-  });
-}
-
+// ---------- Navigation ----------
 function goTo(tab) {
   STATE.tab = tab;
   STATE.view = 'list';
@@ -1574,7 +1521,10 @@ async function handleDeleteExpense(tripId, expenseId) {
 
 // ---------- Rendering / event binding ----------
 function renderAll() {
-  renderHeader();
+  renderHeader({
+    onSignIn: handleSignIn,
+    onAccountClick: () => goTo('account'),
+  });
   renderNav();
   renderTab();
 }
@@ -1890,7 +1840,7 @@ function findEntry(entryId) {
 
 async function init() {
   STATE.user = await getCurrentUser();
-  bindNav();
+  bindNav((tab) => goTo(tab));
   window.addEventListener('online', () => {
     STATE.isOnline = true;
     renderAll();

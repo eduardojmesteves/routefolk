@@ -1,0 +1,61 @@
+name: Feature request
+description: Suggest a new feature, UX improvement, or workflow change.
+title: "feat: "
+labels:
+  - enhancement
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Thanks for suggesting an improvement. Be specific about the problem, not only the solution.
+
+  - type: textarea
+    id: problem
+    attributes:
+      label: Problem or need
+      description: What pain point does this solve?
+      placeholder: It is currently difficult to...
+    validations:
+      required: true
+
+  - type: textarea
+    id: proposed
+    attributes:
+      label: Proposed solution
+      description: What would you like routefolk to do?
+    validations:
+      required: true
+
+  - type: dropdown
+    id: area
+    attributes:
+      label: Area
+      options:
+        - Trips
+        - Stages
+        - Journal
+        - Expenses
+        - GPX upload
+        - Archive map / heatmap
+        - PWA / offline
+        - Access / sharing
+        - Export / sharing
+        - Other
+    validations:
+      required: true
+
+  - type: textarea
+    id: alternatives
+    attributes:
+      label: Alternatives considered
+      description: Is there a simpler workaround or external tool already covering this?
+    validations:
+      required: false
+
+  - type: textarea
+    id: context
+    attributes:
+      label: Additional context
+      description: Add screenshots, examples, or real-trip scenarios if useful.
+    validations:
+      required: false

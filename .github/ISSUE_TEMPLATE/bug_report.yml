@@ -1,0 +1,82 @@
+name: Bug report
+description: Report broken behaviour, crashes, confusing errors, or incorrect results.
+title: "bug: "
+labels:
+  - bug
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Thanks for reporting a bug. Give enough detail to reproduce it. Vague bug reports are hard to fix.
+
+  - type: textarea
+    id: what-happened
+    attributes:
+      label: What happened?
+      description: Describe the problem clearly.
+      placeholder: The app did X when I expected Y.
+    validations:
+      required: true
+
+  - type: textarea
+    id: expected
+    attributes:
+      label: What did you expect?
+      description: What should have happened instead?
+    validations:
+      required: true
+
+  - type: textarea
+    id: reproduce
+    attributes:
+      label: Steps to reproduce
+      description: List the steps in order.
+      placeholder: |
+        1. Open ...
+        2. Tap ...
+        3. See error ...
+    validations:
+      required: true
+
+  - type: dropdown
+    id: area
+    attributes:
+      label: Area
+      options:
+        - Sign-in / access
+        - Trips
+        - Stages
+        - Journal
+        - Expenses
+        - GPX upload
+        - Archive map / heatmap
+        - PWA / offline
+        - Other
+    validations:
+      required: true
+
+  - type: input
+    id: environment
+    attributes:
+      label: Device and browser
+      placeholder: "iPhone Safari PWA, Android Chrome, macOS Chrome, etc."
+    validations:
+      required: false
+
+  - type: textarea
+    id: screenshots
+    attributes:
+      label: Screenshots or console errors
+      description: Add screenshots, browser console errors, or network errors if available.
+    validations:
+      required: false
+
+  - type: checkboxes
+    id: checks
+    attributes:
+      label: Quick checks
+      options:
+        - label: I checked whether this happens after a hard refresh / reopening the PWA.
+          required: false
+        - label: I checked whether this happens both locally and in production, if applicable.
+          required: false
