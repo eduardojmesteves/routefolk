@@ -1,6 +1,6 @@
 // ============================================================
 // routefolk — app.js
-// Phase 3.16: trip detail helper extraction.
+// Phase 3.17: write guards and audit extraction.
 // ============================================================
 
 import { signInWithGoogle, signOut, getCurrentUser, onAuthChange } from './lib/auth.js';
@@ -23,6 +23,8 @@ import {
 } from './constants/app-constants.js';
 import { $, esc, attr, boolAttr } from './utils/dom.js';
 import { renderHeader, renderNav, bindNav, offlineBannerHtml } from './components/app-shell.js';
+import { auditLineHtml } from './components/audit.js';
+import { canDeleteTrip, canWrite, writeDisabledAttr, ensureOnline, friendlyError, friendlyGpxError } from './utils/write-guards.js';
 import { gpxTracksForTrip, stageNavigateUrl, stageRouteLabel, stageLabelForExpense, expenseStageMeta } from './utils/trip-detail.js';
 import { validateEntryUrls } from './utils/url.js';
 import {
@@ -52,31 +54,6 @@ import { renderExpensesSection as renderExpensesSectionView, expensesForTrip as 
 import { userDisplayName, userAvatarUrl, displayNameForUserId } from './utils/user.js';
 
 const EXPECTED_SCHEMA_VERSION = '013';
-
-function canDeleteTrip(trip) {
-  return Boolean(STATE.user?.id && trip?.created_by === STATE.user.id);
-}
-
-function canWrite() {
-  return STATE.isOnline !== false;
-}
-
-function writeDisabledAttr() {
-  return canWrite() ? '' : ' disabled';
-}
-
-function ensureOnline(message = 'You are offline. Reconnect before making changes.') {
-  if (canWrite()) return true;
-  toast(message);
-  return false;
-}
-
-function auditLineHtml(record, label = 'Last edited') {
-  if (!record?.updated_by || !record?.updated_at) return '';
-  const who = displayNameForUserId(record.updated_by);
-  return `<div class="audit-line">${esc(label)} by ${esc(who)} · ${esc(fmtDateTime(record.updated_at))}</div>`;
-}
-
 
 
 // ---------- Navigation ----------
@@ -419,36 +396,6 @@ async function openTrip(tripId, view = 'detail') {
   }
   if (!Array.isArray(STATE.expensesByTrip[tripId])) await loadExpensesForTrip(tripId, { quiet: true });
   if (!Array.isArray(STATE.gpxByTrip[tripId])) await loadGpxForTrip(tripId, { quiet: true });
-}
-
-function friendlyError(action, err) {
-  const msg = String(err?.message || '').toLowerCase();
-  if (!canWrite()) return 'You are offline. Reconnect and try again.';
-  if (msg.includes('permission') || msg.includes('policy') || msg.includes('rls') || msg.includes('not allowed')) {
-    return `Could not ${action}. You may not have permission.`;
-  }
-  if (msg.includes('failed to fetch') || msg.includes('network') || msg.includes('timeout')) {
-    return `Could not ${action}. Check your connection and try again.`;
-  }
-  return `Could not ${action}. Please try again.`;
-}
-
-function friendlyGpxError(action, err) {
-  const msg = String(err?.message || '').toLowerCase();
-  if (!canWrite()) return 'You are offline. Reconnect before changing GPX files.';
-  if (msg.includes('file type') || msg.includes('extension') || msg.includes('.gpx')) {
-    return 'Choose a valid .gpx file.';
-  }
-  if (msg.includes('too large') || msg.includes('size')) {
-    return 'This GPX file is too large. Keep GPX files under 8 MB for now.';
-  }
-  if (msg.includes('empty') || msg.includes('no route') || msg.includes('no track') || msg.includes('track points') || msg.includes('usable')) {
-    return 'Could not read this GPX file. It does not contain usable track points.';
-  }
-  if (msg.includes('storage') || msg.includes('bucket') || msg.includes('object')) {
-    return `Could not ${action}. The GPX storage operation failed. Try again.`;
-  }
-  return friendlyError(action, err);
 }
 
 // ---------- Trip detail ----------
