@@ -1,6 +1,6 @@
 /* ============================================================
    routefolk — style-redesign.css
-   Phase 1 foundation + Phase 2 shell + Phase 3 components + Phase 4 trips screen + Phase 5 trip detail/stages + Phase 6 journal + Phase 7 expenses + Phase 8 archive.
+   Phase 1 foundation + Phase 2 shell + Phase 3 components + Phase 4 trips screen + Phase 5 trip detail/stages + Phase 6 journal + Phase 7 expenses + Phase 8 archive + Phase 9 account.
    Loaded after style.css to avoid a risky full CSS rewrite.
    ============================================================ */
 
@@ -2821,5 +2821,380 @@ input:focus {
   .archive-view-btn,
   .archive-layer-btn {
     flex: 1 1 auto;
+  }
+}
+
+
+/* ---------- Phase 9: Account as routefolk passport ---------- */
+
+.rf-account-shell {
+  display: grid;
+  gap: 14px;
+}
+
+.rf-passport-card {
+  background:
+    linear-gradient(180deg, rgba(243, 240, 228, 0.96), rgba(231, 228, 216, 0.88)),
+    radial-gradient(circle at 12% 12%, rgba(184, 90, 46, 0.12), transparent 30%),
+    radial-gradient(circle at 90% 0%, rgba(38, 52, 94, 0.10), transparent 34%);
+  border: 1px solid rgba(23, 26, 38, 0.16);
+  border-radius: 30px;
+  box-shadow: 0 18px 38px rgba(23, 26, 38, 0.08);
+  overflow: hidden;
+  position: relative;
+}
+
+.rf-passport-card::before {
+  border: 1px solid rgba(184, 90, 46, 0.36);
+  border-radius: 999px;
+  color: var(--rf-accent);
+  content: "Routefolk";
+  font-family: var(--rf-font-mono);
+  font-size: 9px;
+  font-weight: 800;
+  letter-spacing: 0.16em;
+  padding: 5px 9px;
+  position: absolute;
+  right: 16px;
+  text-transform: uppercase;
+  top: 16px;
+  transform: rotate(1.4deg);
+}
+
+.rf-passport-card::after {
+  background:
+    repeating-linear-gradient(
+      0deg,
+      transparent 0,
+      transparent 25px,
+      rgba(23, 26, 38, 0.030) 26px
+    );
+  content: "";
+  inset: 0;
+  pointer-events: none;
+  position: absolute;
+}
+
+.rf-passport-card > * {
+  position: relative;
+  z-index: 1;
+}
+
+.rf-card-kicker {
+  color: var(--rf-accent);
+  font-family: var(--rf-font-mono);
+  font-size: 10px;
+  font-weight: 800;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+}
+
+.rf-account-title,
+.rf-account-section-title {
+  color: var(--rf-ink);
+  font-family: var(--rf-font-serif);
+  font-weight: 680;
+  letter-spacing: -0.045em;
+  line-height: 0.98;
+}
+
+.rf-account-title {
+  font-size: clamp(38px, 11vw, 60px);
+  margin-top: 4px;
+}
+
+.rf-account-section-title {
+  font-size: 30px;
+  margin-top: 4px;
+}
+
+.rf-account-copy {
+  color: var(--rf-ink-2);
+  font-family: var(--rf-font-serif);
+  font-size: 16px;
+  line-height: 1.45;
+  margin: 12px 0 14px;
+  max-width: 620px;
+}
+
+.rf-passport-topline {
+  align-items: flex-start;
+  display: flex;
+  gap: 12px;
+  justify-content: space-between;
+  padding-right: 112px;
+}
+
+.rf-account-stamp {
+  align-self: flex-start;
+  border: 1px solid rgba(184, 90, 46, 0.42);
+  border-radius: 999px;
+  color: var(--rf-accent);
+  font-family: var(--rf-font-mono);
+  font-size: 10px;
+  font-weight: 800;
+  letter-spacing: 0.14em;
+  padding: 6px 10px;
+  text-transform: uppercase;
+  transform: rotate(-2deg);
+}
+
+.rf-account-row {
+  align-items: center;
+  background:
+    linear-gradient(180deg, rgba(243, 240, 228, 0.70), rgba(231, 228, 216, 0.50));
+  border: 1px solid rgba(23, 26, 38, 0.13);
+  border-radius: 26px;
+  display: grid;
+  gap: 14px;
+  grid-template-columns: 78px minmax(0, 1fr);
+  margin-top: 14px;
+  padding: 12px;
+}
+
+.rf-account-avatar {
+  align-items: center;
+  background:
+    radial-gradient(circle at 30% 20%, rgba(237, 205, 184, 0.70), transparent 42%),
+    var(--rf-primary);
+  border: 3px solid var(--rf-surface);
+  border-radius: 24px;
+  box-shadow: 0 10px 26px rgba(23, 26, 38, 0.18);
+  color: var(--rf-surface);
+  display: inline-flex;
+  font-family: var(--rf-font-mono);
+  font-size: 22px;
+  font-weight: 900;
+  height: 78px;
+  justify-content: center;
+  overflow: hidden;
+  width: 78px;
+}
+
+.rf-account-avatar img,
+.rf-people-avatar img {
+  height: 100%;
+  object-fit: cover;
+  width: 100%;
+}
+
+.rf-account-name {
+  color: var(--rf-ink);
+  font-family: var(--rf-font-serif);
+  font-size: 27px;
+  font-weight: 680;
+  letter-spacing: -0.04em;
+  line-height: 1.02;
+}
+
+.rf-account-email,
+.rf-account-meta {
+  color: var(--rf-muted);
+  font-family: var(--rf-font-mono);
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.05em;
+  margin-top: 5px;
+}
+
+.rf-account-meta {
+  color: var(--rf-accent);
+  text-transform: uppercase;
+}
+
+.rf-signout-btn,
+.rf-google-btn {
+  border-radius: 999px;
+  font-family: var(--rf-font-mono);
+  font-size: 11px;
+  font-weight: 800;
+  letter-spacing: 0.10em;
+  margin-top: 14px !important;
+  min-height: 46px;
+  text-transform: uppercase;
+}
+
+.rf-google-btn {
+  background: var(--rf-surface);
+  border: 1px solid rgba(23, 26, 38, 0.20);
+  color: var(--rf-ink);
+}
+
+.rf-google-btn:hover,
+.rf-google-btn:focus-visible {
+  border-color: var(--rf-accent);
+  box-shadow: 0 12px 28px rgba(184, 90, 46, 0.14);
+}
+
+.rf-people-card,
+.rf-install-card {
+  padding-top: 18px;
+}
+
+.rf-people-list {
+  display: grid;
+  gap: 10px;
+  margin-top: 14px;
+}
+
+.rf-people-row {
+  align-items: center;
+  background:
+    linear-gradient(180deg, rgba(243, 240, 228, 0.76), rgba(231, 228, 216, 0.58));
+  border: 1px solid rgba(23, 26, 38, 0.12);
+  border-radius: 22px;
+  display: grid;
+  gap: 10px;
+  grid-template-columns: 46px minmax(0, 1fr);
+  padding: 9px;
+}
+
+.rf-people-avatar {
+  align-items: center;
+  background: var(--rf-primary-soft);
+  border: 1px solid rgba(38, 52, 94, 0.22);
+  border-radius: 16px;
+  color: var(--rf-primary);
+  display: inline-flex;
+  font-family: var(--rf-font-mono);
+  font-size: 13px;
+  font-weight: 900;
+  height: 46px;
+  justify-content: center;
+  overflow: hidden;
+  width: 46px;
+}
+
+.rf-people-name {
+  color: var(--rf-ink);
+  font-family: var(--rf-font-serif);
+  font-size: 18px;
+  font-weight: 650;
+  letter-spacing: -0.03em;
+}
+
+.rf-people-email {
+  color: var(--rf-muted);
+  font-family: var(--rf-font-mono);
+  font-size: 10px;
+  margin-top: 3px;
+}
+
+.rf-people-you {
+  background: var(--rf-accent-soft);
+  border: 1px solid rgba(184, 90, 46, 0.28);
+  border-radius: 999px;
+  color: var(--rf-accent);
+  display: inline-flex;
+  font-family: var(--rf-font-mono);
+  font-size: 8px;
+  font-weight: 900;
+  letter-spacing: 0.12em;
+  margin-left: 6px;
+  padding: 3px 6px;
+  text-transform: uppercase;
+  vertical-align: middle;
+}
+
+.rf-account-help {
+  border-top: 1px dotted rgba(23, 26, 38, 0.18);
+  margin-top: 12px !important;
+  padding-top: 10px;
+}
+
+.rf-install-helper-block {
+  background:
+    linear-gradient(180deg, rgba(243, 240, 228, 0.82), rgba(231, 228, 216, 0.62));
+  border: 1px solid rgba(23, 26, 38, 0.12);
+  border-radius: 22px;
+  margin-top: 12px;
+  padding: 12px;
+}
+
+.rf-install-helper-title {
+  color: var(--rf-ink);
+  font-family: var(--rf-font-mono);
+  font-size: 11px;
+  font-weight: 900;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+}
+
+.rf-install-steps {
+  color: var(--rf-ink-2);
+  font-family: var(--rf-font-serif);
+  font-size: 15px;
+  line-height: 1.5;
+  margin: 9px 0 0;
+  padding-left: 22px;
+}
+
+.rf-install-steps li::marker {
+  color: var(--rf-accent);
+  font-family: var(--rf-font-mono);
+  font-weight: 900;
+}
+
+.rf-install-note {
+  margin-top: 10px;
+}
+
+.rf-install-details {
+  margin-top: 12px;
+}
+
+.rf-install-details summary {
+  color: var(--rf-primary);
+  cursor: pointer;
+  font-family: var(--rf-font-mono);
+  font-size: 11px;
+  font-weight: 900;
+  letter-spacing: 0.10em;
+  text-transform: uppercase;
+}
+
+.rf-install-helper-extra {
+  display: grid;
+  gap: 10px;
+  margin-top: 10px;
+}
+
+@media (min-width: 900px) {
+  .rf-account-shell {
+    grid-template-columns: minmax(0, 1.1fr) minmax(320px, 0.9fr);
+  }
+
+  .rf-account-passport {
+    grid-row: span 2;
+  }
+}
+
+@media (max-width: 520px) {
+  .rf-passport-card {
+    border-radius: 24px;
+  }
+
+  .rf-passport-card::before {
+    left: 16px;
+    right: auto;
+  }
+
+  .rf-passport-topline {
+    padding-right: 0;
+    padding-top: 32px;
+  }
+
+  .rf-account-row {
+    grid-template-columns: 64px minmax(0, 1fr);
+  }
+
+  .rf-account-avatar {
+    border-radius: 20px;
+    height: 64px;
+    width: 64px;
+  }
+
+  .rf-account-name {
+    font-size: 23px;
   }
 }
