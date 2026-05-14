@@ -1,6 +1,6 @@
 // ============================================================
 // routefolk — app.js
-// Phase 3.18: trip statistics extraction.
+// Phase 3.19.1: trip and stage form extraction hotfix.
 // ============================================================
 
 import { signInWithGoogle, signOut, getCurrentUser, onAuthChange } from './lib/auth.js';
@@ -42,6 +42,8 @@ import {
 import { fmtEuro, parseAmount } from './utils/format.js';
 import { toast } from './components/toast.js';
 import { showModal, closeModal } from './components/modal.js';
+import { tripFormHtml, readTripForm } from './components/trip-form.js';
+import { stageFormHtml, readStageForm, validateStageFormAgainstTrip } from './components/stage-form.js';
 import { signedOutState, errorCard } from './components/feedback.js';
 import { statItemHtml } from './components/stats.js';
 import { tripVisibility, visibilityPillHtml, tripCardHtml } from './components/trip-card.js';
@@ -416,64 +418,6 @@ function tripNotFoundHtml() {
 
 
 // ---------- Forms ----------
-function tripFormHtml(trip = {}) {
-  return `
-    <div class="form-row">
-      <label class="form-label" for="tfTitle">Title</label>
-      <input class="inp" id="tfTitle" maxlength="120" value="${esc(trip.title || '')}" placeholder="e.g. Pyrenees loop">
-    </div>
-    <div class="form-row">
-      <label class="form-label" for="tfDesc">Description</label>
-      <textarea class="txt" id="tfDesc" maxlength="2000" placeholder="Optional notes about the trip">${esc(trip.description || '')}</textarea>
-    </div>
-    <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;">
-      <div class="form-row">
-        <label class="form-label" for="tfStart">Start date</label>
-        <input class="inp" id="tfStart" type="date" value="${esc(trip.start_date || '')}">
-      </div>
-      <div class="form-row">
-        <label class="form-label" for="tfEnd">End date</label>
-        <input class="inp" id="tfEnd" type="date" value="${esc(trip.end_date || '')}">
-      </div>
-    </div>
-    <div class="form-row">
-      <label class="form-label" for="tfStatus">Status</label>
-      <select class="sel" id="tfStatus">
-        ${Object.entries(STATUS_META).map(([key, m]) =>
-          `<option value="${esc(key)}" ${trip.status === key ? 'selected' : ''}>${esc(m.label)}</option>`
-        ).join('')}
-      </select>
-    </div>
-    <div class="form-row">
-      <div class="form-label">Visibility</div>
-      <div class="choice-list" role="radiogroup" aria-label="Trip visibility">
-        ${Object.entries(VISIBILITY_META).map(([key, m]) => `
-          <label class="choice-option">
-            <input type="radio" name="tfVisibility" value="${esc(key)}" ${tripVisibility(trip) === key ? 'checked' : ''}>
-            <span>
-              <strong>${esc(m.formLabel)}</strong>
-              <small>${key === 'private' ? 'Only you can see and edit this trip.' : 'Everyone who can sign in to the app can see and edit this trip.'}</small>
-            </span>
-          </label>
-        `).join('')}
-      </div>
-      <div class="form-help">This is enforced by Supabase RLS, not just hidden in the interface.</div>
-    </div>
-  `;
-}
-
-function readTripForm() {
-  const checkedVisibility = document.querySelector('input[name="tfVisibility"]:checked')?.value;
-  return {
-    title: $('tfTitle')?.value.trim() || '',
-    description: $('tfDesc')?.value.trim() || '',
-    start_date: $('tfStart')?.value || '',
-    end_date: $('tfEnd')?.value || '',
-    status: $('tfStatus')?.value || 'planning',
-    visibility: checkedVisibility === 'private' ? 'private' : 'group',
-  };
-}
-
 function showNewTripModal() {
   showModal('New trip', tripFormHtml({ status: 'planning', visibility: 'group' }), [
     { label: 'Create', cls: 'btn-primary', fn: handleCreateTrip },
@@ -500,98 +444,6 @@ function showDeleteTripConfirm(trip) {
       { label: 'Delete', cls: 'btn-danger', fn: () => handleDeleteTrip(trip.id) },
       { label: 'Cancel', cls: 'btn-secondary', fn: closeModal },
     ]);
-}
-
-function stageFormHtml(stage = {}, trip = {}) {
-  const hasTripDateBounds = Boolean(trip.start_date || trip.end_date);
-  const dateDisabled = !hasTripDateBounds;
-  return `
-    <div class="form-row">
-      <label class="form-label" for="sfTitle">Stage title (optional)</label>
-      <input class="inp" id="sfTitle" maxlength="120" value="${esc(stage.title || '')}" placeholder="e.g. Mountain pass day">
-    </div>
-    <div class="form-row">
-      <label class="form-label" for="sfStartLoc">From</label>
-      <input class="inp" id="sfStartLoc" maxlength="120" value="${esc(stage.start_location || '')}" placeholder="e.g. Lisbon">
-    </div>
-    <div class="form-row">
-      <label class="form-label" for="sfEndLoc">To</label>
-      <input class="inp" id="sfEndLoc" maxlength="120" value="${esc(stage.end_location || '')}" placeholder="e.g. Porto">
-    </div>
-    <div class="form-row">
-      <label class="form-label" for="sfCustomUrl">Custom Maps URL (optional)</label>
-      <input class="inp" id="sfCustomUrl" value="${esc(stage.custom_route_url || '')}" placeholder="https://maps.app.goo.gl/...">
-      <div class="form-help">Plan your route in Google Maps, then paste the share link here. Leave empty for the auto-generated route.</div>
-    </div>
-    <details class="form-details">
-      <summary>Coordinates (advanced — auto-filled from city names)</summary>
-      <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:8px;">
-        <div class="form-row">
-          <label class="form-label" for="sfStartLat">Start lat</label>
-          <input class="inp" id="sfStartLat" inputmode="decimal" value="${esc(stage.start_lat ?? '')}" placeholder="auto">
-        </div>
-        <div class="form-row">
-          <label class="form-label" for="sfStartLng">Start lng</label>
-          <input class="inp" id="sfStartLng" inputmode="decimal" value="${esc(stage.start_lng ?? '')}" placeholder="auto">
-        </div>
-        <div class="form-row">
-          <label class="form-label" for="sfEndLat">End lat</label>
-          <input class="inp" id="sfEndLat" inputmode="decimal" value="${esc(stage.end_lat ?? '')}" placeholder="auto">
-        </div>
-        <div class="form-row">
-          <label class="form-label" for="sfEndLng">End lng</label>
-          <input class="inp" id="sfEndLng" inputmode="decimal" value="${esc(stage.end_lng ?? '')}" placeholder="auto">
-        </div>
-      </div>
-    </details>
-    <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;">
-      <div class="form-row">
-        <label class="form-label" for="sfDate">Planned date</label>
-        <input class="inp" id="sfDate" type="date" value="${esc(stage.planned_date || '')}"${attr('min', trip.start_date)}${attr('max', trip.end_date)}${boolAttr('disabled', dateDisabled)}>
-        ${dateDisabled ? `<div class="form-help">Set the trip's start or end date first to add stage dates.</div>` : ''}
-      </div>
-      <div class="form-row">
-        <label class="form-label" for="sfDistance">Distance (km)</label>
-        <input class="inp" id="sfDistance" inputmode="decimal" value="${esc(stage.distance_km ?? '')}" placeholder="e.g. 240">
-      </div>
-    </div>
-    <div class="form-row">
-      <label class="form-label" for="sfNotes">Notes</label>
-      <textarea class="txt" id="sfNotes" maxlength="2000" placeholder="Roads, stops, warnings, ideas">${esc(stage.notes || '')}</textarea>
-    </div>
-  `;
-}
-
-function readStageForm() {
-  const fields = {
-    title: $('sfTitle')?.value.trim() || '',
-    start_location: $('sfStartLoc')?.value.trim() || '',
-    end_location: $('sfEndLoc')?.value.trim() || '',
-    custom_route_url: $('sfCustomUrl')?.value.trim() || '',
-    start_lat: $('sfStartLat')?.value.trim() || '',
-    start_lng: $('sfStartLng')?.value.trim() || '',
-    end_lat: $('sfEndLat')?.value.trim() || '',
-    end_lng: $('sfEndLng')?.value.trim() || '',
-    distance_km: $('sfDistance')?.value.trim() || '',
-    notes: $('sfNotes')?.value.trim() || '',
-  };
-
-  const dateInput = $('sfDate');
-  if (dateInput && !dateInput.disabled) {
-    fields.planned_date = dateInput.value || '';
-  }
-
-  return fields;
-}
-
-function validateStageFormAgainstTrip(fields, trip) {
-  if (!fields.planned_date) return;
-  if (trip.start_date && fields.planned_date < trip.start_date) {
-    throw new Error(`Stage date cannot be before the trip starts (${fmtDate(trip.start_date)}).`);
-  }
-  if (trip.end_date && fields.planned_date > trip.end_date) {
-    throw new Error(`Stage date cannot be after the trip ends (${fmtDate(trip.end_date)}).`);
-  }
 }
 
 function showNewStageModal(trip) {
