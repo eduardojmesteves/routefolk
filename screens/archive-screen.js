@@ -29,28 +29,35 @@ function completedArchiveTrips() {
 }
 
 function archiveFiltersHtml() {
-  const activeFilters = Number(Boolean(STATE.archiveSearch.trim())) + Number(STATE.archiveStatusFilter !== 'all');
-  const toggleText = STATE.archiveFiltersOpen ? 'Hide filters' : `Filters${activeFilters ? ` (${activeFilters})` : ''}`;
+  const chips = [
+    { key: 'all', label: 'All archive' },
+    { key: 'completed', label: 'Completed' },
+    { key: 'cancelled', label: 'Cancelled' },
+  ];
+  const hasQuery = Boolean(STATE.archiveSearch.trim());
+  const label = hasQuery ? `Search: ${STATE.archiveSearch.trim()}` : 'Search';
 
   return `
-    <div class="trip-filter-toggle-row">
-      <button class="btn btn-secondary btn-sm trip-filter-toggle" id="archiveFiltersToggle" aria-expanded="${STATE.archiveFiltersOpen ? 'true' : 'false'}">
-        ${esc(toggleText)}
+    <div class="rf-trip-filters">
+      <div class="rf-filter-row">
+        <button class="rf-search-pill ${hasQuery ? 'is-open' : ''}" id="archiveSearchPillBtn" data-search-pill="archive" type="button" aria-expanded="${hasQuery ? 'true' : 'false'}">
+          <span class="rf-search-pill__icon">⌕</span>
+          <span class="rf-search-pill__label">${esc(label)}</span>
+        </button>
+        <div class="rf-chips" role="group" aria-label="Archive status filter">
+          ${chips.map((chip) => `
+            <button class="rf-chip ${STATE.archiveStatusFilter === chip.key ? 'is-active' : ''}" data-archive-status-chip="${esc(chip.key)}" type="button">
+              ${esc(chip.label)}
+            </button>
+          `).join('')}
+        </div>
+      </div>
+      <div class="rf-search-drawer" id="archiveSearchDrawer" ${hasQuery ? '' : 'hidden'}>
+        <input class="rf-search-input" id="archiveSearchInput" type="search" value="${esc(STATE.archiveSearch)}" placeholder="Search by name">
+      </div>
+      <button class="btn btn-secondary btn-sm" id="archiveFiltersToggle" aria-expanded="${STATE.archiveFiltersOpen ? 'true' : 'false'}">
+        ${STATE.archiveFiltersOpen ? 'Hide map controls' : 'Show map controls'}
       </button>
-    </div>
-    <div class="trip-controls ${STATE.archiveFiltersOpen ? 'open' : ''}" id="archiveFiltersPanel">
-      <div class="trip-search-wrap">
-        <label class="form-label" for="archiveSearchInput">Search archive</label>
-        <input class="inp" id="archiveSearchInput" type="search" value="${esc(STATE.archiveSearch)}" placeholder="Search by trip title">
-      </div>
-      <div class="trip-status-wrap">
-        <label class="form-label" for="archiveStatusFilter">Status</label>
-        <select class="sel" id="archiveStatusFilter">
-          <option value="all" ${STATE.archiveStatusFilter === 'all' ? 'selected' : ''}>All</option>
-          <option value="completed" ${STATE.archiveStatusFilter === 'completed' ? 'selected' : ''}>Completed</option>
-          <option value="cancelled" ${STATE.archiveStatusFilter === 'cancelled' ? 'selected' : ''}>Cancelled</option>
-        </select>
-      </div>
     </div>
   `;
 }
@@ -764,5 +771,4 @@ export function renderArchive() {
     <div id="archiveResults">${archiveResultsHtml()}</div>
   `;
 }
-
 

@@ -170,6 +170,27 @@ export function createContentEvents(actions) {
       }
     });
 
+    content.querySelector('#archiveSearchPillBtn')?.addEventListener('click', () => {
+      const drawer = content.querySelector('#archiveSearchDrawer');
+      const input = content.querySelector('#archiveSearchInput');
+      const open = drawer && !drawer.hidden;
+      if (open && STATE.archiveSearch.trim()) {
+        STATE.archiveSearch = '';
+        if (input) input.value = '';
+        renderAll();
+        return;
+      }
+      if (drawer) drawer.hidden = !open;
+      if (drawer && !drawer.hidden) setTimeout(() => input?.focus(), 0);
+    });
+
+    content.querySelectorAll('[data-archive-status-chip]').forEach((btn) => {
+      btn.addEventListener('click', () => {
+        STATE.archiveStatusFilter = btn.dataset.archiveStatusChip || 'all';
+        renderAll();
+      });
+    });
+
     content.querySelector('#archiveStatusFilter')?.addEventListener('change', (e) => {
       STATE.archiveStatusFilter = e.target.value || 'all';
       const results = content.querySelector('#archiveResults');
