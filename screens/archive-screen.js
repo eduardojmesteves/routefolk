@@ -35,6 +35,7 @@ function archiveFiltersHtml() {
     { key: 'cancelled', label: 'Cancelled' },
   ];
   const hasQuery = Boolean(STATE.archiveSearch.trim());
+  const searchOpen = hasQuery || STATE.archiveSearchOpen;
   const label = hasQuery ? `Search: ${STATE.archiveSearch.trim()}` : 'Search';
 
   return `
@@ -52,6 +53,7 @@ function archiveFiltersHtml() {
           `).join('')}
         </div>
       </div>
+      <div class="rf-search-drawer" id="archiveSearchDrawer" ${searchOpen ? '' : 'hidden'}>
       <div class="rf-search-drawer" id="archiveSearchDrawer" ${hasQuery ? '' : 'hidden'}>
         <input class="rf-search-input" id="archiveSearchInput" type="search" value="${esc(STATE.archiveSearch)}" placeholder="Search by name">
       </div>
@@ -765,7 +767,10 @@ export function renderArchive() {
 
     <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px;gap:8px;">
       <div class="section-label" style="margin-bottom:0;">Past trips</div>
-      ${archiveViewToggleHtml()}
+      <div id="archiveMapControls" ${STATE.archiveFiltersOpen ? '' : 'hidden'}>
+        ${archiveViewToggleHtml()}
+        ${STATE.archiveViewMode === 'map' ? archiveMapLayerToggleHtml() : ''}
+      </div>
     </div>
     ${archiveFiltersHtml()}
     <div id="archiveResults">${archiveResultsHtml()}</div>

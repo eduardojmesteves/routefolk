@@ -159,6 +159,7 @@ export function createContentEvents(actions) {
 
     content.querySelector('#archiveSearchInput')?.addEventListener('input', (e) => {
       STATE.archiveSearch = e.target.value || '';
+      if (STATE.archiveSearch.trim()) STATE.archiveSearchOpen = true;
       const results = content.querySelector('#archiveResults');
       if (results) {
         results.innerHTML = archiveResultsHtml();
@@ -171,6 +172,16 @@ export function createContentEvents(actions) {
     });
 
     content.querySelector('#archiveSearchPillBtn')?.addEventListener('click', () => {
+      const open = Boolean(STATE.archiveSearchOpen || STATE.archiveSearch.trim());
+      if (open && STATE.archiveSearch.trim()) {
+        STATE.archiveSearch = '';
+        STATE.archiveSearchOpen = false;
+        renderAll();
+        return;
+      }
+      STATE.archiveSearchOpen = !open;
+      renderAll();
+      setTimeout(() => document.getElementById('archiveSearchInput')?.focus(), 0);
       const drawer = content.querySelector('#archiveSearchDrawer');
       const input = content.querySelector('#archiveSearchInput');
       const open = drawer && !drawer.hidden;

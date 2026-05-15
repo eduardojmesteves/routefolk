@@ -44,6 +44,7 @@ export const STATE = {
   tripStatusFilter: 'all',
   tripFiltersOpen: false,
   archiveSearch: '',
+  archiveSearchOpen: false,
   archiveStatusFilter: 'all',
   archiveFiltersOpen: false,
   archiveViewMode: 'list',
