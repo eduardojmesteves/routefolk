@@ -54,6 +54,7 @@ function archiveFiltersHtml() {
         </div>
       </div>
       <div class="rf-search-drawer" id="archiveSearchDrawer" ${searchOpen ? '' : 'hidden'}>
+      <div class="rf-search-drawer" id="archiveSearchDrawer" ${hasQuery ? '' : 'hidden'}>
         <input class="rf-search-input" id="archiveSearchInput" type="search" value="${esc(STATE.archiveSearch)}" placeholder="Search by name">
       </div>
       <button class="btn btn-secondary btn-sm" id="archiveFiltersToggle" aria-expanded="${STATE.archiveFiltersOpen ? 'true' : 'false'}">
@@ -775,3 +776,4 @@ export function renderArchive() {
     <div id="archiveResults">${archiveResultsHtml()}</div>
   `;
 }
+

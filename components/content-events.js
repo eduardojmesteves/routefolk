@@ -182,6 +182,17 @@ export function createContentEvents(actions) {
       STATE.archiveSearchOpen = !open;
       renderAll();
       setTimeout(() => document.getElementById('archiveSearchInput')?.focus(), 0);
+      const drawer = content.querySelector('#archiveSearchDrawer');
+      const input = content.querySelector('#archiveSearchInput');
+      const open = drawer && !drawer.hidden;
+      if (open && STATE.archiveSearch.trim()) {
+        STATE.archiveSearch = '';
+        if (input) input.value = '';
+        renderAll();
+        return;
+      }
+      if (drawer) drawer.hidden = !open;
+      if (drawer && !drawer.hidden) setTimeout(() => input?.focus(), 0);
     });
 
     content.querySelectorAll('[data-archive-status-chip]').forEach((btn) => {
