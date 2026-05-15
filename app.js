@@ -39,7 +39,7 @@ import {
 } from './screens/trip-detail-expenses.js';
 
 const EXPECTED_SCHEMA_VERSION = '013';
-const PALETTE_KEY = 'routefolk.palette';
+const PALETTE_KEY = 'rf.palette';
 const PALETTES = ['forest', 'midnight', 'oxblood', 'alpine'];
 
 const {
@@ -332,15 +332,15 @@ function bindStageActionFallbacks(content) {
 }
 
 function setPalette(palette) {
-  const next = PALETTES.includes(palette) ? palette : 'midnight';
+  const next = PALETTES.includes(palette) ? palette : 'forest';
   document.documentElement.dataset.palette = next;
   try { localStorage.setItem(PALETTE_KEY, next); } catch {}
   document.querySelectorAll('[data-palette]').forEach((btn) => btn.classList.toggle('is-active', btn.dataset.palette === next));
 }
 
 function initPaletteSwitcher() {
-  let stored = 'midnight';
-  try { stored = localStorage.getItem(PALETTE_KEY) || 'midnight'; } catch {}
+  let stored = 'forest';
+  try { stored = localStorage.getItem(PALETTE_KEY) || localStorage.getItem('routefolk.palette') || 'forest'; } catch {}
   setPalette(stored);
   const fab = $('rf-paletteFab');
   const sheet = $('rf-paletteSheet');
