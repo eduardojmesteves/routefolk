@@ -24,10 +24,26 @@ export function renderTripSummary(ctx) {
   const stages = STATE.stagesByTrip[trip.id] || [];
   const expenses = expensesForTrip(trip.id);
   const statusMeta = STATUS_META[trip.status] || STATUS_META.planning;
+  const embedded = Boolean(CONTEXT.embedded);
+
+  const body = `
+    <section class="card rf-card summary-table-card">
+      <div class="card-title">Summary table</div>
+      <div class="form-help">Review the road plan first. Stage journal and expenses expand inside the table.</div>
+      ${summaryTableHtml(stages, trip)}
+      ${summaryTripLevelExpensesHtml(trip)}
+    </section>
+
+    <section class="card rf-card summary-cost-card">
+      <div class="card-title">Trip cost</div>
+      ${expenseTotalsHtml(expenseTotals(expenses))}
+    </section>
+  `;
+
+  if (embedded) return body;
 
   return `
     <button class="btn btn-secondary btn-sm" id="backToDetailBtn" style="margin-bottom:12px;">← Back to trip</button>
-
     <section class="card rf-card summary-review-hero">
       <div class="trip-detail-head summary-review-head">
         <div>
@@ -40,22 +56,9 @@ export function renderTripSummary(ctx) {
           ${visibilityPillHtml(trip)}
         </div>
       </div>
-      <div class="summary-compact-stats">
-        ${tripStatsStripHtml(trip)}
-      </div>
+      <div class="summary-compact-stats">${tripStatsStripHtml(trip)}</div>
     </section>
-
-    <section class="card rf-card summary-table-card">
-      <div class="card-title">Summary table</div>
-      <div class="form-help">Review the road plan first. Stage journal and expenses expand inside the table.</div>
-      ${summaryTableHtml(stages, trip)}
-      ${summaryTripLevelExpensesHtml(trip)}
-    </section>
-
-    <section class="card rf-card summary-cost-card">
-      <div class="card-title">Trip cost</div>
-      ${expenseTotalsHtml(expenseTotals(expenses))}
-    </section>
+    ${body}
   `;
 }
 

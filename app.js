@@ -19,6 +19,7 @@ import { showModal, closeModal } from './components/modal.js';
 import { stageFormHtml, readStageForm, validateStageFormAgainstTrip } from './components/stage-form.js';
 import { createActionModals } from './components/action-modals.js';
 import { createContentEvents } from './components/content-events.js';
+import { addPackingItem, togglePackingItem, deletePackingItem, renderPackingScreen } from './screens/packing-screen.js';
 import { createDataLoaders } from './state/data-loaders.js';
 import { createSessionController } from './state/session-controller.js';
 import { createWriteHandlers } from './handlers/write-handlers.js';
@@ -29,7 +30,7 @@ import { renderAccount } from './screens/account-screen.js';
 import { renderArchive, bindArchiveMapEvents } from './screens/archive-screen.js';
 import { renderTripSummary } from './screens/summary-screen.js';
 import { renderTripDetailScreen } from './screens/trip-detail-screen.js';
-import { renderStagesSection as renderStagesSectionView } from './screens/trip-detail-stages.js';
+import { renderStagesSection as renderStagesSectionView, renderStagePaneHtml } from './screens/trip-detail-stages.js';
 import {
   renderExpensesSection as renderExpensesSectionView,
   expensesForTrip as expensesForTripView,
@@ -82,12 +83,14 @@ const { bindContentEvents } = createContentEvents({
   ensureOnline, handleMoveStage, showNewTripModal, showEditTripModal, showDeleteTripConfirm, showNewStageModal,
   showEditStageModal, showDeleteStageConfirm, showNewEntryModal, showEditEntryModal, showDeleteEntryConfirm,
   showNewExpenseModal, showEditExpenseModal, showDeleteExpenseConfirm, showGpxUploadModal, showDeleteGpxConfirm,
+  addPackingItem, togglePackingItem, deletePackingItem,
 });
 
 function goTo(tab) {
   STATE.tab = tab;
   STATE.view = 'list';
   STATE.viewTripId = null;
+  STATE.selectedStageId = null;
   renderAll();
   if (tab === 'archive') ensureArchiveData();
 }
@@ -164,17 +167,20 @@ async function handleMoveStage(stageId, direction) {
 }
 
 function renderAll() {
+  const appEl = $('app');
+  appEl?.classList.toggle('nav-collapsed', STATE.view === 'detail');
   renderHeader({ onSignIn: handleSignIn, onAccountClick: () => goTo('account') });
   renderNav();
   renderTripsPaneForDesktop();
   renderTab();
+  renderDetailPane();
 }
 
 function renderTripsPaneForDesktop() {
   const app = $('app');
   const pane = $('trips-pane');
   if (!app || !pane) return;
-  const shouldShow = Boolean(STATE.user && STATE.tab === 'trips' && (STATE.view === 'detail' || STATE.view === 'summary'));
+  const shouldShow = Boolean(STATE.user && STATE.tab === 'trips' && ['detail', 'summary', 'costs', 'packing'].includes(STATE.view));
   app.classList.toggle('show-list-pane', shouldShow);
   pane.setAttribute('aria-hidden', shouldShow ? 'false' : 'true');
   if (!shouldShow) {
@@ -203,17 +209,23 @@ function renderTab() {
     content.innerHTML = offlineBannerHtml() + schemaErrorHtml(STATE.schemaError, EXPECTED_SCHEMA_VERSION);
   } else if (STATE.tab === 'account') {
     content.innerHTML = offlineBannerHtml() + renderAccount();
-  } else if (STATE.view === 'detail') {
+  } else if (['detail', 'summary', 'costs', 'packing'].includes(STATE.view)) {
+    const trip = currentTrip();
+    let activeContentHtml = '';
+    if (trip && STATE.view === 'summary') {
+      activeContentHtml = renderTripSummary({
+        currentTrip, tripNotFoundHtml, expensesForTrip: expensesForTripView, tripStatsStripHtml,
+        expenseTotalsHtml: expenseTotalsHtmlView, expenseTotals: expenseTotalsView, stageRouteLabel, embedded: true,
+      });
+    }
+    if (trip && STATE.view === 'costs') activeContentHtml = renderExpensesSectionView(trip, { writeDisabledAttr });
+    if (trip && STATE.view === 'packing') activeContentHtml = renderPackingScreen(trip);
+
     content.innerHTML = offlineBannerHtml() + renderTripDetailScreen({
       currentTrip, tripNotFoundHtml, auditLineHtml, tripStatsStripHtml,
       renderStagesSection: renderStagesSectionView,
-      renderExpensesSection: (trip) => renderExpensesSectionView(trip, { writeDisabledAttr }),
+      activeContentHtml,
       canDeleteTrip, writeDisabledAttr,
-    });
-  } else if (STATE.view === 'summary') {
-    content.innerHTML = offlineBannerHtml() + renderTripSummary({
-      currentTrip, tripNotFoundHtml, expensesForTrip: expensesForTripView, tripStatsStripHtml,
-      expenseTotalsHtml: expenseTotalsHtmlView, expenseTotals: expenseTotalsView, stageRouteLabel,
     });
   } else if (STATE.tab === 'archive') {
     content.innerHTML = offlineBannerHtml() + renderArchive();
@@ -230,6 +242,30 @@ function renderTab() {
   }
   bindArchiveMapEvents(content, openTrip);
   if (STATE.tab === 'archive' && STATE.archiveViewMode === 'map') ensureArchiveGpxGeometries();
+}
+
+
+function renderDetailPane() {
+  const pane = $('detail-pane');
+  const appEl = $('app');
+  if (!pane || !appEl) return;
+
+  const trip = currentTrip();
+  const show = Boolean(STATE.user && STATE.tab === 'trips' && STATE.view === 'detail' && STATE.selectedStageId && trip);
+  appEl.classList.toggle('show-detail-pane', show);
+  pane.setAttribute('aria-hidden', show ? 'false' : 'true');
+
+  if (!show || !trip) {
+    pane.innerHTML = '';
+    return;
+  }
+
+  pane.innerHTML = renderStagePaneHtml(STATE.selectedStageId, trip);
+  try {
+    bindContentEvents(pane);
+  } catch (err) {
+    console.error('Detail pane event binding failed:', err);
+  }
 }
 
 function showNewStageModalFallback(trip) {

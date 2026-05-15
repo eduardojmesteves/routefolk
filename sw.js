@@ -1,9 +1,9 @@
-const CACHE_NAME = 'routefolk-shell-v67-ui-reset-phase22';
+const CACHE_NAME = 'routefolk-shell-v68-phase22-4pane-packing';
 const APP_SHELL = [
   './',
   './index.html',
-  './style.css?v=20260515-ui-reset-phase22-stabilisation',
-  './app.js?v=20260515-ui-reset-phase22-stabilisation',
+  './style.css?v=20260515-phase22-4pane-packing',
+  './app.js?v=20260515-phase22-4pane-packing',
   './manifest.json',
   './icons/icon-192.png',
   './icons/icon-512.png'

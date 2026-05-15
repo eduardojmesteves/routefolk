@@ -49,19 +49,26 @@ export function tripFiltersHtml() {
     { key: 'all', label: 'All active' },
     ...TRIPS_SCREEN_STATUSES.map((key) => ({ key, label: STATUS_META[key]?.label || key })),
   ];
+  const hasQuery = Boolean(STATE.tripSearch.trim());
+  const label = hasQuery ? `Search: ${STATE.tripSearch.trim()}` : 'Search';
 
   return `
     <div class="rf-trip-filters">
-      <div class="rf-search-wrap">
-        <label class="form-label" for="tripSearchInput">Search trips</label>
-        <input class="rf-search-input" id="tripSearchInput" type="search" placeholder="Search by name" value="${esc(STATE.tripSearch)}">
+      <div class="rf-filter-row">
+        <button class="rf-search-pill ${hasQuery ? 'is-open' : ''}" id="searchPillBtn" data-search-pill="trips" type="button" aria-expanded="${hasQuery ? 'true' : 'false'}">
+          <span class="rf-search-pill__icon">⌕</span>
+          <span class="rf-search-pill__label">${esc(label)}</span>
+        </button>
+        <div class="rf-chips" role="group" aria-label="Trip status filter">
+          ${chips.map((chip) => `
+            <button class="rf-chip ${STATE.tripStatusFilter === chip.key ? 'is-active' : ''}" data-status-chip="${esc(chip.key)}" type="button">
+              ${esc(chip.label)}
+            </button>
+          `).join('')}
+        </div>
       </div>
-      <div class="rf-chips" role="group" aria-label="Trip status filter">
-        ${chips.map((chip) => `
-          <button class="rf-chip ${STATE.tripStatusFilter === chip.key ? 'is-active' : ''}" data-status-chip="${esc(chip.key)}" type="button">
-            ${esc(chip.label)}
-          </button>
-        `).join('')}
+      <div class="rf-search-drawer" id="searchDrawer" ${hasQuery ? '' : 'hidden'}>
+        <input class="rf-search-input" id="tripSearchInput" type="search" placeholder="Search by name" value="${esc(STATE.tripSearch)}">
       </div>
     </div>
   `;

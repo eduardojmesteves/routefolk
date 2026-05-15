@@ -19,6 +19,7 @@ export function createContentEvents(actions) {
     ensureOnline, handleMoveStage, showNewTripModal, showEditTripModal, showDeleteTripConfirm, showNewStageModal,
     showEditStageModal, showDeleteStageConfirm, showNewEntryModal, showEditEntryModal, showDeleteEntryConfirm,
     showNewExpenseModal, showEditExpenseModal, showDeleteExpenseConfirm, showGpxUploadModal, showDeleteGpxConfirm,
+    addPackingItem, togglePackingItem, deletePackingItem,
   } = actions;
 
   function tripForCurrentView() {
@@ -105,6 +106,22 @@ export function createContentEvents(actions) {
       STATE.tripSearch = e.target.value || '';
       refreshTripResults(content);
     });
+    content.querySelectorAll('[data-search-pill]').forEach((btn) => {
+      btn.addEventListener('click', () => {
+        const drawer = content.querySelector('#searchDrawer');
+        const input = content.querySelector('#tripSearchInput');
+        const open = drawer && !drawer.hidden;
+        if (open && STATE.tripSearch.trim()) {
+          STATE.tripSearch = '';
+          if (input) input.value = '';
+          renderAll();
+          return;
+        }
+        if (drawer) drawer.hidden = !open;
+        if (drawer && !drawer.hidden) setTimeout(() => input?.focus(), 0);
+      });
+    });
+
 
     content.querySelectorAll('[data-status-chip]').forEach((btn) => {
       btn.addEventListener('click', () => {
@@ -166,8 +183,61 @@ export function createContentEvents(actions) {
       }
     });
 
+    content.querySelectorAll('[data-detail-tab]').forEach((btn) => {
+      btn.addEventListener('click', () => {
+        const key = btn.dataset.detailTab || 'detail';
+        STATE.view = key;
+        if (key !== 'detail') STATE.selectedStageId = null;
+        renderAll();
+      });
+    });
+
+    content.querySelectorAll('[data-stage-select]').forEach((row) => {
+      row.addEventListener('click', (event) => {
+        const target = event.target instanceof Element ? event.target : null;
+        if (target?.closest('button,a,input,select,textarea')) return;
+        STATE.selectedStageId = row.dataset.stageSelect || null;
+        renderAll();
+        const stage = findStageById(STATE.selectedStageId);
+        if (stage && (!STATE.entriesByStage[stage.id] || STATE.entriesByStage[stage.id] === 'loading')) {
+          loadEntriesForStage(stage.id, { quiet: true });
+        }
+      });
+    });
+
+    content.querySelector('#packingForm')?.addEventListener('submit', (event) => {
+      event.preventDefault();
+      const trip = tripForCurrentView();
+      if (!trip) return;
+      const form = event.currentTarget;
+      addPackingItem?.(trip.id, {
+        text: form.elements.text?.value || '',
+        category: form.elements.category?.value || 'Other',
+        status: form.elements.status?.value || 'planned',
+      });
+      renderAll();
+    });
+
+    content.querySelectorAll('[data-pack-toggle]').forEach((btn) => {
+      btn.addEventListener('click', () => {
+        const trip = tripForCurrentView();
+        if (!trip) return;
+        togglePackingItem?.(trip.id, btn.dataset.packToggle);
+        renderAll();
+      });
+    });
+
+    content.querySelectorAll('[data-pack-delete]').forEach((btn) => {
+      btn.addEventListener('click', () => {
+        const trip = tripForCurrentView();
+        if (!trip) return;
+        deletePackingItem?.(trip.id, btn.dataset.packDelete);
+        renderAll();
+      });
+    });
+
     content.querySelector('#newTripBtn')?.addEventListener('click', () => { if (ensureOnline()) showNewTripModal(); });
-    content.querySelector('#backToTripsBtn')?.addEventListener('click', () => { STATE.view = 'list'; STATE.viewTripId = null; renderAll(); });
+    content.querySelector('#backToTripsBtn')?.addEventListener('click', () => { STATE.view = 'list'; STATE.viewTripId = null; STATE.selectedStageId = null; renderAll(); });
     content.querySelector('#backToDetailBtn')?.addEventListener('click', () => { STATE.view = 'detail'; renderAll(); });
     content.querySelector('#summaryTripBtn')?.addEventListener('click', () => { STATE.view = 'summary'; renderAll(); });
     content.querySelector('#editTripBtn')?.addEventListener('click', () => { if (!ensureOnline()) return; const trip = currentTrip(); if (trip) showEditTripModal(trip); });
