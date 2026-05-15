@@ -1,6 +1,6 @@
 /* ============================================================
    routefolk — style-redesign.css
-   Phase 1 foundation + Phase 2 shell + Phase 3 components + Phase 4 trips screen + Phase 5 trip detail/stages + Phase 6 journal + Phase 7 expenses + Phase 8 archive + Phase 9 account + Phase 10 responsive layouts + Phase 11 PWA polish.
+   Phase 1 foundation + Phase 2 shell + Phase 3 components + Phase 4 trips screen + Phase 5 trip detail/stages + Phase 6 journal + Phase 7 expenses + Phase 8 archive + Phase 9 account + Phase 10 responsive layouts + Phase 11 PWA polish + Phase 12 QA/a11y.
    Loaded after style.css to avoid a risky full CSS rewrite.
    ============================================================ */
 
@@ -15,7 +15,8 @@
 
   --rf-ink: #171a26;
   --rf-ink-2: #3b405a;
-  --rf-muted: #787a8a;
+  --rf-muted-original: #787a8a;
+  --rf-muted: #626575; /* Phase 12: contrast-safe muted text on Ink & Rust paper. */
 
   --rf-rule: rgba(23, 26, 38, 0.10);
   --rf-rule-2: rgba(23, 26, 38, 0.20);
@@ -3726,4 +3727,1014 @@ svg.archive-geo-svg {
     break-inside: avoid;
     box-shadow: none !important;
   }
+}
+
+
+/* ---------- Phase 12: QA and accessibility closure ---------- */
+
+/* Keyboard users need a real escape hatch. */
+.skip-link {
+  position: fixed;
+  left: 16px;
+  top: 12px;
+  z-index: 9999;
+  transform: translateY(-140%);
+  background: var(--rf-ink);
+  border: 2px solid var(--rf-accent-soft);
+  border-radius: 999px;
+  color: var(--rf-surface);
+  font-family: var(--rf-font-mono);
+  font-size: 11px;
+  font-weight: 900;
+  letter-spacing: 0.10em;
+  padding: 10px 14px;
+  text-decoration: none;
+  text-transform: uppercase;
+  transition: transform 140ms ease;
+}
+
+.skip-link:focus,
+.skip-link:focus-visible {
+  transform: translateY(0);
+  box-shadow: 0 14px 34px rgba(23, 26, 38, 0.24);
+  outline: none;
+}
+
+#content:focus {
+  outline: none;
+}
+
+/* Strengthen focus visibility across the final redesign. */
+button:focus-visible,
+a:focus-visible,
+input:focus-visible,
+select:focus-visible,
+textarea:focus-visible,
+summary:focus-visible,
+[tabindex]:focus-visible {
+  outline: 3px solid rgba(184, 90, 46, 0.72);
+  outline-offset: 3px;
+  box-shadow:
+    0 0 0 5px rgba(237, 205, 184, 0.66),
+    0 12px 28px rgba(23, 26, 38, 0.14);
+}
+
+/* Disabled controls should look disabled without becoming unreadable. */
+button:disabled,
+.btn:disabled,
+[aria-disabled="true"] {
+  cursor: not-allowed;
+  filter: grayscale(0.22);
+  opacity: 0.58;
+}
+
+button:disabled *,
+.btn:disabled * {
+  pointer-events: none;
+}
+
+/* Ensure small metadata is not decorative-only contrast. */
+.form-help,
+.empty-sub,
+.entry-meta,
+.expense-meta,
+.stage-meta,
+.gpx-track-meta,
+.wx-label,
+.wx-meta,
+.wx-attribution,
+.hdr-sub,
+.account-email,
+.rf-account-email,
+.rf-people-email,
+.rf-install-note,
+.trip-card-meta,
+.trip-detail-dates,
+.rf-detail-dates,
+.rf-account-meta,
+.expense-breakdown-row,
+.archive-map-help {
+  color: var(--rf-muted);
+}
+
+/* Links must remain visually links, not just coloured text. */
+.entry-link,
+.entry-meta-link,
+a[href] {
+  text-underline-offset: 3px;
+}
+
+.entry-link:focus-visible,
+.entry-meta-link:focus-visible {
+  background: var(--rf-accent-soft);
+  color: var(--rf-ink);
+}
+
+/* Form a11y polish. */
+input::placeholder,
+textarea::placeholder {
+  color: color-mix(in srgb, var(--rf-muted) 72%, transparent);
+}
+
+input:invalid,
+select:invalid,
+textarea:invalid {
+  border-color: rgba(125, 52, 88, 0.62);
+}
+
+input:invalid:focus,
+select:invalid:focus,
+textarea:invalid:focus {
+  box-shadow:
+    0 0 0 4px rgba(234, 208, 218, 0.72),
+    0 0 0 1px rgba(125, 52, 88, 0.74);
+}
+
+/* Long content should wrap instead of exploding mobile layouts. */
+.card,
+.rf-card,
+.stage-card,
+.entry-card,
+.expense-card,
+.trip-card,
+.rf-trip-card,
+.modal-card,
+.rf-modal {
+  overflow-wrap: anywhere;
+}
+
+.entry-desc,
+.expense-desc,
+.stage-notes,
+.trip-detail-desc,
+.rf-detail-desc {
+  hyphens: auto;
+}
+
+/* Better hit areas for summary/details toggles and custom rows. */
+summary,
+.journal-toggle,
+.gpx-summary-toggle,
+.summary-stage-toggle,
+[data-summary-stage-id] {
+  min-height: 44px;
+}
+
+/* Modal accessibility: keep dialogs scrollable on small screens. */
+.modal-backdrop,
+.rf-modal-backdrop {
+  overscroll-behavior: contain;
+}
+
+.modal-card,
+.rf-modal {
+  max-height: min(88dvh, 820px);
+  overflow-y: auto;
+  -webkit-overflow-scrolling: touch;
+}
+
+/* Contrast and system forced-colour support. */
+@media (forced-colors: active) {
+  .card,
+  .rf-card,
+  .stage-card,
+  .entry-card,
+  .expense-card,
+  .trip-card,
+  .rf-trip-card,
+  .modal-card,
+  .rf-modal,
+  #header,
+  #nav {
+    border: 1px solid CanvasText;
+    box-shadow: none;
+  }
+
+  .btn,
+  button,
+  .nav-btn,
+  input,
+  select,
+  textarea {
+    border: 1px solid ButtonText;
+  }
+
+  .nav-btn.active,
+  .btn-primary,
+  .rf-primary-action {
+    forced-color-adjust: none;
+    background: Highlight;
+    color: HighlightText;
+  }
+}
+
+/* If a user asks for more contrast, do not fight them. */
+@media (prefers-contrast: more) {
+  :root {
+    --rf-muted: #4f5363;
+    --rf-rule: rgba(23, 26, 38, 0.22);
+    --rf-rule-2: rgba(23, 26, 38, 0.38);
+  }
+
+  .rf-pill,
+  .status-pill,
+  .visibility-pill,
+  .rf-stamp {
+    border-width: 2px;
+  }
+}
+
+/* If transparency is reduced, flatten the frosted UI. */
+@media (prefers-reduced-transparency: reduce) {
+  #header,
+  #nav,
+  .card,
+  .rf-card,
+  .modal-card,
+  .rf-modal {
+    backdrop-filter: none !important;
+    background-color: var(--rf-surface);
+  }
+}
+
+/* Reduce motion rule repeated late so it wins after all phase styles. */
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation: none !important;
+    scroll-behavior: auto !important;
+    transition-duration: 0.001ms !important;
+  }
+}
+
+
+/* ============================================================
+   Phase 13 — Mock parity: controls, chips, pills, tabs
+   Reference: vanilla designer prototype classes rf-chip/rf-pill/rf-tabs.
+   ============================================================ */
+
+:root {
+  /* Bridge designer prototype tokens to production Routefolk tokens. */
+  --bg: var(--rf-bg);
+  --surface: var(--rf-surface);
+  --surface-2: var(--rf-surface-2);
+  --ink: var(--rf-ink);
+  --ink-2: var(--rf-ink-2);
+  --muted: var(--rf-muted);
+  --rule: var(--rf-rule);
+  --rule-2: var(--rf-rule-2);
+  --primary: var(--rf-primary);
+  --primary-soft: var(--rf-primary-soft);
+  --accent: var(--rf-accent);
+  --accent-soft: var(--rf-accent-soft);
+  --danger: var(--rf-danger);
+  --font-ui: var(--rf-font-ui);
+  --font-serif: var(--rf-font-serif);
+  --font-mono: var(--rf-font-mono);
+}
+
+/* Chips: flatter, closer to the designer mock. */
+.rf-chip,
+.filter-chip,
+.trip-filter-btn,
+.archive-view-btn,
+.archive-layer-btn,
+[data-chip] {
+  align-items: center;
+  background: transparent;
+  border: 1px solid var(--rf-rule-2);
+  border-radius: 999px;
+  color: var(--rf-muted);
+  display: inline-flex;
+  font-family: var(--rf-font-ui);
+  font-size: 11px;
+  font-weight: 650;
+  gap: 6px;
+  justify-content: center;
+  letter-spacing: 0.02em;
+  line-height: 1;
+  min-height: 34px;
+  padding: 6px 12px;
+  white-space: nowrap;
+}
+
+.rf-chip.is-active,
+.filter-chip.active,
+.filter-chip.is-active,
+.trip-filter-btn.active,
+.trip-filter-btn.is-active,
+.archive-view-btn.active,
+.archive-view-btn.is-active,
+.archive-layer-btn.active,
+.archive-layer-btn.is-active,
+[data-chip].is-active {
+  background: var(--rf-ink);
+  border-color: var(--rf-ink);
+  box-shadow: none;
+  color: var(--rf-surface);
+}
+
+.rf-chip:hover,
+.filter-chip:hover,
+.trip-filter-btn:hover,
+.archive-view-btn:hover,
+.archive-layer-btn:hover {
+  border-color: var(--rf-accent);
+  color: var(--rf-accent);
+}
+
+.rf-chip.is-active:hover,
+.filter-chip.active:hover,
+.filter-chip.is-active:hover,
+.trip-filter-btn.active:hover,
+.trip-filter-btn.is-active:hover,
+.archive-view-btn.active:hover,
+.archive-view-btn.is-active:hover,
+.archive-layer-btn.active:hover,
+.archive-layer-btn.is-active:hover {
+  color: var(--rf-surface);
+}
+
+/* Status/visibility pills: compact dot-first design from mock. */
+.rf-pill,
+.status-pill,
+.visibility-pill,
+.trip-status-pill {
+  align-items: center;
+  border-radius: 999px;
+  display: inline-flex;
+  font-family: var(--rf-font-ui);
+  font-size: 10.5px;
+  font-weight: 650;
+  gap: 6px;
+  letter-spacing: 0.01em;
+  line-height: 1;
+  min-height: 24px;
+  padding: 4px 10px;
+}
+
+.rf-pill::before,
+.status-pill::before,
+.visibility-pill::before,
+.trip-status-pill::before {
+  background: currentColor;
+  border-radius: 999px;
+  content: "";
+  display: inline-block;
+  height: 5px;
+  width: 5px;
+}
+
+.status-active,
+.rf-pill--active,
+.rf-pill--today,
+.status-pill.active {
+  background: var(--rf-primary-soft);
+  border: 1px solid color-mix(in srgb, var(--rf-primary) 20%, transparent);
+  color: var(--rf-primary);
+}
+
+.status-planning,
+.rf-pill--planning {
+  background: var(--rf-accent-soft);
+  border: 1px solid color-mix(in srgb, var(--rf-accent) 20%, transparent);
+  color: var(--rf-accent);
+}
+
+.status-completed,
+.rf-pill--completed,
+.rf-pill--done {
+  background: rgba(23, 26, 38, 0.055);
+  border: 1px solid var(--rf-rule);
+  color: var(--rf-ink-2);
+}
+
+.status-cancelled,
+.rf-pill--cancelled {
+  background: color-mix(in srgb, var(--rf-danger) 15%, transparent);
+  border: 1px solid color-mix(in srgb, var(--rf-danger) 26%, transparent);
+  color: var(--rf-danger);
+}
+
+.visibility-pill {
+  background: rgba(38, 52, 94, 0.055);
+  border: 1px solid rgba(38, 52, 94, 0.16);
+  color: var(--rf-primary);
+}
+
+/* Section tabs: lighter editorial underline instead of heavy pills. */
+.rf-tabs,
+.section-tabs,
+.trip-section-tabs,
+.summary-tabs {
+  align-items: flex-end;
+  background: transparent;
+  border-bottom: 1px solid var(--rf-rule);
+  display: flex;
+  gap: 22px;
+  overflow-x: auto;
+  padding: 0;
+  scrollbar-width: none;
+}
+
+.rf-tabs::-webkit-scrollbar,
+.section-tabs::-webkit-scrollbar,
+.trip-section-tabs::-webkit-scrollbar,
+.summary-tabs::-webkit-scrollbar {
+  display: none;
+}
+
+.rf-tabs__tab,
+.section-tab,
+.trip-section-tab,
+.summary-tab {
+  background: none;
+  border: 0;
+  border-bottom: 2px solid transparent;
+  border-radius: 0;
+  color: var(--rf-muted);
+  font-family: var(--rf-font-ui);
+  font-size: 13px;
+  font-weight: 550;
+  margin-bottom: -1px;
+  min-height: 42px;
+  padding: 10px 0;
+  white-space: nowrap;
+}
+
+.rf-tabs__tab.is-active,
+.section-tab.active,
+.section-tab.is-active,
+.trip-section-tab.active,
+.trip-section-tab.is-active,
+.summary-tab.active,
+.summary-tab.is-active,
+[aria-selected="true"].section-tab {
+  border-bottom-color: var(--rf-primary);
+  color: var(--rf-ink);
+  font-weight: 750;
+}
+
+/* Buttons: reduce SaaS heaviness, preserve touch target. */
+.rf-btn--new,
+.btn-primary,
+.rf-primary-action {
+  background: var(--rf-ink);
+  border: 1px solid var(--rf-ink);
+  border-radius: 999px;
+  box-shadow: none;
+  color: var(--rf-surface);
+  font-weight: 700;
+}
+
+.rf-btn--dashed,
+.btn-dashed,
+.add-stage-btn,
+.add-entry-btn {
+  background: transparent;
+  border: 1px dashed var(--rf-rule-2);
+  border-radius: 10px;
+  color: var(--rf-muted);
+  font-weight: 650;
+}
+
+.rf-stamp {
+  border-radius: 2px;
+  box-shadow: none;
+  font-size: 9.5px;
+  padding: 3px 8px;
+}
+
+
+/* ============================================================
+   Phase 14 — Mock parity: Trips screen and trip cards
+   ============================================================ */
+
+.rf-field-index,
+.trips-screen,
+.trip-list-shell {
+  max-width: 1180px;
+  margin-inline: auto;
+}
+
+.rf-header,
+.trips-header {
+  background-image: var(--rf-contour-bg, var(--contour));
+  background-size: 320px 320px;
+  border-bottom: 1px solid var(--rf-rule);
+}
+
+.rf-title,
+.trips-title,
+.hdr-title {
+  font-family: var(--rf-font-serif);
+  font-weight: 560;
+  letter-spacing: -0.018em;
+}
+
+.rf-trip-grid,
+.trip-grid,
+.trip-list {
+  gap: 12px;
+}
+
+.rf-trip-card,
+.trip-card {
+  background: var(--rf-surface);
+  border: 1px solid var(--rf-rule);
+  border-radius: 6px;
+  box-shadow: none;
+  overflow: hidden;
+  padding: 16px;
+  position: relative;
+}
+
+.rf-trip-card.is-active,
+.trip-card.is-active,
+.trip-card[data-status="active"] {
+  background-image: var(--rf-contour-bg, var(--contour));
+  background-position: 60% 30%;
+  background-size: 320px 320px;
+}
+
+.rf-trip-card::after,
+.trip-card::after {
+  background:
+    linear-gradient(90deg, var(--rf-rule), transparent 22%, transparent 78%, var(--rf-rule));
+  content: "";
+  display: block;
+  height: 1px;
+  margin: 12px 0 0;
+  opacity: 0.9;
+}
+
+.rf-trip-card-index,
+.rf-tripCard__index,
+.trip-card-no,
+.trip-number {
+  color: var(--rf-muted);
+  font-family: var(--rf-font-serif);
+  font-size: 12px;
+  font-style: italic;
+  font-weight: 500;
+  position: absolute;
+  right: 14px;
+  top: 12px;
+}
+
+.rf-trip-card-title,
+.rf-tripCard__title,
+.trip-card-title {
+  color: var(--rf-ink);
+  font-family: var(--rf-font-serif);
+  font-size: clamp(22px, 3vw, 28px);
+  font-weight: 560;
+  letter-spacing: -0.012em;
+  line-height: 1.06;
+  padding-right: 60px;
+}
+
+.rf-trip-card-subtitle,
+.rf-tripCard__sub,
+.trip-card-subtitle {
+  color: var(--rf-muted);
+  font-family: var(--rf-font-serif);
+  font-size: 14px;
+  font-style: italic;
+  line-height: 1.25;
+  margin-top: 2px;
+}
+
+.rf-trip-card-meta,
+.rf-tripCard__dates,
+.trip-card-meta {
+  color: var(--rf-ink-2);
+  font-family: var(--rf-font-mono);
+  font-size: 10.5px;
+  letter-spacing: 0.04em;
+}
+
+.rf-trip-card-stats,
+.rf-tripCard__stats,
+.trip-card-stats {
+  display: flex;
+  gap: 16px;
+  margin-top: 10px;
+}
+
+.rf-stat__v,
+.trip-card-stat-value,
+.stat-value {
+  color: var(--rf-ink);
+  font-family: var(--rf-font-serif);
+  font-size: 20px;
+  font-weight: 540;
+  letter-spacing: -0.012em;
+}
+
+.rf-stat__l,
+.trip-card-stat-label,
+.stat-label {
+  color: var(--rf-muted);
+  font-family: var(--rf-font-mono);
+  font-size: 9px;
+  letter-spacing: 0.10em;
+  text-transform: uppercase;
+}
+
+.rf-ornament,
+.trip-card-ornament {
+  align-items: center;
+  display: flex;
+  gap: 6px;
+  margin: 10px 0;
+}
+
+.rf-ornament hr,
+.trip-card-ornament hr {
+  border: 0;
+  border-top: 1px solid var(--rf-rule);
+  flex: 1;
+  height: 0;
+}
+
+.rf-ornament__mark,
+.trip-card-ornament-mark {
+  color: var(--rf-muted);
+  font-family: var(--rf-font-serif);
+  font-size: 10px;
+  font-style: italic;
+}
+
+
+/* ============================================================
+   Phase 15 — Mock parity: Trip detail and stages route ledger
+   ============================================================ */
+
+.rf-trip-detail-hero,
+.trip-detail-hero,
+.rf-hero {
+  background-image: var(--rf-contour-bg, var(--contour));
+  background-size: 320px 320px;
+  border-bottom: 1px solid var(--rf-rule);
+}
+
+.stage-list {
+  gap: 0;
+}
+
+.stage-card {
+  background: transparent;
+  border: 0;
+  border-bottom: 1px solid var(--rf-rule);
+  border-radius: 0;
+  box-shadow: none;
+  padding: 12px 0;
+}
+
+.stage-card::before {
+  display: none;
+}
+
+.stage-card-row {
+  display: grid;
+  gap: 12px;
+  grid-template-columns: 48px minmax(0, 1fr);
+}
+
+.stage-order {
+  border-right: 0;
+  padding-right: 0;
+  position: relative;
+  text-align: center;
+}
+
+.stage-order::after {
+  background: var(--rf-rule);
+  bottom: 2px;
+  content: "";
+  left: 50%;
+  position: absolute;
+  top: 42px;
+  transform: translateX(-50%);
+  width: 1px;
+}
+
+.stage-order-btn {
+  background: var(--rf-surface);
+  border: 1px solid var(--rf-rule-2);
+  box-shadow: none;
+  font-family: var(--rf-font-serif);
+  font-style: italic;
+  height: 30px;
+  width: 30px;
+  z-index: 1;
+}
+
+.stage-title {
+  font-family: var(--rf-font-serif);
+  font-size: 18px;
+  font-weight: 560;
+  letter-spacing: -0.008em;
+}
+
+.stage-title em,
+.stage-route em {
+  color: var(--rf-muted);
+  font-style: italic;
+  font-weight: 400;
+}
+
+.stage-meta {
+  color: var(--rf-ink-2);
+  display: flex;
+  flex-wrap: wrap;
+  font-family: var(--rf-font-mono);
+  font-size: 10.5px;
+  gap: 14px;
+  letter-spacing: 0.02em;
+  margin-top: 5px;
+  text-transform: none;
+}
+
+.stage-notes {
+  color: var(--rf-muted);
+  font-family: var(--rf-font-serif);
+  font-size: 13px;
+  font-style: italic;
+}
+
+.stage-actions {
+  margin-top: 10px;
+}
+
+.weather-strip,
+.gpx-section,
+.journal-section {
+  background: var(--rf-surface);
+  border: 1px solid var(--rf-rule);
+  border-radius: 6px;
+  box-shadow: none;
+}
+
+@media (max-width: 520px) {
+  .stage-card-row {
+    grid-template-columns: 44px minmax(0, 1fr);
+  }
+
+  .stage-body {
+    padding-right: 0;
+    padding-top: 0;
+  }
+}
+
+
+/* ============================================================
+   Phase 16 — Mock parity: Journal and expenses ledger
+   ============================================================ */
+
+.entry-card {
+  background: var(--rf-surface);
+  border: 1px solid var(--rf-rule);
+  border-radius: 6px;
+  box-shadow: none;
+  padding: 14px;
+}
+
+.entry-card::before {
+  background: var(--rf-bg);
+  border: 1.4px solid var(--rf-primary);
+  border-radius: 999px;
+  color: var(--rf-primary);
+  content: counter(entry-counter);
+  display: none;
+  font-family: var(--rf-font-serif);
+  font-style: italic;
+}
+
+.entry-title {
+  font-family: var(--rf-font-serif);
+  font-size: 17px;
+  font-weight: 540;
+  letter-spacing: -0.005em;
+}
+
+.entry-meta {
+  color: var(--rf-muted);
+  font-family: var(--rf-font-mono);
+  font-size: 10.5px;
+}
+
+.entry-desc {
+  color: var(--rf-ink-2);
+  font-family: var(--rf-font-ui);
+  font-size: 13px;
+  line-height: 1.5;
+}
+
+.expense-total-box {
+  background: var(--rf-surface);
+  background-image: var(--rf-contour-bg, var(--contour));
+  background-position: right top;
+  background-size: 320px 320px;
+  border: 1px solid var(--rf-rule-2);
+  border-radius: 6px;
+  box-shadow: none;
+  color: var(--rf-ink);
+  padding: 22px 18px 18px;
+}
+
+.expense-total-box::before,
+.expense-total-box::after {
+  display: none;
+}
+
+.expense-total-label {
+  color: var(--rf-muted);
+  font-family: var(--rf-font-serif);
+  font-size: 12px;
+  font-style: italic;
+  letter-spacing: 0;
+  text-transform: none;
+}
+
+.expense-total-value {
+  color: var(--rf-ink);
+  font-family: var(--rf-font-serif);
+  font-size: clamp(48px, 12vw, 70px);
+  font-weight: 540;
+  letter-spacing: -0.025em;
+}
+
+.expense-breakdown,
+.expense-card {
+  background: var(--rf-surface);
+  border: 1px solid var(--rf-rule);
+  border-radius: 6px;
+  box-shadow: none;
+}
+
+.expense-breakdown::before,
+.expense-card::before {
+  display: none;
+}
+
+.expense-breakdown-row,
+.expense-card {
+  border-bottom-color: var(--rf-rule-2);
+}
+
+.expense-title {
+  font-family: var(--rf-font-serif);
+  font-size: 17px;
+  font-weight: 560;
+  padding-right: 0;
+}
+
+.expense-meta {
+  color: var(--rf-muted);
+  font-family: var(--rf-font-mono);
+  font-size: 10.5px;
+}
+
+.expense-desc {
+  color: var(--rf-ink-2);
+  font-family: var(--rf-font-ui);
+  font-size: 13px;
+}
+
+
+/* ============================================================
+   Phase 17 — Mock parity: Archive and Account
+   ============================================================ */
+
+.archive-stats,
+.rf-stats__grid {
+  gap: 14px;
+}
+
+.archive-stats .stat-item,
+.archive-stats .rf-stat,
+.rf-stats {
+  background: var(--rf-surface);
+  background-image: var(--rf-contour-bg, var(--contour));
+  background-size: 320px 320px;
+  border: 1px solid var(--rf-rule);
+  border-radius: 6px;
+  box-shadow: none;
+}
+
+.archive-map-wrap,
+.rf-map {
+  background: var(--rf-surface);
+  border: 1px solid var(--rf-rule-2);
+  border-radius: 6px;
+  box-shadow: none;
+}
+
+.archive-map-wrap::before {
+  display: none;
+}
+
+.archive-trip-row,
+.archive-row,
+.rf-archRow {
+  background: var(--rf-surface);
+  border: 1px solid var(--rf-rule);
+  border-radius: 6px;
+  box-shadow: none;
+  padding: 10px 14px;
+}
+
+.rf-passport-card,
+.rf-account-passport,
+.rf-people-card,
+.rf-install-card {
+  background: var(--rf-surface);
+  background-image: var(--rf-contour-bg, var(--contour));
+  background-size: 320px 320px;
+  border: 1px solid var(--rf-rule);
+  border-radius: 6px;
+  box-shadow: none;
+}
+
+.rf-passport-card::before,
+.rf-passport-card::after {
+  display: none;
+}
+
+.rf-account-avatar {
+  border-radius: 999px;
+}
+
+.rf-account-name,
+.rf-people-name {
+  font-family: var(--rf-font-serif);
+  font-weight: 560;
+}
+
+.rf-account-row,
+.rf-people-row,
+.rf-install-helper-block {
+  background: rgba(255, 255, 255, 0.24);
+  border: 1px solid var(--rf-rule);
+  border-radius: 6px;
+  box-shadow: none;
+}
+
+.rf-account-stamp,
+.rf-people-you {
+  border-radius: 2px;
+  font-family: var(--rf-font-mono);
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+}
+
+
+/* ============================================================
+   Phase 18 — Final palette/PWA alignment
+   ============================================================ */
+
+/*
+  Production is locked visually to Ink & Rust.
+  The token bridge stays in place so future palette switching remains possible,
+  but no palette picker is exposed in production.
+*/
+
+html,
+:root {
+  color-scheme: light;
+}
+
+:root {
+  --rf-bg: #e7e4d8;
+  --rf-surface: #f3f0e4;
+  --rf-surface-2: #e1ddd0;
+  --rf-ink: #171a26;
+  --rf-ink-2: #3b405a;
+  --rf-muted: #626575;
+  --rf-primary: #26345e;
+  --rf-primary-soft: #ccd3e4;
+  --rf-accent: #b85a2e;
+  --rf-accent-soft: #edcdb8;
+  --rf-danger: #7d3458;
+}
+
+/* Avoid accidental visual drift if prototype palette attributes are later copied. */
+[data-palette="forest"],
+[data-palette="midnight"],
+[data-palette="oxblood"],
+[data-palette="alpine"] {
+  --rf-bg: #e7e4d8;
+  --rf-surface: #f3f0e4;
+  --rf-surface-2: #e1ddd0;
+  --rf-ink: #171a26;
+  --rf-ink-2: #3b405a;
+  --rf-muted: #626575;
+  --rf-primary: #26345e;
+  --rf-primary-soft: #ccd3e4;
+  --rf-accent: #b85a2e;
+  --rf-accent-soft: #edcdb8;
+  --rf-danger: #7d3458;
 }
