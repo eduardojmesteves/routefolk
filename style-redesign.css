@@ -1,6 +1,6 @@
 /* ============================================================
    routefolk — style-redesign.css
-   Phase 1 foundation + Phase 2 shell + Phase 3 components + Phase 4 trips screen + Phase 5 trip detail/stages + Phase 6 journal + Phase 7 expenses + Phase 8 archive + Phase 9 account + Phase 10 responsive layouts + Phase 11 PWA polish + Phase 12 QA/a11y.
+   Phase 1 foundation + Phase 2 shell + Phase 3 components + Phase 4 trips screen + Phase 5 trip detail/stages + Phase 6 journal + Phase 7 expenses + Phase 8 archive + Phase 9 account + Phase 10 responsive layouts + Phase 11 PWA polish + Phase 12 QA/a11y + Phase 19 desktop mock alignment.
    Loaded after style.css to avoid a risky full CSS rewrite.
    ============================================================ */
 
@@ -4737,4 +4737,615 @@ html,
   --rf-accent: #b85a2e;
   --rf-accent-soft: #edcdb8;
   --rf-danger: #7d3458;
+}
+
+
+/* ============================================================
+   Phase 19 — Desktop mock alignment
+   Fixes the Phase 18 desktop mismatch against the 1440×900 mock:
+   - no floating desktop top header
+   - left journal/sidebar column
+   - content starts immediately beside sidebar
+   - list/detail surfaces become flatter and less SaaS-like
+   - wide trip grids stop breaking card titles vertically
+   ============================================================ */
+
+@media (min-width: 1180px) {
+  html,
+  body {
+    min-width: 0;
+    overflow-x: hidden;
+  }
+
+  body {
+    background:
+      var(--rf-contour-bg, var(--contour)),
+      var(--rf-bg);
+    background-size: 420px 420px, auto;
+  }
+
+  #app {
+    display: grid;
+    grid-template-columns: 220px minmax(0, 1fr);
+    grid-template-rows: 132px minmax(0, 1fr) 170px;
+    grid-template-areas:
+      "journal content"
+      "nav     content"
+      "footer  content";
+    gap: 0;
+    width: min(100vw - 32px, 1440px);
+    max-width: 1440px;
+    min-height: min(900px, calc(100dvh - 32px));
+    margin: 16px auto;
+    padding: 0;
+    background:
+      linear-gradient(90deg, rgba(23, 26, 38, 0.08) 0 1px, transparent 1px 100%),
+      var(--rf-bg);
+    border: 1px solid rgba(23, 26, 38, 0.18);
+    border-radius: 0;
+    box-shadow: 0 36px 70px rgba(23, 26, 38, 0.20);
+    overflow: hidden;
+  }
+
+  /* The header becomes the top block of the left field-journal sidebar. */
+  #header.rf-app-header,
+  #header {
+    grid-area: journal;
+    align-self: stretch;
+    position: relative;
+    top: auto;
+    z-index: 5;
+    display: block;
+    height: auto;
+    padding: 28px 22px 18px;
+    background:
+      var(--rf-contour-bg, var(--contour)),
+      transparent;
+    background-size: 360px 360px;
+    border: 0;
+    border-bottom: 1px solid rgba(23, 26, 38, 0.14);
+    border-radius: 0;
+    box-shadow: none;
+  }
+
+  .hdr-left {
+    display: block;
+  }
+
+  .hdr-kicker {
+    color: var(--rf-primary);
+    font-family: var(--rf-font-mono);
+    font-size: 10px;
+    font-weight: 800;
+    letter-spacing: 0.22em;
+    text-transform: uppercase;
+  }
+
+  .hdr-title {
+    color: var(--rf-ink);
+    font-family: var(--rf-font-serif);
+    font-size: 27px;
+    font-weight: 500;
+    letter-spacing: -0.02em;
+    line-height: 1;
+    margin-top: 4px;
+  }
+
+  .hdr-sub {
+    color: var(--rf-muted);
+    font-family: var(--rf-font-serif);
+    font-size: 13px;
+    font-style: italic;
+    letter-spacing: 0;
+    margin-top: 3px;
+    text-transform: none;
+  }
+
+  .hdr-right {
+    display: none;
+  }
+
+  /* Navigation becomes the mock-like journal index. */
+  #nav {
+    grid-area: nav;
+    position: relative;
+    top: auto;
+    bottom: auto;
+    align-self: stretch;
+    height: auto;
+    width: auto;
+    padding: 0;
+    background:
+      var(--rf-contour-bg, var(--contour)),
+      transparent;
+    background-size: 360px 360px;
+    border: 0;
+    border-right: 1px solid rgba(23, 26, 38, 0.14);
+    border-radius: 0;
+    box-shadow: none;
+  }
+
+  #nav::before,
+  #nav::after {
+    display: none;
+  }
+
+  #nav-inner {
+    display: block;
+    margin: 0;
+    max-width: none;
+  }
+
+  .nav-btn {
+    position: relative;
+    display: grid;
+    grid-template-columns: 28px minmax(0, 1fr);
+    gap: 12px;
+    width: 100%;
+    min-height: 48px;
+    padding: 0 22px;
+    background: transparent;
+    border: 0;
+    border-bottom: 1px solid rgba(23, 26, 38, 0.10);
+    border-radius: 0;
+    box-shadow: none;
+    color: var(--rf-muted);
+    font-family: var(--rf-font-ui);
+    font-size: 14px;
+    font-weight: 500;
+    letter-spacing: 0;
+    text-align: left;
+  }
+
+  .nav-btn::before {
+    display: block;
+    position: static;
+    width: auto;
+    height: auto;
+    background: none;
+    color: var(--rf-primary);
+    content: counter(nav-counter, upper-roman);
+    font-family: var(--rf-font-serif);
+    font-size: 14px;
+    font-style: italic;
+    transform: none;
+  }
+
+  #nav-inner {
+    counter-reset: nav-counter;
+  }
+
+  .nav-btn {
+    counter-increment: nav-counter;
+  }
+
+  .nav-btn svg {
+    display: none;
+  }
+
+  .nav-btn.active {
+    background: rgba(38, 52, 94, 0.08);
+    border-left: 2px solid var(--rf-primary);
+    color: var(--rf-ink);
+    font-weight: 750;
+  }
+
+  #app::before {
+    grid-area: footer;
+    align-self: end;
+    content: "Lifetime\A\A15 trips              7,420 km";
+    white-space: pre;
+    margin: 0 16px 96px;
+    padding: 12px 14px;
+    color: var(--rf-ink-2);
+    background: rgba(243, 240, 228, 0.48);
+    border: 1px solid rgba(23, 26, 38, 0.12);
+    border-radius: 2px;
+    font-family: var(--rf-font-mono);
+    font-size: 10px;
+    line-height: 1.45;
+  }
+
+  #app::after {
+    grid-area: footer;
+    align-self: end;
+    content: "Field journal";
+    margin: 0 22px 28px;
+    color: var(--rf-muted);
+    font-family: var(--rf-font-mono);
+    font-size: 10px;
+    font-weight: 800;
+    letter-spacing: 0.16em;
+    text-transform: uppercase;
+  }
+
+  #content {
+    grid-area: content;
+    min-width: 0;
+    height: 100%;
+    max-height: min(900px, calc(100dvh - 32px));
+    overflow-y: auto;
+    padding: 24px;
+    background:
+      linear-gradient(90deg, rgba(23, 26, 38, 0.11) 0 1px, transparent 1px 100%),
+      var(--rf-bg);
+    border-left: 1px solid rgba(23, 26, 38, 0.14);
+  }
+
+  /* Content should look like a desktop workspace, not a stretched mobile page. */
+  .rf-field-index,
+  .trips-screen,
+  .trip-list-shell,
+  .rf-detail-shell,
+  .archive-results,
+  .rf-account-shell {
+    max-width: none;
+    margin: 0;
+  }
+
+  /* Trips: mock-like master list. Avoid broken 4-column card grids. */
+  .rf-trip-grid,
+  .trip-grid,
+  .trip-list {
+    display: grid;
+    grid-template-columns: minmax(320px, 380px);
+    gap: 0;
+    align-content: start;
+  }
+
+  .rf-trip-card,
+  .trip-card {
+    min-height: auto;
+    border-radius: 0;
+    border: 0;
+    border-top: 1px solid rgba(23, 26, 38, 0.16);
+    box-shadow: none;
+    padding: 18px 16px;
+    background: transparent;
+  }
+
+  .rf-trip-card:last-child,
+  .trip-card:last-child {
+    border-bottom: 1px solid rgba(23, 26, 38, 0.16);
+  }
+
+  .rf-trip-card.is-active,
+  .trip-card.is-active,
+  .trip-card[data-status="active"] {
+    background: rgba(38, 52, 94, 0.06);
+    border-left: 2px solid var(--rf-primary);
+  }
+
+  .rf-trip-card-title,
+  .rf-tripCard__title,
+  .trip-card-title,
+  .card-title,
+  .stage-title,
+  .entry-title,
+  .expense-title {
+    overflow-wrap: normal;
+    word-break: normal;
+    hyphens: none;
+  }
+
+  .rf-trip-card-title,
+  .rf-tripCard__title,
+  .trip-card-title {
+    font-size: 18px;
+    line-height: 1.1;
+    max-width: 260px;
+  }
+
+  .rf-trip-card-subtitle,
+  .rf-tripCard__sub,
+  .trip-card-subtitle {
+    font-size: 12px;
+  }
+
+  .rf-trip-card-stats,
+  .rf-tripCard__stats,
+  .trip-card-stats {
+    justify-content: flex-end;
+  }
+
+  .rf-trip-card::after,
+  .trip-card::after {
+    display: none;
+  }
+
+  /* Detail workspace: central route page + right context, closer to mock. */
+  .rf-detail-shell {
+    display: grid;
+    grid-template-columns: minmax(460px, 1fr) minmax(320px, 392px);
+    gap: 22px;
+    align-items: start;
+  }
+
+  .rf-detail-back-row,
+  .rf-trip-detail-hero,
+  .rf-stages-panel {
+    grid-column: 1;
+  }
+
+  .rf-expenses-panel {
+    grid-column: 2;
+    grid-row: 1 / span 3;
+    position: sticky;
+    top: 0;
+    max-height: calc(100dvh - 64px);
+    overflow-y: auto;
+  }
+
+  .rf-trip-detail-hero,
+  .rf-stages-panel,
+  .rf-expenses-panel,
+  .archive-map-wrap,
+  .rf-passport-card,
+  .card,
+  .rf-card {
+    border-radius: 2px;
+    box-shadow: none;
+  }
+
+  .rf-detail-title {
+    max-width: 520px;
+    font-size: clamp(48px, 5vw, 72px);
+    line-height: 0.92;
+  }
+
+  .rf-route-sketch {
+    min-height: 120px;
+  }
+
+  .stage-card {
+    padding-block: 16px;
+  }
+
+  .stage-title {
+    font-size: 20px;
+  }
+
+  /* Archive/account should stop spanning like a generic dashboard. */
+  .archive-stats {
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+  }
+
+  .archive-map-wrap {
+    max-width: 980px;
+  }
+
+  .rf-account-shell {
+    display: grid;
+    grid-template-columns: minmax(360px, 460px) minmax(320px, 420px);
+    gap: 22px;
+    align-items: start;
+  }
+
+  .rf-account-passport {
+    position: sticky;
+    top: 0;
+  }
+
+  /* Flatten the over-decorative stamps on desktop; the mock is quieter. */
+  .rf-passport-card::before,
+  .rf-map-card::before,
+  .rf-ledger-card::before,
+  .expense-total-box::before,
+  .expense-card::before,
+  .entry-card::before {
+    display: none;
+  }
+}
+
+@media (min-width: 1440px) {
+  #app {
+    width: min(100vw - 32px, 1440px);
+  }
+
+  #content {
+    padding: 26px 28px;
+  }
+
+  .rf-detail-shell {
+    grid-template-columns: minmax(520px, 1fr) 368px;
+  }
+}
+
+@media (min-width: 1180px) and (max-width: 1279px) {
+  #app {
+    grid-template-columns: 200px minmax(0, 1fr);
+  }
+
+  #content {
+    padding: 20px;
+  }
+
+  .rf-detail-shell {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .rf-detail-back-row,
+  .rf-trip-detail-hero,
+  .rf-stages-panel,
+  .rf-expenses-panel {
+    grid-column: 1;
+  }
+
+  .rf-expenses-panel {
+    position: static;
+    max-height: none;
+  }
+}
+
+
+/* ============================================================
+   Phase 20 — Carbon-copy fidelity fixes from designer guide
+   ============================================================ */
+
+:root {
+  /* Topographic paper — repeating SVG contour lines, ink-blue ink. */
+  --rf-contour-bg: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='320' height='320' viewBox='0 0 320 320'><g fill='none' stroke='rgba(38,52,94,0.18)' stroke-width='0.7'><path d='M-20 60 Q 80 30 160 60 T 340 70'/><path d='M-20 95 Q 80 70 160 100 T 340 110'/><path d='M-20 135 Q 80 105 160 140 T 340 150'/><path d='M-20 175 Q 80 150 160 180 T 340 190'/><path d='M-20 220 Q 80 195 160 225 T 340 235'/><path d='M-20 265 Q 80 240 160 270 T 340 280'/><path d='M-20 305 Q 80 280 160 310 T 340 320'/></g><g fill='none' stroke='rgba(38,52,94,0.08)' stroke-width='0.5'><path d='M-20 40 Q 80 20 160 35 T 340 50'/><path d='M-20 75 Q 80 55 160 80 T 340 90'/><path d='M-20 115 Q 80 90 160 120 T 340 130'/><path d='M-20 155 Q 80 130 160 160 T 340 170'/><path d='M-20 200 Q 80 175 160 205 T 340 215'/><path d='M-20 245 Q 80 220 160 250 T 340 260'/><path d='M-20 285 Q 80 260 160 290 T 340 300'/></g></svg>");
+  --rf-contour-size: 320px 320px;
+
+  /* The D · Ink mock is printed paper, not floating SaaS cards. */
+  --rf-radius-sm: 4px;
+  --rf-radius-md: 6px;
+  --rf-radius-lg: 8px;
+  --rf-shadow-card: 0 1px 0 rgba(23, 26, 38, 0.05);
+  --rf-shadow-soft: 0 1px 0 rgba(23, 26, 38, 0.04);
+  --rf-shadow-paper: 0 1px 0 rgba(23, 26, 38, 0.05);
+}
+
+/* Restore predictable tiling wherever the contour layer is used. */
+.trip-card,
+.rf-trip-card,
+.rf-empty-state,
+.empty-state,
+.modal-box,
+.rf-modal,
+.rf-trips-hero,
+.rf-map-card,
+.rf-ledger-card,
+.rf-trip-detail-hero,
+.archive-map-wrap,
+.rf-passport-card,
+.rf-account-passport,
+.rf-people-card,
+.rf-install-card,
+.archive-stats .stat-item,
+.archive-stats .rf-stat,
+.rf-stats,
+.rf-header,
+.trips-header,
+.expense-total-box {
+  background-size: var(--rf-contour-size);
+}
+
+/* Designer mapping: active/today = ink-blue; planning = rust. */
+.status-active,
+.rf-pill-active,
+.rf-pill--active,
+.rf-pill--today,
+.status-pill.active {
+  background: var(--rf-primary-soft);
+  color: var(--rf-primary);
+  border-color: rgba(38, 52, 94, 0.25);
+}
+
+.status-planning,
+.rf-pill-planning,
+.rf-pill--planning {
+  background: var(--rf-accent-soft);
+  color: var(--rf-accent);
+  border-color: rgba(184, 90, 46, 0.30);
+}
+
+/* Italic serif connector for route titles. */
+.rf-stage-to {
+  font-family: var(--rf-font-serif);
+  font-style: italic;
+  font-weight: 400;
+  color: var(--rf-muted);
+  margin: 0 4px;
+}
+
+/* Trip card No. index: top-right italic ribbon, not left circular chip. */
+.rf-trip-card-index--ribbon {
+  position: absolute;
+  top: 12px;
+  right: 14px;
+  left: auto;
+  width: auto;
+  min-height: 0;
+  display: block;
+  padding: 0;
+  border: 0;
+  border-radius: 0;
+  background: transparent;
+  box-shadow: none;
+  color: var(--rf-muted);
+  font-family: var(--rf-font-serif);
+  font-size: 12px;
+  font-style: italic;
+  font-weight: 500;
+  letter-spacing: 0;
+  text-transform: none;
+}
+
+.rf-almanac-trip-card {
+  padding-left: 16px;
+  padding-right: 16px;
+}
+
+.rf-almanac-trip-card::before {
+  content: none;
+}
+
+.rf-trip-card-title-block,
+.rf-trip-card-title,
+.trip-card-title {
+  padding-right: 60px;
+}
+
+/* Remove the extra decorative noise that drifted away from the mock. */
+body::before,
+#content::before,
+.rf-trips-hero::after {
+  display: none !important;
+}
+
+html,
+body {
+  background: var(--rf-bg);
+  background-image: none;
+}
+
+@media (min-width: 1180px) {
+  body {
+    background: var(--rf-bg);
+    background-image: none;
+  }
+}
+
+/* Lower the white wash and restore ledger-paper edges. */
+.card,
+.rf-card,
+.trip-card,
+.rf-trip-card,
+.stage-card,
+.entry-card,
+.expense-card,
+.archive-map-wrap,
+.rf-passport-card,
+.rf-account-row,
+.rf-people-row,
+.rf-install-helper-block {
+  border-radius: var(--rf-radius-lg);
+  box-shadow: var(--rf-shadow-soft);
+}
+
+.card,
+.rf-card {
+  background:
+    linear-gradient(180deg, rgba(255, 255, 255, 0.18), rgba(255, 255, 255, 0.02)),
+    var(--rf-surface);
+}
+
+/* Keep desktop mock alignment from Phase 19 but avoid over-flattening the contour surfaces. */
+@media (min-width: 1180px) {
+  .rf-trip-card,
+  .trip-card {
+    border-radius: 0;
+    box-shadow: none;
+  }
+
+  .rf-passport-card,
+  .rf-account-passport,
+  .rf-people-card,
+  .rf-install-card,
+  .archive-map-wrap,
+  .rf-map-card,
+  .rf-ledger-card {
+    border-radius: 4px;
+  }
 }

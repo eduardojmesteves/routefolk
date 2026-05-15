@@ -4,6 +4,7 @@
 //
 // This module is still UI-only. Data loading and write handlers stay in app.js
 // until the Trip Detail area is split into smaller controller modules.
+// Phase 20: renders from/to pairs as “from <em>to</em> to” instead of arrows.
 // ============================================================
 
 import { trackFileName } from '../lib/gpx.js';
@@ -228,8 +229,11 @@ function stageNavigateUrl(stage) {
   return stage.custom_route_url || stage.gmaps_url || null;
 }
 
-function stageRouteLabel(stage, index = 0) {
-  return [stage.start_location, stage.end_location].filter(Boolean).join(' → ') || stage.title || `Stage ${index + 1}`;
+function stageRouteHtml(stage, index = 0) {
+  const from = stage.start_location;
+  const to = stage.end_location;
+  if (from && to) return `${esc(from)} <em class="rf-stage-to">to</em> ${esc(to)}`;
+  return esc([from, to].filter(Boolean).join(' → ') || stage.title || `Stage ${index + 1}`);
 }
 
 function stageDateWarningHtml(stage, trip) {
@@ -238,7 +242,7 @@ function stageDateWarningHtml(stage, trip) {
 }
 
 function stageCardHtml(stage, trip, index, total) {
-  const route = stageRouteLabel(stage, index);
+  const route = stageRouteHtml(stage, index);
   const meta = [];
   if (stage.planned_date) meta.push(fmtDate(stage.planned_date));
   if (stage.distance_km != null) meta.push(`${stage.distance_km} km`);
@@ -253,7 +257,7 @@ function stageCardHtml(stage, trip, index, total) {
           <button class="stage-order-btn" data-stage-action="down" data-id="${esc(stage.id)}" ${index === total - 1 || !canWrite() ? 'disabled' : ''} title="Move down">↓</button>
         </div>
         <div class="stage-body">
-          <div class="stage-title">${esc(route)}</div>
+          <div class="stage-title">${route}</div>
           ${meta.length ? `<div class="stage-meta">${esc(meta.join(' · '))}</div>` : ''}
           ${stage.notes ? `<div class="stage-notes">${esc(stage.notes)}</div>` : ''}
           ${auditLineHtml(stage, 'Edited')}

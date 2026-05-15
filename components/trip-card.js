@@ -1,7 +1,7 @@
 // ============================================================
 // routefolk — components/trip-card.js
 // Shared trip-card and visibility-pill rendering helpers.
-// Phase 4: adds almanac/index trip card treatment.
+// Phase 20: aligns No. index ribbon with D · Ink mock.
 // ============================================================
 
 import { STATUS_META, VISIBILITY_META } from '../constants/app-constants.js';
@@ -30,9 +30,8 @@ export function tripCardHtml(trip, index = null) {
 
   return `
     <button class="trip-card rf-card rf-trip-card rf-almanac-trip-card" type="button" data-trip-id="${esc(trip.id)}" aria-label="Open ${esc(trip.title)}">
-      <div class="rf-trip-card-index" aria-hidden="true">
-        <span>No.</span>
-        <strong>${esc(indexLabel)}</strong>
+      <div class="rf-trip-card-index rf-trip-card-index--ribbon" aria-hidden="true">
+        No. ${esc(indexLabel)}
       </div>
 
       <div class="trip-card-head rf-trip-card-head">
