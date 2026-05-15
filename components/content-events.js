@@ -1,7 +1,7 @@
 // ============================================================
 // routefolk — content-events.js
 // Main content event binding for app views.
-// Phase 4: robust Summary table expand/collapse binding.
+// Claude Design UI reset.
 // ============================================================
 
 import { STATE } from '../state/app-state.js';
@@ -14,34 +14,11 @@ import { gpxTracksForTrip } from '../utils/trip-detail.js';
 
 export function createContentEvents(actions) {
   const {
-    handleSignIn,
-    handleSignOut,
-    loadTrips,
-    loadSignedInData,
-    loadStagesForTrip,
-    loadExpensesForTrip,
-    loadEntriesForStage,
-    loadGpxForTrip,
-    ensureArchiveData,
-    ensureArchiveGpxGeometries,
-    openTrip,
-    renderAll,
-    ensureOnline,
-    handleMoveStage,
-    showNewTripModal,
-    showEditTripModal,
-    showDeleteTripConfirm,
-    showNewStageModal,
-    showEditStageModal,
-    showDeleteStageConfirm,
-    showNewEntryModal,
-    showEditEntryModal,
-    showDeleteEntryConfirm,
-    showNewExpenseModal,
-    showEditExpenseModal,
-    showDeleteExpenseConfirm,
-    showGpxUploadModal,
-    showDeleteGpxConfirm,
+    handleSignIn, handleSignOut, loadTrips, loadSignedInData, loadStagesForTrip, loadExpensesForTrip,
+    loadEntriesForStage, loadGpxForTrip, ensureArchiveData, ensureArchiveGpxGeometries, openTrip, renderAll,
+    ensureOnline, handleMoveStage, showNewTripModal, showEditTripModal, showDeleteTripConfirm, showNewStageModal,
+    showEditStageModal, showDeleteStageConfirm, showNewEntryModal, showEditEntryModal, showDeleteEntryConfirm,
+    showNewExpenseModal, showEditExpenseModal, showDeleteExpenseConfirm, showGpxUploadModal, showDeleteGpxConfirm,
   } = actions;
 
   function tripForCurrentView() {
@@ -59,13 +36,22 @@ export function createContentEvents(actions) {
     });
   }
 
+  function refreshTripResults(content) {
+    const results = content.querySelector('#tripResults');
+    if (results) {
+      results.innerHTML = tripResultsHtml();
+      bindTripCards(results);
+    } else {
+      renderAll();
+    }
+  }
+
   function toggleStageJournal(stageId) {
     if (STATE.expandedStages.has(stageId)) {
       STATE.expandedStages.delete(stageId);
       renderAll();
       return;
     }
-
     STATE.expandedStages.add(stageId);
     if (!STATE.entriesByStage[stageId] || STATE.entriesByStage[stageId] === 'loading') {
       loadEntriesForStage(stageId);
@@ -76,13 +62,11 @@ export function createContentEvents(actions) {
 
   function toggleSummaryStage(stageId) {
     if (!stageId) return;
-
     if (STATE.expandedSummaryStages.has(stageId)) {
       STATE.expandedSummaryStages.delete(stageId);
       renderAll();
       return;
     }
-
     STATE.expandedSummaryStages.add(stageId);
     if (!STATE.entriesByStage[stageId] || STATE.entriesByStage[stageId] === 'loading') {
       STATE.entriesByStage[stageId] = 'loading';
@@ -90,77 +74,51 @@ export function createContentEvents(actions) {
       loadEntriesForStage(stageId, { quiet: true });
       return;
     }
-
     renderAll();
   }
 
-
-function bindSummaryToggleDelegation(content) {
-  content.addEventListener('click', (event) => {
-    const target = event.target instanceof Element ? event.target : null;
-    const btn = target?.closest('[data-summary-stage-id]');
-    if (!btn || !content.contains(btn)) return;
-
-    event.preventDefault();
-    event.stopPropagation();
-    toggleSummaryStage(btn.dataset.summaryStageId);
-  }, true);
-}
-
   function toggleStageGpx(stageId) {
     if (!stageId) return;
-
     if (STATE.expandedGpxStages.has(stageId)) {
       STATE.expandedGpxStages.delete(stageId);
       renderAll();
       return;
     }
-
     STATE.expandedGpxStages.add(stageId);
-
     const trip = currentTrip();
-    if (trip && !Array.isArray(STATE.gpxByTrip[trip.id])) {
-      loadGpxForTrip(trip.id);
-    } else {
-      renderAll();
-    }
+    if (trip && !Array.isArray(STATE.gpxByTrip[trip.id])) loadGpxForTrip(trip.id);
+    else renderAll();
   }
 
   function bindContentEvents(content) {
-    bindSummaryToggleDelegation(content);
     content.querySelector('#emptySignInBtn')?.addEventListener('click', handleSignIn);
     content.querySelector('#accountSignInBtn')?.addEventListener('click', handleSignIn);
     content.querySelector('#signOutBtn')?.addEventListener('click', handleSignOut);
     content.querySelector('#retryTripsBtn')?.addEventListener('click', loadTrips);
     content.querySelector('#retryAccessBtn')?.addEventListener('click', loadSignedInData);
     content.querySelector('#retrySchemaBtn')?.addEventListener('click', loadSignedInData);
-    content.querySelector('#retryStagesBtn')?.addEventListener('click', () => {
-      if (STATE.viewTripId) loadStagesForTrip(STATE.viewTripId);
-    });
-    content.querySelector('#retryExpensesBtn')?.addEventListener('click', () => {
-      if (STATE.viewTripId) loadExpensesForTrip(STATE.viewTripId);
-    });
+    content.querySelector('#retryStagesBtn')?.addEventListener('click', () => { if (STATE.viewTripId) loadStagesForTrip(STATE.viewTripId); });
+    content.querySelector('#retryExpensesBtn')?.addEventListener('click', () => { if (STATE.viewTripId) loadExpensesForTrip(STATE.viewTripId); });
     content.querySelector('#retryArchiveDataBtn')?.addEventListener('click', ensureArchiveData);
-    content.querySelector('#tripFiltersToggle')?.addEventListener('click', () => {
-      STATE.tripFiltersOpen = !STATE.tripFiltersOpen;
-      renderAll();
-    });
+
     content.querySelector('#tripSearchInput')?.addEventListener('input', (e) => {
       STATE.tripSearch = e.target.value || '';
-      const results = content.querySelector('#tripResults');
-      if (results) {
-        results.innerHTML = tripResultsHtml();
-        bindTripCards(results);
-      }
+      refreshTripResults(content);
     });
+
+    content.querySelectorAll('[data-status-chip]').forEach((btn) => {
+      btn.addEventListener('click', () => {
+        const next = btn.dataset.statusChip || 'all';
+        STATE.tripStatusFilter = TRIPS_SCREEN_STATUSES.includes(next) ? next : 'all';
+        renderAll();
+      });
+    });
+
     content.querySelector('#tripStatusFilter')?.addEventListener('change', (e) => {
       STATE.tripStatusFilter = TRIPS_SCREEN_STATUSES.includes(e.target.value) ? e.target.value : 'all';
-      const results = content.querySelector('#tripResults');
-      if (results) {
-        results.innerHTML = tripResultsHtml();
-        bindTripCards(results);
-      }
+      refreshTripResults(content);
     });
+
     content.querySelectorAll('[data-archive-view]').forEach((btn) => {
       btn.addEventListener('click', () => {
         STATE.archiveViewMode = btn.dataset.archiveView || 'list';
@@ -168,6 +126,7 @@ function bindSummaryToggleDelegation(content) {
         if (STATE.archiveViewMode === 'map') ensureArchiveGpxGeometries();
       });
     });
+
     content.querySelectorAll('[data-archive-layer]').forEach((btn) => {
       btn.addEventListener('click', () => {
         const nextLayer = btn.dataset.archiveLayer || 'heatmap';
@@ -175,10 +134,12 @@ function bindSummaryToggleDelegation(content) {
         renderAll();
       });
     });
+
     content.querySelector('#archiveFiltersToggle')?.addEventListener('click', () => {
       STATE.archiveFiltersOpen = !STATE.archiveFiltersOpen;
       renderAll();
     });
+
     content.querySelector('#archiveSearchInput')?.addEventListener('input', (e) => {
       STATE.archiveSearch = e.target.value || '';
       const results = content.querySelector('#archiveResults');
@@ -191,6 +152,7 @@ function bindSummaryToggleDelegation(content) {
         }
       }
     });
+
     content.querySelector('#archiveStatusFilter')?.addEventListener('change', (e) => {
       STATE.archiveStatusFilter = e.target.value || 'all';
       const results = content.querySelector('#archiveResults');
@@ -203,48 +165,19 @@ function bindSummaryToggleDelegation(content) {
         }
       }
     });
-    content.querySelector('#newTripBtn')?.addEventListener('click', () => {
-      if (ensureOnline()) showNewTripModal();
-    });
-    content.querySelector('#backToTripsBtn')?.addEventListener('click', () => {
-      STATE.view = 'list';
-      STATE.viewTripId = null;
-      renderAll();
-    });
-    content.querySelector('#backToDetailBtn')?.addEventListener('click', () => {
-      STATE.view = 'detail';
-      renderAll();
-    });
-    content.querySelector('#summaryTripBtn')?.addEventListener('click', async () => {
-      STATE.view = 'summary';
-      renderAll();
-    });
-    content.querySelector('#editTripBtn')?.addEventListener('click', () => {
-      if (!ensureOnline()) return;
-      const trip = currentTrip();
-      if (trip) showEditTripModal(trip);
-    });
-    content.querySelector('#deleteTripBtn')?.addEventListener('click', () => {
-      if (!ensureOnline()) return;
-      const trip = currentTrip();
-      if (trip) showDeleteTripConfirm(trip);
-    });
-    content.querySelector('#addStageBtn')?.addEventListener('click', () => {
-      if (!ensureOnline()) return;
-      const trip = tripForCurrentView();
-      if (trip) showNewStageModal(trip);
-    });
-    content.querySelector('#addExpenseBtn')?.addEventListener('click', () => {
-      if (!ensureOnline()) return;
-      const trip = currentTrip();
-      if (trip) showNewExpenseModal(trip);
-    });
+
+    content.querySelector('#newTripBtn')?.addEventListener('click', () => { if (ensureOnline()) showNewTripModal(); });
+    content.querySelector('#backToTripsBtn')?.addEventListener('click', () => { STATE.view = 'list'; STATE.viewTripId = null; renderAll(); });
+    content.querySelector('#backToDetailBtn')?.addEventListener('click', () => { STATE.view = 'detail'; renderAll(); });
+    content.querySelector('#summaryTripBtn')?.addEventListener('click', () => { STATE.view = 'summary'; renderAll(); });
+    content.querySelector('#editTripBtn')?.addEventListener('click', () => { if (!ensureOnline()) return; const trip = currentTrip(); if (trip) showEditTripModal(trip); });
+    content.querySelector('#deleteTripBtn')?.addEventListener('click', () => { if (!ensureOnline()) return; const trip = currentTrip(); if (trip) showDeleteTripConfirm(trip); });
+    content.querySelector('#addStageBtn')?.addEventListener('click', () => { if (!ensureOnline()) return; const trip = tripForCurrentView(); if (trip) showNewStageModal(trip); });
+    content.querySelector('#addExpenseBtn')?.addEventListener('click', () => { if (!ensureOnline()) return; const trip = currentTrip(); if (trip) showNewExpenseModal(trip); });
 
     bindTripCards(content);
 
-    content.querySelectorAll('[data-summary-stage-id]').forEach((btn) => {
-      btn.addEventListener('click', () => toggleSummaryStage(btn.dataset.summaryStageId));
-    });
+    content.querySelectorAll('[data-summary-stage-id]').forEach((btn) => btn.addEventListener('click', () => toggleSummaryStage(btn.dataset.summaryStageId)));
 
     content.querySelectorAll('[data-stage-action]').forEach((btn) => {
       btn.addEventListener('click', () => {
@@ -260,17 +193,9 @@ function bindSummaryToggleDelegation(content) {
       });
     });
 
-    content.querySelectorAll('[data-stage-id]').forEach((btn) => {
-      btn.addEventListener('click', () => toggleStageJournal(btn.dataset.stageId));
-    });
-
-    content.querySelectorAll('[data-stage-add-entry]').forEach((btn) => {
-      btn.addEventListener('click', () => { if (ensureOnline()) showNewEntryModal(btn.dataset.stageAddEntry); });
-    });
-
-    content.querySelectorAll('[data-gpx-toggle]').forEach((btn) => {
-      btn.addEventListener('click', () => toggleStageGpx(btn.dataset.gpxToggle));
-    });
+    content.querySelectorAll('[data-stage-id]').forEach((btn) => btn.addEventListener('click', () => toggleStageJournal(btn.dataset.stageId)));
+    content.querySelectorAll('[data-stage-add-entry]').forEach((btn) => btn.addEventListener('click', () => { if (ensureOnline()) showNewEntryModal(btn.dataset.stageAddEntry); }));
+    content.querySelectorAll('[data-gpx-toggle]').forEach((btn) => btn.addEventListener('click', () => toggleStageGpx(btn.dataset.gpxToggle)));
 
     content.querySelectorAll('[data-stage-gpx-upload]').forEach((btn) => {
       btn.addEventListener('click', () => {
@@ -285,8 +210,7 @@ function bindSummaryToggleDelegation(content) {
       btn.addEventListener('click', () => {
         const entryId = btn.dataset.id;
         const { stageId, entry } = findEntry(entryId);
-        if (!entry) return;
-        if (!ensureOnline()) return;
+        if (!entry || !ensureOnline()) return;
         if (btn.dataset.entryAction === 'edit') showEditEntryModal(stageId, entry);
         if (btn.dataset.entryAction === 'delete') showDeleteEntryConfirm(stageId, entry);
       });
@@ -295,21 +219,18 @@ function bindSummaryToggleDelegation(content) {
     content.querySelectorAll('[data-gpx-action]').forEach((btn) => {
       btn.addEventListener('click', () => {
         const trip = currentTrip();
-        if (!trip) return;
+        if (!trip || !ensureOnline()) return;
         const track = gpxTracksForTrip(trip.id).find((t) => t.id === btn.dataset.id);
-        if (!track) return;
-        if (!ensureOnline()) return;
-        if (btn.dataset.gpxAction === 'delete') showDeleteGpxConfirm(track);
+        if (track && btn.dataset.gpxAction === 'delete') showDeleteGpxConfirm(track);
       });
     });
 
     content.querySelectorAll('[data-expense-action]').forEach((btn) => {
       btn.addEventListener('click', () => {
         const trip = currentTrip();
-        if (!trip) return;
+        if (!trip || !ensureOnline()) return;
         const expense = expensesForTripView(trip.id).find((e) => e.id === btn.dataset.id);
         if (!expense) return;
-        if (!ensureOnline()) return;
         if (btn.dataset.expenseAction === 'edit') showEditExpenseModal(trip, expense);
         if (btn.dataset.expenseAction === 'delete') showDeleteExpenseConfirm(trip, expense);
       });

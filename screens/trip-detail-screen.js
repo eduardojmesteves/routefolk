@@ -1,12 +1,17 @@
 // ============================================================
 // routefolk — screens/trip-detail-screen.js
 // Trip Detail screen shell rendering.
+// Claude Design UI reset.
 // ============================================================
 
 import { esc } from '../utils/dom.js';
 import { fmtDateRange } from '../utils/datetime.js';
 import { STATUS_META } from '../constants/app-constants.js';
 import { visibilityPillHtml } from '../components/trip-card.js';
+
+function routeSubtitle(trip, dateRange) {
+  return trip.description || dateRange;
+}
 
 export function renderTripDetailScreen({
   currentTrip,
@@ -26,20 +31,16 @@ export function renderTripDetailScreen({
 
   return `
     <div class="rf-detail-shell">
-      <div class="rf-detail-back-row">
-        <button class="btn btn-secondary btn-sm rf-back-btn" id="backToTripsBtn">← Trips</button>
-      </div>
-
-      <section class="card rf-card rf-map-card rf-trip-detail-hero">
-        <div class="rf-trip-detail-plate">
-          <div class="rf-trip-detail-main">
-            <div class="rf-detail-kicker">Field route · ${esc(meta.label)}</div>
-            <h1 class="trip-detail-title rf-detail-title">${esc(trip.title)}</h1>
-            <div class="trip-detail-dates rf-detail-dates">${esc(dateRange)}</div>
-            ${trip.description ? `<div class="trip-detail-desc rf-detail-desc">${esc(trip.description)}</div>` : ''}
+      <section class="card rf-card rf-hero rf-trip-detail-hero">
+        <div class="rf-hero__top">
+          <div>
+            <button class="btn btn-secondary btn-sm rf-back-btn" id="backToTripsBtn">← Trips</button>
+            <div class="rf-kicker" style="margin-top:14px;">No. ${esc(trip.status || 'route')} · ${esc(dateRange)}</div>
+            <h1 class="rf-detail-title trip-detail-title">${esc(trip.title)}</h1>
+            <div class="rf-hero__sub">${esc(routeSubtitle(trip, dateRange))}</div>
           </div>
           <div class="rf-trip-detail-stamps">
-            <span class="status-pill ${meta.cls} rf-pill rf-status-stamp">${esc(meta.label)}</span>
+            <span class="status-pill rf-pill ${meta.cls}">${esc(meta.label)}</span>
             ${visibilityPillHtml(trip)}
           </div>
         </div>
@@ -55,30 +56,25 @@ export function renderTripDetailScreen({
         ${auditLineHtml(trip)}
         ${tripStatsStripHtml(trip)}
 
+        <div class="rf-tabs rf-detail-tabs">
+          <button class="rf-tabBtn rf-detail-tab is-active" type="button">Stages</button>
+          <button class="rf-tabBtn rf-detail-tab" type="button" id="summaryTripBtn">Summary</button>
+          <a class="rf-tabBtn rf-detail-tab" href="#tripCostsPanel">Costs</a>
+        </div>
+
         <div class="trip-detail-actions rf-detail-actions">
-          <button class="btn btn-secondary btn-sm" id="summaryTripBtn">Summary</button>
           <button class="btn btn-secondary btn-sm" id="editTripBtn"${writeDisabledAttr()}>Edit</button>
           ${canDeleteTrip(trip) ? `<button class="btn btn-danger btn-sm" id="deleteTripBtn"${writeDisabledAttr()}>Delete</button>` : ''}
         </div>
       </section>
 
-      <section class="card rf-card rf-ledger-card rf-stages-panel">
-        <div class="rf-section-head">
-          <div>
-            <div class="rf-section-kicker">Route ledger</div>
-            <div class="card-title rf-section-title">Stages</div>
-          </div>
-        </div>
+      <section class="card rf-card rf-stages-panel">
+        <div class="rf-section-head"><div><div class="rf-section-kicker">Route ledger</div><div class="card-title rf-section-title">Stages</div></div></div>
         ${renderStagesSection(trip)}
       </section>
 
-      <section class="card rf-card rf-ledger-card rf-expenses-panel">
-        <div class="rf-section-head">
-          <div>
-            <div class="rf-section-kicker">Road ledger</div>
-            <div class="card-title rf-section-title">Expenses</div>
-          </div>
-        </div>
+      <section class="card rf-card rf-expenses-panel" id="tripCostsPanel">
+        <div class="rf-section-head"><div><div class="rf-section-kicker">Road ledger</div><div class="card-title rf-section-title">Costs</div></div></div>
         ${renderExpensesSection(trip)}
       </section>
     </div>

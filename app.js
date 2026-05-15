@@ -1,6 +1,6 @@
 // ============================================================
 // routefolk — app.js
-// Phase 3.34: final stability closure.
+// Claude Design UI reset controller.
 // ============================================================
 
 import { getCurrentUser, onAuthChange } from './lib/auth.js';
@@ -24,7 +24,7 @@ import { createSessionController } from './state/session-controller.js';
 import { createWriteHandlers } from './handlers/write-handlers.js';
 import { accessErrorHtml, schemaErrorHtml } from './components/access-schema-cards.js';
 import { tripNotFoundHtml } from './components/trip-not-found.js';
-import { renderTrips } from './screens/trips-screen.js';
+import { renderTrips, renderTripsPane } from './screens/trips-screen.js';
 import { renderAccount } from './screens/account-screen.js';
 import { renderArchive, bindArchiveMapEvents } from './screens/archive-screen.js';
 import { renderTripSummary } from './screens/summary-screen.js';
@@ -38,27 +38,15 @@ import {
 } from './screens/trip-detail-expenses.js';
 
 const EXPECTED_SCHEMA_VERSION = '013';
-
+const PALETTE_KEY = 'routefolk.palette';
+const PALETTES = ['forest', 'midnight', 'oxblood', 'alpine'];
 
 const {
-  loadTrips,
-  loadProfiles,
-  loadStagesForTrip,
-  loadEntriesForStage,
-  loadExpensesForTrip,
-  loadGpxForTrip,
-  ensureArchiveGpxGeometries,
-  ensureArchiveData,
-  openTrip,
+  loadTrips, loadProfiles, loadStagesForTrip, loadEntriesForStage, loadExpensesForTrip, loadGpxForTrip,
+  ensureArchiveGpxGeometries, ensureArchiveData, openTrip,
 } = createDataLoaders({ renderAll });
 
-const {
-  handleSignIn,
-  handleSignOut,
-  loadSignedInData,
-  ensureAppAccess,
-  ensureSchemaCompatible,
-} = createSessionController({
+const { handleSignIn, handleSignOut, loadSignedInData } = createSessionController({
   expectedSchemaVersion: EXPECTED_SCHEMA_VERSION,
   renderAll,
   loadProfiles,
@@ -66,90 +54,36 @@ const {
 });
 
 const {
-  handleCreateTrip,
-  handleUpdateTrip,
-  handleDeleteTrip,
-  handleCreateEntry,
-  handleUpdateEntry,
-  handleDeleteEntry,
-  handleUploadStageGpx,
-  handleDeleteGpx,
-  handleCreateExpense,
-  handleUpdateExpense,
-  handleDeleteExpense,
+  handleCreateTrip, handleUpdateTrip, handleDeleteTrip,
+  handleCreateEntry, handleUpdateEntry, handleDeleteEntry,
+  handleUploadStageGpx, handleDeleteGpx,
+  handleCreateExpense, handleUpdateExpense, handleDeleteExpense,
 } = createWriteHandlers({
-  loadTrips,
-  openTrip,
-  renderAll,
-  loadEntriesForStage,
-  loadGpxForTrip,
-  loadExpensesForTrip,
+  loadTrips, openTrip, renderAll, loadEntriesForStage, loadGpxForTrip, loadExpensesForTrip,
 });
 
 const {
-  showNewTripModal,
-  showEditTripModal,
-  showDeleteTripConfirm,
-  showNewStageModal,
-  showEditStageModal,
-  showDeleteStageConfirm,
-  showNewEntryModal,
-  showEditEntryModal,
-  showDeleteEntryConfirm,
-  showNewExpenseModal,
-  showEditExpenseModal,
-  showDeleteExpenseConfirm,
-  showGpxUploadModal,
-  showDeleteGpxConfirm,
+  showNewTripModal, showEditTripModal, showDeleteTripConfirm,
+  showNewStageModal, showEditStageModal, showDeleteStageConfirm,
+  showNewEntryModal, showEditEntryModal, showDeleteEntryConfirm,
+  showNewExpenseModal, showEditExpenseModal, showDeleteExpenseConfirm,
+  showGpxUploadModal, showDeleteGpxConfirm,
 } = createActionModals({
-  handleCreateTrip,
-  handleUpdateTrip,
-  handleDeleteTrip,
-  handleCreateStage,
-  handleUpdateStage,
-  handleDeleteStage,
-  handleCreateEntry,
-  handleUpdateEntry,
-  handleDeleteEntry,
-  handleCreateExpense,
-  handleUpdateExpense,
-  handleDeleteExpense,
-  handleUploadStageGpx,
-  handleDeleteGpx,
+  handleCreateTrip, handleUpdateTrip, handleDeleteTrip,
+  handleCreateStage, handleUpdateStage, handleDeleteStage,
+  handleCreateEntry, handleUpdateEntry, handleDeleteEntry,
+  handleCreateExpense, handleUpdateExpense, handleDeleteExpense,
+  handleUploadStageGpx, handleDeleteGpx,
 });
 
 const { bindContentEvents } = createContentEvents({
-  handleSignIn,
-  handleSignOut,
-  loadTrips,
-  loadSignedInData,
-  loadStagesForTrip,
-  loadExpensesForTrip,
-  loadEntriesForStage,
-  loadGpxForTrip,
-  ensureArchiveData,
-  ensureArchiveGpxGeometries,
-  openTrip,
-  renderAll,
-  ensureOnline,
-  handleMoveStage,
-  showNewTripModal,
-  showEditTripModal,
-  showDeleteTripConfirm,
-  showNewStageModal,
-  showEditStageModal,
-  showDeleteStageConfirm,
-  showNewEntryModal,
-  showEditEntryModal,
-  showDeleteEntryConfirm,
-  showNewExpenseModal,
-  showEditExpenseModal,
-  showDeleteExpenseConfirm,
-  showGpxUploadModal,
-  showDeleteGpxConfirm,
+  handleSignIn, handleSignOut, loadTrips, loadSignedInData, loadStagesForTrip, loadExpensesForTrip,
+  loadEntriesForStage, loadGpxForTrip, ensureArchiveData, ensureArchiveGpxGeometries, openTrip, renderAll,
+  ensureOnline, handleMoveStage, showNewTripModal, showEditTripModal, showDeleteTripConfirm, showNewStageModal,
+  showEditStageModal, showDeleteStageConfirm, showNewEntryModal, showEditEntryModal, showDeleteEntryConfirm,
+  showNewExpenseModal, showEditExpenseModal, showDeleteExpenseConfirm, showGpxUploadModal, showDeleteGpxConfirm,
 });
 
-// ---------- Navigation ----------
 function goTo(tab) {
   STATE.tab = tab;
   STATE.view = 'list';
@@ -158,19 +92,10 @@ function goTo(tab) {
   if (tab === 'archive') ensureArchiveData();
 }
 
-// ---------- Data loaders ----------
-// ---------- Trip detail ----------
-// ---------- Forms ----------
-// ---------- Expenses ----------
-// ---------- Handlers ----------
 async function handleCreateStage(tripId) {
   if (!ensureOnline()) return;
   const trip = STATE.trips.find((t) => t.id === tripId) || currentTrip();
-  if (!trip?.id) {
-    toast('Trip is still loading. Try again in a moment.');
-    return;
-  }
-
+  if (!trip?.id) return toast('Trip is still loading. Try again in a moment.');
   try {
     const fields = readStageForm();
     validateStageFormAgainstTrip(fields, trip || {});
@@ -188,11 +113,7 @@ async function handleUpdateStage(stageId) {
   if (!ensureOnline()) return;
   const stage = findStageById(stageId);
   const trip = tripForStageAction(stage);
-  if (!stage?.id) {
-    toast('Stage is still loading. Try again in a moment.');
-    return;
-  }
-
+  if (!stage?.id) return toast('Stage is still loading. Try again in a moment.');
   try {
     const fields = readStageForm();
     validateStageFormAgainstTrip(fields, trip || {});
@@ -210,7 +131,6 @@ async function handleDeleteStage(stageId) {
   if (!ensureOnline()) return;
   const stage = findStageById(stageId);
   const trip = tripForStageAction(stage);
-
   try {
     await deleteStage(stageId);
     closeModal();
@@ -234,7 +154,6 @@ async function handleMoveStage(stageId, direction) {
   const index = stages.findIndex((s) => s.id === stageId);
   const targetIndex = direction === 'up' ? index - 1 : index + 1;
   if (index < 0 || targetIndex < 0 || targetIndex >= stages.length) return;
-
   try {
     await swapStageOrder(stages[index], stages[targetIndex]);
     await loadStagesForTrip(trip.id);
@@ -244,14 +163,30 @@ async function handleMoveStage(stageId, direction) {
   }
 }
 
-// ---------- Rendering / event binding ----------
 function renderAll() {
-  renderHeader({
-    onSignIn: handleSignIn,
-    onAccountClick: () => goTo('account'),
-  });
+  renderHeader({ onSignIn: handleSignIn, onAccountClick: () => goTo('account') });
   renderNav();
+  renderTripsPaneForDesktop();
   renderTab();
+}
+
+function renderTripsPaneForDesktop() {
+  const app = $('app');
+  const pane = $('trips-pane');
+  if (!app || !pane) return;
+  const shouldShow = Boolean(STATE.user && STATE.tab === 'trips' && (STATE.view === 'detail' || STATE.view === 'summary'));
+  app.classList.toggle('show-list-pane', shouldShow);
+  pane.setAttribute('aria-hidden', shouldShow ? 'false' : 'true');
+  if (!shouldShow) {
+    pane.innerHTML = '';
+    return;
+  }
+  pane.innerHTML = renderTripsPane();
+  try {
+    bindContentEvents(pane);
+  } catch (err) {
+    console.error('Trips pane event binding failed:', err);
+  }
 }
 
 function renderTab() {
@@ -270,24 +205,15 @@ function renderTab() {
     content.innerHTML = offlineBannerHtml() + renderAccount();
   } else if (STATE.view === 'detail') {
     content.innerHTML = offlineBannerHtml() + renderTripDetailScreen({
-      currentTrip,
-      tripNotFoundHtml,
-      auditLineHtml,
-      tripStatsStripHtml,
+      currentTrip, tripNotFoundHtml, auditLineHtml, tripStatsStripHtml,
       renderStagesSection: renderStagesSectionView,
       renderExpensesSection: (trip) => renderExpensesSectionView(trip, { writeDisabledAttr }),
-      canDeleteTrip,
-      writeDisabledAttr,
+      canDeleteTrip, writeDisabledAttr,
     });
   } else if (STATE.view === 'summary') {
     content.innerHTML = offlineBannerHtml() + renderTripSummary({
-      currentTrip,
-      tripNotFoundHtml,
-      expensesForTrip: expensesForTripView,
-      tripStatsStripHtml,
-      expenseTotalsHtml: expenseTotalsHtmlView,
-      expenseTotals: expenseTotalsView,
-      stageRouteLabel,
+      currentTrip, tripNotFoundHtml, expensesForTrip: expensesForTripView, tripStatsStripHtml,
+      expenseTotalsHtml: expenseTotalsHtmlView, expenseTotals: expenseTotalsView, stageRouteLabel,
     });
   } else if (STATE.tab === 'archive') {
     content.innerHTML = offlineBannerHtml() + renderArchive();
@@ -306,27 +232,17 @@ function renderTab() {
   if (STATE.tab === 'archive' && STATE.archiveViewMode === 'map') ensureArchiveGpxGeometries();
 }
 
-
 function showNewStageModalFallback(trip) {
-  if (!trip?.id) {
-    toast('Trip is still loading. Try again in a moment.');
-    return;
-  }
-
+  if (!trip?.id) return toast('Trip is still loading. Try again in a moment.');
   showModal('Add stage', stageFormHtml({}, trip), [
     { label: 'Add stage', cls: 'btn-primary', fn: () => handleCreateStage(trip.id) },
     { label: 'Cancel', cls: 'btn-secondary', fn: closeModal },
   ]);
-
   setTimeout(() => $('sfStartLoc')?.focus(), 50);
 }
 
 function showEditStageModalFallback(stage, trip = {}) {
-  if (!stage?.id) {
-    toast('Stage is still loading. Try again in a moment.');
-    return;
-  }
-
+  if (!stage?.id) return toast('Stage is still loading. Try again in a moment.');
   showModal('Edit stage', stageFormHtml(stage, trip || {}), [
     { label: 'Save', cls: 'btn-primary', fn: () => handleUpdateStage(stage.id) },
     { label: 'Cancel', cls: 'btn-secondary', fn: closeModal },
@@ -334,25 +250,15 @@ function showEditStageModalFallback(stage, trip = {}) {
 }
 
 function showDeleteStageConfirmFallback(stage) {
-  if (!stage?.id) {
-    toast('Stage is still loading. Try again in a moment.');
-    return;
-  }
-
-  showModal('Delete stage',
-    `<div style="font-size:14px;line-height:1.5;color:#c5d0e0;">
-      Delete <strong>${esc(stageRouteLabel(stage))}</strong>? This also deletes its journal entries.
-    </div>`,
-    [
-      { label: 'Delete', cls: 'btn-danger', fn: () => handleDeleteStage(stage.id) },
-      { label: 'Cancel', cls: 'btn-secondary', fn: closeModal },
-    ]);
+  if (!stage?.id) return toast('Stage is still loading. Try again in a moment.');
+  showModal('Delete stage', `<div style="font-size:14px;line-height:1.5;">Delete <strong>${esc(stageRouteLabel(stage))}</strong>? This also deletes its journal entries.</div>`, [
+    { label: 'Delete', cls: 'btn-danger', fn: () => handleDeleteStage(stage.id) },
+    { label: 'Cancel', cls: 'btn-secondary', fn: closeModal },
+  ]);
 }
 
 function tripForStageAction(stage = null) {
-  if (stage?.trip_id) {
-    return STATE.trips.find((trip) => trip.id === stage.trip_id) || currentTrip();
-  }
+  if (stage?.trip_id) return STATE.trips.find((trip) => trip.id === stage.trip_id) || currentTrip();
   return currentTrip() || STATE.trips.find((trip) => trip.id === STATE.viewTripId) || null;
 }
 
@@ -360,87 +266,74 @@ function bindStageActionFallbacks(content) {
   content.addEventListener('click', (event) => {
     const target = event.target instanceof Element ? event.target : null;
     if (!target) return;
-
     const addStageBtn = target.closest('#addStageBtn');
     if (addStageBtn && content.contains(addStageBtn)) {
       event.preventDefault();
       event.stopPropagation();
       event.stopImmediatePropagation();
-
       if (!ensureOnline()) return;
       const trip = tripForStageAction();
-      if (!trip) {
-        toast('Trip is still loading. Try again in a moment.');
-        return;
-      }
+      if (!trip) return toast('Trip is still loading. Try again in a moment.');
       showNewStageModalFallback(trip);
       return;
     }
-
     const stageActionBtn = target.closest('[data-stage-action]');
     if (!stageActionBtn || !content.contains(stageActionBtn)) return;
-
     const action = stageActionBtn.dataset.stageAction;
     const stageId = stageActionBtn.dataset.id;
     if (!stageId || !action) return;
-
     event.preventDefault();
     event.stopPropagation();
     event.stopImmediatePropagation();
-
     if (!ensureOnline()) return;
-
-    if (action === 'up' || action === 'down') {
-      handleMoveStage(stageId, action);
-      return;
-    }
-
+    if (action === 'up' || action === 'down') return handleMoveStage(stageId, action);
     const stage = findStageById(stageId);
-    if (!stage) {
-      toast('Stage is still loading. Try again in a moment.');
-      return;
-    }
-
+    if (!stage) return toast('Stage is still loading. Try again in a moment.');
     const trip = tripForStageAction(stage);
-
-    if (action === 'edit') {
-      showEditStageModalFallback(stage, trip || {});
-      return;
-    }
-
-    if (action === 'delete') {
-      showDeleteStageConfirmFallback(stage);
-    }
+    if (action === 'edit') return showEditStageModalFallback(stage, trip || {});
+    if (action === 'delete') showDeleteStageConfirmFallback(stage);
   }, true);
+}
+
+function setPalette(palette) {
+  const next = PALETTES.includes(palette) ? palette : 'midnight';
+  document.documentElement.dataset.palette = next;
+  try { localStorage.setItem(PALETTE_KEY, next); } catch {}
+  document.querySelectorAll('[data-palette]').forEach((btn) => btn.classList.toggle('is-active', btn.dataset.palette === next));
+}
+
+function initPaletteSwitcher() {
+  let stored = 'midnight';
+  try { stored = localStorage.getItem(PALETTE_KEY) || 'midnight'; } catch {}
+  setPalette(stored);
+  const fab = $('rf-paletteFab');
+  const sheet = $('rf-paletteSheet');
+  fab?.addEventListener('click', () => { if (sheet) sheet.hidden = !sheet.hidden; });
+  sheet?.addEventListener('click', (event) => {
+    const target = event.target instanceof Element ? event.target : null;
+    const btn = target?.closest('[data-palette]');
+    if (!btn || !sheet.contains(btn)) return;
+    setPalette(btn.dataset.palette);
+    sheet.hidden = true;
+  });
+  document.addEventListener('keydown', (event) => { if (event.key === 'Escape' && sheet) sheet.hidden = true; });
 }
 
 async function init() {
   STATE.user = await getCurrentUser();
+  initPaletteSwitcher();
   bindNav((tab) => goTo(tab));
-  window.addEventListener('online', () => {
-    STATE.isOnline = true;
-    renderAll();
-    toast('Back online.');
-  });
-  window.addEventListener('offline', () => {
-    STATE.isOnline = false;
-    renderAll();
-    toast('You are offline. Changes are disabled.');
-  });
+  window.addEventListener('online', () => { STATE.isOnline = true; renderAll(); toast('Back online.'); });
+  window.addEventListener('offline', () => { STATE.isOnline = false; renderAll(); toast('You are offline. Changes are disabled.'); });
   renderAll();
-
   if (STATE.user) await loadSignedInData();
-
   onAuthChange(async (user) => {
     resetSessionState(user);
     renderAll();
     if (STATE.user) await loadSignedInData();
   });
-
   if ('serviceWorker' in navigator) {
-    navigator.serviceWorker.register('./sw.js').catch((err) => {
-      console.warn('Service worker registration failed:', err);
-    });
+    navigator.serviceWorker.register('./sw.js').catch((err) => console.warn('Service worker registration failed:', err));
   }
 }
 

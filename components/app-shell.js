@@ -1,12 +1,16 @@
 // ============================================================
 // routefolk — app-shell.js
-// Header, navigation, and offline banner rendering.
-// Phase 2: Ink & Rust app shell treatment.
+// Shell/nav helpers for Claude Design UI reset.
 // ============================================================
 
 import { STATE } from '../state/app-state.js';
-import { $, esc } from '../utils/dom.js';
-import { userInitials, userDisplayName, userAvatarUrl } from '../utils/user.js';
+import { $ } from '../utils/dom.js';
+
+const NAV_ITEMS = [
+  { key: 'trips', label: 'Trips' },
+  { key: 'archive', label: 'Archive' },
+  { key: 'account', label: 'You' },
+];
 
 export function offlineBannerHtml() {
   if (STATE.isOnline !== false) return '';
@@ -18,67 +22,31 @@ export function offlineBannerHtml() {
   `;
 }
 
-export function renderHeader({ onSignIn, onAccountClick } = {}) {
-  const right = $('hdrRight');
-  const sub = $('hdrSub');
-  const title = $('hdrTitle');
-  const kicker = $('hdrKicker');
-
-  if (kicker) kicker.textContent = 'routefolk';
-  if (title) title.textContent = headerTitle();
-  if (sub) sub.textContent = headerSubtitle();
-  if (!right) return;
-
-  if (!STATE.user) {
-    right.innerHTML = `
-      <button class="btn btn-secondary btn-sm rf-shell-signin" id="signInBtn">
-        Sign in
-      </button>
-    `;
-    $('signInBtn')?.addEventListener('click', () => onSignIn?.());
-    return;
-  }
-
-  const avatar = userAvatarUrl(STATE.user);
-  const displayName = userDisplayName(STATE.user);
-  right.innerHTML = `
-    <button class="account-avatar rf-shell-avatar" id="hdrAvatarBtn" title="${esc(displayName)}" aria-label="Open account">
-      ${avatar
-        ? `<img src="${esc(avatar)}" alt="" referrerpolicy="no-referrer">`
-        : esc(userInitials(STATE.user))}
-    </button>
-  `;
-  $('hdrAvatarBtn')?.addEventListener('click', () => onAccountClick?.());
+export function renderHeader() {
+  // No-op. The Claude Design shell has no static top header.
 }
 
 export function renderNav() {
-  document.querySelectorAll('.nav-btn').forEach((btn) => {
-    const isActive = btn.dataset.tab === STATE.tab;
-    btn.classList.toggle('active', isActive);
-    btn.setAttribute('aria-current', isActive ? 'page' : 'false');
-  });
+  const nav = $('nav');
+  if (!nav) return;
+  nav.innerHTML = NAV_ITEMS.map((item) => {
+    const active = STATE.tab === item.key;
+    return `
+      <button class="rf-tab ${active ? 'is-active active' : ''}" data-tab="${item.key}" role="tab" aria-selected="${active ? 'true' : 'false'}" aria-current="${active ? 'page' : 'false'}" type="button">
+        <span class="rf-tab__bar" aria-hidden="true"></span>
+        <span class="rf-tab__label">${item.label}</span>
+      </button>
+    `;
+  }).join('');
 }
 
 export function bindNav(onNavigate) {
-  document.querySelectorAll('.nav-btn').forEach((btn) => {
-    btn.addEventListener('click', () => onNavigate?.(btn.dataset.tab));
+  const nav = $('nav');
+  if (!nav) return;
+  nav.addEventListener('click', (event) => {
+    const target = event.target instanceof Element ? event.target : null;
+    const btn = target?.closest('[data-tab]');
+    if (!btn || !nav.contains(btn)) return;
+    onNavigate?.(btn.dataset.tab);
   });
-}
-
-function headerTitle() {
-  if (!STATE.user) return 'Field journal';
-  if (STATE.tab === 'account') return 'Passport';
-  if (STATE.tab === 'archive') return 'Archive';
-  if (STATE.view === 'summary') return 'Trip ledger';
-  if (STATE.view === 'detail') return 'Route notes';
-  return 'Trips';
-}
-
-function headerSubtitle() {
-  if (!STATE.user) return 'Plan · ride · remember';
-  if (STATE.tab === 'account') return 'Profile · access · session';
-  if (STATE.view === 'summary') return 'Review before the road';
-  if (STATE.view === 'detail') return 'Stages · journal · expenses';
-  if (STATE.tab === 'archive') return 'Past routes and traces';
-  return 'Almanac index';
 }
