@@ -1,7 +1,7 @@
 // ============================================================
 // routefolk — screens/archive-map.js
 // Archive geography renderer using real Leaflet + OpenStreetMap tiles.
-// GPX geometry comes from STATE.gpxGeometryByTrack.
+// Includes an SVG fallback so GPX geography never becomes a blank card.
 // ============================================================
 
 import { STATE } from '../state/app-state.js';
@@ -23,7 +23,7 @@ function archiveMapCard() { return document.querySelector('.rf-d2-map-card, .rf-
 
 function replaceMapCardShell(card) {
   if (!card || card.querySelector('.rf-v2-archive-map')) return;
-  card.innerHTML = `<div class="rf-v2-archive-map" id="rf-v2-archive-map" role="img" aria-label="Archive OpenStreetMap GPX routes"></div><div class="rf-v2-archive-map-status" id="rf-v2-archive-map-status">Loading archive geography…</div>`;
+  card.innerHTML = `<div class="rf-v2-archive-map" id="rf-v2-archive-map" role="img" aria-label="Archive map with GPX routes"></div><div class="rf-v2-archive-map-status" id="rf-v2-archive-map-status">Loading archive geography…</div>`;
 }
 
 function status(text) {
@@ -54,7 +54,7 @@ function ensureLeaflet() {
     script.async = true;
     script.dataset.rfLeaflet = 'real';
     script.onload = () => window.L ? resolve(window.L) : reject(new Error('Leaflet loaded but L is unavailable.'));
-    script.onerror = () => reject(new Error('Leaflet failed to load. Check your connection.'));
+    script.onerror = () => reject(new Error('Leaflet failed to load. Showing GPX sketch instead.'));
     document.head.appendChild(script);
   });
   return leafletPromise;
@@ -112,10 +112,51 @@ function destroyMap() {
   lastSignature = '';
 }
 
+function boundsForGeometries(geometries) {
+  const all = geometries.flatMap((item) => item.points);
+  if (!all.length) return null;
+  const lats = all.map((p) => p[0]);
+  const lngs = all.map((p) => p[1]);
+  return { minLat: Math.min(...lats), maxLat: Math.max(...lats), minLng: Math.min(...lngs), maxLng: Math.max(...lngs) };
+}
+function project(point, bounds, width, height, pad) {
+  const latSpan = Math.max(bounds.maxLat - bounds.minLat, 0.0001);
+  const lngSpan = Math.max(bounds.maxLng - bounds.minLng, 0.0001);
+  const x = pad + ((point[1] - bounds.minLng) / lngSpan) * (width - pad * 2);
+  const y = height - pad - ((point[0] - bounds.minLat) / latSpan) * (height - pad * 2);
+  return [x, y];
+}
+function drawSvgFallback(message = '') {
+  const el = document.getElementById('rf-v2-archive-map');
+  if (!el) return;
+  const geometries = geometriesForArchive();
+  if (!geometries.length) {
+    el.innerHTML = `<div class="rf-v2-map-fallback"><div><strong>No archive route yet</strong><span>${STATE.archiveGpxLoading ? 'Loading GPX geometry…' : 'Upload GPX tracks to archived trips'}</span></div></div>`;
+    status(message || (tracksForArchivedTrips().length ? 'Archived GPX tracks exist, but geometry is unavailable.' : 'No GPX tracks found in archived trips yet.'));
+    return;
+  }
+  const width = 900;
+  const height = 360;
+  const pad = 44;
+  const bounds = boundsForGeometries(geometries);
+  const paths = geometries.map(({ track, points }) => {
+    const d = points.map((point, index) => {
+      const [x, y] = project(point, bounds, width, height, pad);
+      return `${index ? 'L' : 'M'} ${x.toFixed(1)} ${y.toFixed(1)}`;
+    }).join(' ');
+    const start = project(points[0], bounds, width, height, pad);
+    const end = project(points[points.length - 1], bounds, width, height, pad);
+    return `<g><path class="rf-v2-map-route" d="${d}"><title>${trackName(track)}</title></path><circle class="rf-v2-map-start" cx="${start[0].toFixed(1)}" cy="${start[1].toFixed(1)}" r="5"/><circle class="rf-v2-map-end" cx="${end[0].toFixed(1)}" cy="${end[1].toFixed(1)}" r="5"/></g>`;
+  }).join('');
+  el.innerHTML = `<svg class="rf-v2-map-svg" viewBox="0 0 ${width} ${height}" aria-label="Archive GPX route sketch"><defs><pattern id="rf-map-grid" width="90" height="90" patternUnits="userSpaceOnUse"><path d="M 90 0 L 0 0 0 90" fill="none" stroke="rgba(38,52,94,.09)" stroke-width="1"/></pattern></defs><rect width="${width}" height="${height}" fill="url(#rf-map-grid)"/>${paths}</svg>`;
+  status(message || `${geometries.length} GPX route${geometries.length === 1 ? '' : 's'} shown as GPX sketch.`);
+}
+
 function buildMap(L) {
   const el = document.getElementById('rf-v2-archive-map');
   if (!el) return null;
   if (map) return map;
+  el.innerHTML = '';
   map = L.map(el, { scrollWheelZoom: false, zoomControl: true }).setView([40.2, -3.7], 5);
   L.tileLayer(TILE_URL, { maxZoom: 18, attribution: TILE_ATTRIBUTION }).addTo(map);
   layerGroup = L.layerGroup().addTo(map);
@@ -175,15 +216,18 @@ async function renderArchiveMap() {
   if (signature === lastSignature && map) return;
   lastSignature = signature;
   if (STATE.archiveDataLoading || STATE.archiveGpxLoading) status('Loading archive geography…');
+  drawSvgFallback('Loading OpenStreetMap tiles…');
   try {
     const L = await ensureLeaflet();
     buildMap(L);
     renderTracks(L);
   } catch (error) {
-    status(error?.message || 'Map failed to load.');
+    destroyMap();
+    drawSvgFallback(error?.message || 'OpenStreetMap failed to load. Showing GPX sketch instead.');
   }
 }
 
 document.addEventListener('routefolk:v2-render', () => requestAnimationFrame(renderArchiveMap));
+document.addEventListener('routefolk:render', () => requestAnimationFrame(renderArchiveMap));
 window.addEventListener('resize', () => requestAnimationFrame(() => { map?.invalidateSize(); renderArchiveMap(); }));
 requestAnimationFrame(renderArchiveMap);
