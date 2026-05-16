@@ -6,7 +6,7 @@
 
 import { STATE } from '../../state/app-state.js';
 import { esc } from '../../utils/dom.js';
-import { fmtDistance } from '../../utils/format.js';
+import { fmtKm } from '../../utils/format.js';
 import { uploadStageGpx, deleteGpxTrack, trackFileName } from '../../lib/gpx.js';
 
 const activeTrip = () => STATE.trips.find((trip) => trip.id === (STATE.viewTripId || STATE.selectedTripId)) || null;
@@ -85,7 +85,7 @@ function gpxHtml(trip, stage) {
 }
 
 function trackRow(track) {
-  const distance = Number.isFinite(Number(track.distance_km)) ? fmtDistance(Number(track.distance_km)) : '—';
+  const distance = Number.isFinite(Number(track.distance_km)) ? fmtKm(Number(track.distance_km)) : '—';
   const points = Number.isFinite(Number(track.point_count)) ? `${Number(track.point_count).toLocaleString()} pts` : '—';
   return `
     <div class="rf-v2-gpx-row">
