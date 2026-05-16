@@ -1,6 +1,7 @@
 // ============================================================
 // routefolk — screens/archive-screen.js
 // Archive screen rendering and cached GPX geography view.
+// Screenshot fidelity pass preserves existing GPX map modes.
 // ============================================================
 
 import { STATE } from '../state/app-state.js';
@@ -9,7 +10,6 @@ import { esc } from '../utils/dom.js';
 import { fmtEuro } from '../utils/format.js';
 import { signedOutState, errorCard } from '../components/feedback.js';
 import { tripCardHtml } from '../components/trip-card.js';
-import { statItemHtml } from '../components/stats.js';
 import { trackFileName } from '../lib/gpx.js';
 
 const HEATMAP_CACHE_LIMIT = 12;
@@ -30,20 +30,15 @@ function completedArchiveTrips() {
 
 function archiveFiltersHtml() {
   const chips = [
-    { key: 'all', label: 'All archive' },
+    { key: 'all', label: 'All' },
     { key: 'completed', label: 'Completed' },
     { key: 'cancelled', label: 'Cancelled' },
   ];
   const hasQuery = Boolean(STATE.archiveSearch.trim());
-  const label = hasQuery ? `Search: ${STATE.archiveSearch.trim()}` : 'Search';
 
   return `
-    <div class="rf-trip-filters">
+    <div class="rf-trip-filters rf-archive-filters">
       <div class="rf-filter-row">
-        <button class="rf-search-pill ${hasQuery ? 'is-open' : ''}" id="archiveSearchPillBtn" data-search-pill="archive" type="button" aria-expanded="${hasQuery ? 'true' : 'false'}">
-          <span class="rf-search-pill__icon">⌕</span>
-          <span class="rf-search-pill__label">${esc(label)}</span>
-        </button>
         <div class="rf-chips" role="group" aria-label="Archive status filter">
           ${chips.map((chip) => `
             <button class="rf-chip ${STATE.archiveStatusFilter === chip.key ? 'is-active' : ''}" data-archive-status-chip="${esc(chip.key)}" type="button">
@@ -51,13 +46,14 @@ function archiveFiltersHtml() {
             </button>
           `).join('')}
         </div>
+        <button class="rf-search-pill ${hasQuery ? 'is-open' : ''}" id="archiveSearchPillBtn" data-search-pill="archive" type="button" aria-expanded="${hasQuery ? 'true' : 'false'}" aria-label="Search archive">
+          <span class="rf-search-pill__icon" aria-hidden="true">⌕</span>
+          <span class="rf-search-pill__label">Search</span>
+        </button>
       </div>
       <div class="rf-search-drawer" id="archiveSearchDrawer" ${hasQuery ? '' : 'hidden'}>
         <input class="rf-search-input" id="archiveSearchInput" type="search" value="${esc(STATE.archiveSearch)}" placeholder="Search by name">
       </div>
-      <button class="btn btn-secondary btn-sm" id="archiveFiltersToggle" aria-expanded="${STATE.archiveFiltersOpen ? 'true' : 'false'}">
-        ${STATE.archiveFiltersOpen ? 'Hide map controls' : 'Show map controls'}
-      </button>
     </div>
   `;
 }
@@ -66,7 +62,7 @@ function filteredArchiveTrips() {
   const query = STATE.archiveSearch.trim().toLowerCase();
   return archiveTripsBase().filter((trip) => {
     const matchesStatus = STATE.archiveStatusFilter === 'all' || trip.status === STATE.archiveStatusFilter;
-    const matchesSearch = !query || String(trip.title || '').toLowerCase().includes(query);
+    const matchesSearch = !query || String(trip.title || '').toLowerCase().includes(query) || String(trip.description || '').toLowerCase().includes(query);
     return matchesStatus && matchesSearch;
   });
 }
@@ -88,19 +84,13 @@ function archiveMetrics() {
       distance += stages.reduce((sum, stage) => sum + (Number(stage.distance_km) || 0), 0);
       stages.forEach((stage) => {
         const stageEntries = STATE.entriesByStage[stage.id];
-        if (Array.isArray(stageEntries)) {
-          entries += stageEntries.length;
-        } else {
-          completeData = false;
-        }
+        if (Array.isArray(stageEntries)) entries += stageEntries.length;
+        else completeData = false;
       });
     }
 
-    if (Array.isArray(expenses)) {
-      cost += expenses.reduce((sum, expense) => sum + (Number(expense.amount) || 0), 0);
-    } else {
-      completeData = false;
-    }
+    if (Array.isArray(expenses)) cost += expenses.reduce((sum, expense) => sum + (Number(expense.amount) || 0), 0);
+    else completeData = false;
   });
 
   return { completedCount: completed.length, distance, cost, entries, completeData };
@@ -110,83 +100,57 @@ function archiveMetricsHtml() {
   const metrics = archiveMetrics();
   const loading = STATE.archiveDataLoading || !metrics.completeData;
   return `
-    <div class="archive-stats" aria-label="Archive metrics">
-      ${statItemHtml('Completed', metrics.completedCount)}
-      ${statItemHtml('Distance', loading ? '…' : (metrics.distance ? `${Math.round(metrics.distance)} km` : '—'))}
-      ${statItemHtml('Cost', loading ? '…' : (metrics.cost ? fmtEuro(metrics.cost, { compact: true }) : '—'))}
-      ${statItemHtml('Entries', loading ? '…' : metrics.entries)}
-    </div>
-    ${STATE.archiveDataLoading ? `<div class="form-help" style="margin-top:8px;">Loading archive details…</div>` : ''}
-    ${STATE.archiveDataError ? `<div class="stage-warn" style="margin-top:8px;">${esc(STATE.archiveDataError)}</div><button class="btn btn-secondary btn-sm" id="retryArchiveDataBtn" style="margin-top:8px;">Retry archive details</button>` : ''}
+    <section class="archive-stats" aria-label="Archive metrics">
+      <div class="rf-archive-stat"><div class="rf-archive-stat__label">Completed</div><div class="rf-archive-stat__v">${esc(metrics.completedCount)}</div><div class="rf-archive-stat__sub">Trips</div></div>
+      <div class="rf-archive-stat"><div class="rf-archive-stat__label">Distance</div><div class="rf-archive-stat__v">${loading ? '…' : esc(Math.round(metrics.distance).toLocaleString())}</div><div class="rf-archive-stat__sub">Kilometres</div></div>
+      <div class="rf-archive-stat"><div class="rf-archive-stat__label">Spent</div><div class="rf-archive-stat__v">${loading ? '…' : esc(fmtEuro(metrics.cost || 0, { compact: true }))}</div><div class="rf-archive-stat__sub">Lifetime</div></div>
+      <div class="rf-archive-stat"><div class="rf-archive-stat__label">Notes</div><div class="rf-archive-stat__v">${loading ? '…' : esc(metrics.entries)}</div><div class="rf-archive-stat__sub">Journal</div></div>
+    </section>
+    ${STATE.archiveDataLoading ? `<div class="form-help" style="margin:8px var(--rf-page-x) 0;">Loading archive details…</div>` : ''}
+    ${STATE.archiveDataError ? `<div class="stage-warn" style="margin:8px var(--rf-page-x);">${esc(STATE.archiveDataError)}</div><button class="btn btn-secondary btn-sm" id="retryArchiveDataBtn" style="margin:8px var(--rf-page-x);">Retry archive details</button>` : ''}
   `;
 }
 
-
-function archiveTripMapPoint(trip) {
+function archiveTripMetaText(trip) {
   const stages = STATE.stagesByTrip[trip.id];
-  if (!Array.isArray(stages)) return null;
-
-  const points = archiveStageCoordinatePoints(stages);
-  if (!points.length) return null;
-
-  const lat = points.reduce((sum, p) => sum + p.lat, 0) / points.length;
-  const lng = points.reduce((sum, p) => sum + p.lng, 0) / points.length;
-  return { lat, lng, points };
+  const expenses = STATE.expensesByTrip[trip.id];
+  const stagesLoaded = Array.isArray(stages);
+  const expensesLoaded = Array.isArray(expenses);
+  const stageCount = stagesLoaded ? stages.length : null;
+  const distance = stagesLoaded ? stages.reduce((sum, s) => sum + (Number(s.distance_km) || 0), 0) : null;
+  const cost = expensesLoaded ? expenses.reduce((sum, e) => sum + (Number(e.amount) || 0), 0) : null;
+  return [
+    trip.start_date ? String(trip.start_date).slice(0, 4) : null,
+    stagesLoaded && distance ? `${Math.round(distance)} km` : null,
+    stagesLoaded ? `${stageCount} stages` : null,
+    expensesLoaded && cost ? fmtEuro(cost, { compact: true }) : null,
+  ].filter(Boolean).join(' · ');
 }
 
-function archiveStageCoordinatePoints(stages) {
-  const points = [];
-  stages.forEach((stage) => {
-    const pairs = [
-      [stage.start_lat, stage.start_lng],
-      [stage.end_lat, stage.end_lng],
-    ];
-    pairs.forEach(([lat, lng]) => {
-      const la = Number(lat);
-      const ln = Number(lng);
-      if (Number.isFinite(la) && Number.isFinite(ln)) points.push({ lat: la, lng: ln });
-    });
-  });
-  return points;
+function archiveTripMetaHtml(trip) {
+  const meta = archiveTripMetaText(trip);
+  return meta ? `<div class="trip-desc archive-trip-meta">${esc(meta)}</div>` : '';
 }
 
-function archiveRouteSegmentsForTrip(trip) {
-  const stages = STATE.stagesByTrip[trip.id];
-  if (!Array.isArray(stages)) return [];
-
-  return stages.flatMap((stage) => {
-    const startLat = Number(stage.start_lat);
-    const startLng = Number(stage.start_lng);
-    const endLat = Number(stage.end_lat);
-    const endLng = Number(stage.end_lng);
-    if (![startLat, startLng, endLat, endLng].every(Number.isFinite)) return [];
-    return [{
-      trip,
-      stage,
-      start: { lat: startLat, lng: startLng },
-      end: { lat: endLat, lng: endLng },
-    }];
-  });
+function archiveTripCardHtml(trip) {
+  const base = tripCardHtml(trip);
+  return base.replace('</button>', `${archiveTripMetaHtml(trip)}</button>`);
 }
 
-function archiveMapRecords() {
-  return filteredArchiveTrips()
-    .filter((trip) => trip.status === 'completed')
-    .map((trip) => ({
-      trip,
-      point: archiveTripMapPoint(trip),
-      segments: archiveRouteSegmentsForTrip(trip),
-    }))
-    .filter((record) => record.point || record.segments.length);
-}
+function archiveResultsListHtml() {
+  const allArchived = archiveTripsBase();
+  const trips = filteredArchiveTrips();
+  const hasFilters = STATE.archiveSearch.trim() || STATE.archiveStatusFilter !== 'all';
 
-function archiveViewToggleHtml() {
-  return `
-    <div class="archive-view-toggle" role="group" aria-label="Archive view">
-      <button class="archive-view-btn ${STATE.archiveViewMode === 'list' ? 'active' : ''}" data-archive-view="list">List</button>
-      <button class="archive-view-btn ${STATE.archiveViewMode === 'map' ? 'active' : ''}" data-archive-view="map">Map</button>
-    </div>
-  `;
+  if (!allArchived.length) {
+    return `<div class="empty-state"><div class="empty-title">Archive</div><div class="empty-sub">Completed and cancelled trips will appear here.</div></div>`;
+  }
+
+  if (!trips.length) {
+    return `<div class="empty-state"><div class="empty-title">No matching archived trips</div><div class="empty-sub">${hasFilters ? 'Adjust the search or status filter.' : 'No archived trips to show.'}</div></div>`;
+  }
+
+  return `<div class="trip-list archive-trip-list">${trips.map(archiveTripCardHtml).join('')}</div>`;
 }
 
 function archiveMapLayerToggleHtml() {
@@ -213,16 +177,7 @@ function archiveMapHtml() {
   if (!allArchived.length) return archiveResultsListHtml();
 
   if (!completed.length) {
-    return `
-      <div class="archive-map-wrap">
-        <div class="archive-map-empty">
-          <div>
-            <div class="empty-title">No completed trips to map</div>
-            <div class="empty-sub">Cancelled trips stay listed for reference, but they are not plotted on the archive geography view.</div>
-          </div>
-        </div>
-      </div>
-    `;
+    return `<div class="archive-map-wrap"><div class="archive-map-empty"><div><div class="empty-title">No completed trips to map</div><div class="empty-sub">Cancelled trips stay listed for reference, but they are not plotted.</div></div></div></div>`;
   }
 
   const tracks = completed.flatMap((trip) => gpxTracksForTrip(trip.id).map((track) => ({ trip, track })));
@@ -230,64 +185,37 @@ function archiveMapHtml() {
     return `
       <div class="archive-map-wrap">
         <div class="archive-map-heading">
-          <div>
-            <div class="card-title">Archive geography</div>
-            <div class="form-help">GPX-powered overview. Upload GPX files to individual stages to build the map.</div>
-          </div>
+          <div><div class="card-title">The geography</div><div class="form-help">GPX-powered overview. Upload GPX files to stages to build the map.</div></div>
+          <div class="rf-map-mode-label">${esc((STATE.archiveMapLayer || 'heatmap').toUpperCase())}</div>
         </div>
-        <div class="archive-map-empty archive-map-empty-tall">
-          <div>
-            <div class="empty-title">No GPX tracks yet</div>
-            <div class="empty-sub">Upload GPX files inside each stage. The archive map uses only real GPX tracks, so it stays empty until at least one completed trip has usable stage GPX data.</div>
-          </div>
-        </div>
+        <div class="archive-map-empty archive-map-empty-tall"><div><div class="empty-title">No GPX tracks yet</div><div class="empty-sub">Upload GPX files inside each stage.</div></div></div>
       </div>
     `;
   }
 
   const missing = tracks.filter(({ track }) => !STATE.gpxGeometryByTrack[track.id]);
   if (missing.length || STATE.archiveGpxLoading) {
-    return `
-      <div class="archive-map-wrap">
-        <div class="archive-map-heading">
-          <div>
-            <div class="card-title">Archive geography</div>
-            <div class="form-help">Loading GPX route geometry…</div>
-          </div>
-        </div>
-        <div class="archive-map-empty archive-map-empty-tall">
-          <div>
-            <div class="empty-title">Loading GPX tracks…</div>
-            <div class="empty-sub">This can take a moment on mobile if several files are attached.</div>
-          </div>
-        </div>
-      </div>
-    `;
+    return `<div class="archive-map-wrap"><div class="archive-map-heading"><div><div class="card-title">The geography</div><div class="form-help">Loading GPX route geometry…</div></div></div><div class="archive-map-empty archive-map-empty-tall"><div><div class="empty-title">Loading GPX tracks…</div></div></div></div>`;
   }
 
   const records = archiveMapRecordsFromGpx();
   if (!records.length) {
-    return `
-      <div class="archive-map-wrap">
-        <div class="archive-map-empty archive-map-empty-tall">
-          <div>
-            <div class="empty-title">No usable GPX geometry</div>
-            <div class="empty-sub">GPX files exist, but no usable route points could be parsed. Try replacing the problematic GPX file from the stage GPX section.</div>
-          </div>
-        </div>
-      </div>
-    `;
+    return `<div class="archive-map-wrap"><div class="archive-map-empty archive-map-empty-tall"><div><div class="empty-title">No usable GPX geometry</div><div class="empty-sub">GPX files exist, but no usable route points could be parsed.</div></div></div></div>`;
   }
 
   return `
     <div class="archive-map-wrap">
       <div class="archive-map-heading">
         <div>
-          <div class="card-title">Archive geography</div>
-          <div class="form-help">Heatmap-first view from real stage GPX data. Hybrid and Routes modes keep the same data visible in different ways.</div>
+          <div class="card-title">The geography</div>
+          <div class="form-help">Completed trips from real stage GPX data.</div>
         </div>
-        ${archiveMapLayerToggleHtml()}
+        <div class="rf-map-mode-label">${esc((STATE.archiveMapLayer || 'heatmap').toUpperCase())}</div>
       </div>
+      <details class="rf-archive-map-controls" ${STATE.archiveFiltersOpen ? 'open' : ''}>
+        <summary>Map style</summary>
+        ${archiveMapLayerToggleHtml()}
+      </details>
       ${STATE.archiveGpxError ? `<div class="stage-warn" style="margin:8px 0;">${esc(STATE.archiveGpxError)}</div>` : ''}
       ${archiveGeoMapSvg(records)}
     </div>
@@ -302,11 +230,7 @@ function archiveMapRecordsFromGpx() {
       const geometry = STATE.gpxGeometryByTrack[track.id];
       const routePoints = geometry && geometry !== 'loading' && Array.isArray(geometry.points) ? geometry.points : [];
       const heatPoints = geometry && geometry !== 'loading' && Array.isArray(geometry.heatPoints) ? geometry.heatPoints : [];
-      return {
-        track,
-        points: simplifyTrackPoints(routePoints, 420),
-        heatPoints: heatPoints.length >= 2 ? heatPoints : null,
-      };
+      return { track, points: simplifyTrackPoints(routePoints, 420), heatPoints: heatPoints.length >= 2 ? heatPoints : null };
     }).filter((line) => line.points.length >= 2);
     return { trip, polylines, point: archivePointFromPolylines(polylines) };
   }).filter((record) => record.polylines.length);
@@ -339,35 +263,22 @@ function archiveGeoMapSvg(records) {
   const centers = [];
 
   records.forEach(({ trip, point, polylines }) => {
-    const meta = archiveTripMetaText(trip);
     polylines.forEach(({ track, points }) => {
       const d = points.map((point, index) => {
         const p = projectArchivePoint(point, extent);
         return `${index === 0 ? 'M' : 'L'} ${p.x} ${p.y}`;
       }).join(' ');
-      segments.push(`
-        <path class="archive-route-line" d="${esc(d)}" data-map-trip-id="${esc(trip.id)}">
-          <title>${esc(trip.title)} — ${esc(trackFileName(track))}</title>
-        </path>
-      `);
+      segments.push(`<path class="archive-route-line" d="${esc(d)}" data-map-trip-id="${esc(trip.id)}"><title>${esc(trip.title)} — ${esc(trackFileName(track))}</title></path>`);
     });
     if (point) {
       const c = projectArchivePoint(point, extent);
-      centers.push(`
-        <g class="archive-trip-point" data-map-trip-id="${esc(trip.id)}" transform="translate(${c.x} ${c.y})">
-          <circle r="7"></circle>
-          <circle r="3"></circle>
-          <title>${esc(trip.title)}${meta ? ` · ${meta}` : ''}</title>
-        </g>
-      `);
+      centers.push(`<g class="archive-trip-point" data-map-trip-id="${esc(trip.id)}" transform="translate(${c.x} ${c.y})"><circle r="7"></circle><circle r="3"></circle><title>${esc(trip.title)}</title></g>`);
     }
   });
 
   return `
     <svg class="archive-geo-svg" viewBox="0 0 1000 620" role="img" aria-label="Completed trip GPX archive geography overview">
-      <defs>
-        <clipPath id="archiveMapClip"><rect x="42" y="28" width="916" height="540" rx="10"></rect></clipPath>
-      </defs>
+      <defs><clipPath id="archiveMapClip"><rect x="42" y="28" width="916" height="540" rx="10"></rect></clipPath></defs>
       <rect class="archive-map-sea" x="0" y="0" width="1000" height="620" rx="14"></rect>
       <rect class="archive-map-land" x="42" y="28" width="916" height="540" rx="10"></rect>
       <g clip-path="url(#archiveMapClip)">
@@ -392,12 +303,9 @@ function archiveHeatmapSvg(records, extent) {
   }
 
   const grid = Array.from({ length: rows }, () => Array(cols).fill(0));
-
   records.forEach(({ polylines }) => {
     polylines.forEach(({ points, heatPoints }) => {
-      const sampled = Array.isArray(heatPoints) && heatPoints.length >= 2
-        ? heatPoints
-        : resampleTrackForHeatmap(points, 0.25, 2600);
+      const sampled = Array.isArray(heatPoints) && heatPoints.length >= 2 ? heatPoints : resampleTrackForHeatmap(points, 0.25, 2600);
       sampled.forEach((point) => addArchiveHeat(point, extent, grid, cols, rows));
     });
   });
@@ -430,41 +338,28 @@ function archiveHeatmapSvg(records, extent) {
 }
 
 function archiveHeatmapCacheKey(records, extent, cols, rows) {
-  const viewport = [extent.minLat, extent.maxLat, extent.minLng, extent.maxLng]
-    .map((value) => Number(value).toFixed(3))
-    .join(':');
+  const viewport = [extent.minLat, extent.maxLat, extent.minLng, extent.maxLng].map((value) => Number(value).toFixed(3)).join(':');
   const tracks = records.flatMap((record) => (record.polylines || []).map((line) => {
     const track = line.track || {};
-    return [
-      track.id || track.file_path || 'unknown',
-      track.updated_at || track.uploaded_at || track.created_at || '',
-      track.point_count || '',
-      Array.isArray(line.points) ? line.points.length : 0,
-      Array.isArray(line.heatPoints) ? line.heatPoints.length : 0,
-    ].join('@');
+    return [track.id || track.file_path || 'unknown', track.updated_at || track.uploaded_at || track.created_at || '', track.point_count || '', Array.isArray(line.points) ? line.points.length : 0, Array.isArray(line.heatPoints) ? line.heatPoints.length : 0].join('@');
   })).sort().join('|');
   return `${cols}x${rows}:${viewport}:${tracks}`;
 }
 
 function rememberArchiveHeatmap(key, svg) {
   archiveHeatmapCache.set(key, svg);
-  while (archiveHeatmapCache.size > HEATMAP_CACHE_LIMIT) {
-    archiveHeatmapCache.delete(archiveHeatmapCache.keys().next().value);
-  }
+  while (archiveHeatmapCache.size > HEATMAP_CACHE_LIMIT) archiveHeatmapCache.delete(archiveHeatmapCache.keys().next().value);
 }
 
 function resampleTrackForHeatmap(points, spacingKm = 0.25, maxSamples = 2600) {
   if (!Array.isArray(points) || points.length < 2) return points || [];
   const samples = [points[0]];
-  let lastSample = points[0];
   let carried = 0;
-
   for (let i = 1; i < points.length; i += 1) {
     const prev = points[i - 1];
     const current = points[i];
     const segmentKm = haversineKm(prev, current);
     if (!Number.isFinite(segmentKm) || segmentKm <= 0) continue;
-
     let remaining = segmentKm;
     let anchor = prev;
     while (carried + remaining >= spacingKm && samples.length < maxSamples) {
@@ -472,21 +367,17 @@ function resampleTrackForHeatmap(points, spacingKm = 0.25, maxSamples = 2600) {
       const ratio = Math.max(0, Math.min(1, need / remaining));
       const sample = interpolateGeoPoint(anchor, current, ratio);
       samples.push(sample);
-      lastSample = sample;
       anchor = sample;
       remaining = haversineKm(anchor, current);
       carried = 0;
       if (!Number.isFinite(remaining) || remaining <= 0.00001) break;
     }
-
     carried += remaining;
-    lastSample = current;
     if (samples.length >= maxSamples) break;
   }
-
   const finalPoint = points[points.length - 1];
   if (samples[samples.length - 1] !== finalPoint && samples.length < maxSamples) samples.push(finalPoint);
-  return samples.length ? samples : [lastSample].filter(Boolean);
+  return samples;
 }
 
 function haversineKm(a, b) {
@@ -505,10 +396,7 @@ function haversineKm(a, b) {
 }
 
 function interpolateGeoPoint(a, b, t) {
-  return {
-    lat: Number(a.lat) + (Number(b.lat) - Number(a.lat)) * t,
-    lng: Number(a.lng) + (Number(b.lng) - Number(a.lng)) * t,
-  };
+  return { lat: Number(a.lat) + (Number(b.lat) - Number(a.lat)) * t, lng: Number(a.lng) + (Number(b.lng) - Number(a.lng)) * t };
 }
 
 function addArchiveHeat(point, extent, grid, cols, rows) {
@@ -517,20 +405,10 @@ function addArchiveHeat(point, extent, grid, cols, rows) {
   if (lngSpan <= 0 || latSpan <= 0) return;
   const xNorm = (point.lng - extent.minLng) / lngSpan;
   const yNorm = 1 - ((point.lat - extent.minLat) / latSpan);
-  if (!Number.isFinite(xNorm) || !Number.isFinite(yNorm)) return;
-  if (xNorm < 0 || xNorm > 1 || yNorm < 0 || yNorm > 1) return;
-
+  if (!Number.isFinite(xNorm) || !Number.isFinite(yNorm) || xNorm < 0 || xNorm > 1 || yNorm < 0 || yNorm > 1) return;
   const cx = Math.floor(xNorm * (cols - 1));
   const cy = Math.floor(yNorm * (rows - 1));
-  const kernel = [
-    { dx: 0, dy: 0, w: 1.0 },
-    { dx: -1, dy: 0, w: 0.55 }, { dx: 1, dy: 0, w: 0.55 },
-    { dx: 0, dy: -1, w: 0.55 }, { dx: 0, dy: 1, w: 0.55 },
-    { dx: -1, dy: -1, w: 0.3 }, { dx: -1, dy: 1, w: 0.3 },
-    { dx: 1, dy: -1, w: 0.3 }, { dx: 1, dy: 1, w: 0.3 },
-  ];
-
-  kernel.forEach(({ dx, dy, w }) => {
+  [{ dx: 0, dy: 0, w: 1 }, { dx: -1, dy: 0, w: .55 }, { dx: 1, dy: 0, w: .55 }, { dx: 0, dy: -1, w: .55 }, { dx: 0, dy: 1, w: .55 }, { dx: -1, dy: -1, w: .3 }, { dx: -1, dy: 1, w: .3 }, { dx: 1, dy: -1, w: .3 }, { dx: 1, dy: 1, w: .3 }].forEach(({ dx, dy, w }) => {
     const x = cx + dx;
     const y = cy + dy;
     if (x >= 0 && x < cols && y >= 0 && y < rows) grid[y][x] += w;
@@ -549,19 +427,13 @@ function archiveBoundaryLinesSvg(extent) {
   return EUROPE_BOUNDARY_LINES.map((line) => {
     const commands = [];
     let open = false;
-
     line.forEach(([lng, lat]) => {
       const visible = archiveBoundaryPointNearExtent(lng, lat, extent);
-      if (!visible) {
-        open = false;
-        return;
-      }
-
+      if (!visible) { open = false; return; }
       const p = projectArchivePoint({ lat, lng }, extent);
       commands.push(`${open ? 'L' : 'M'} ${p.x} ${p.y}`);
       open = true;
     });
-
     if (commands.length < 2) return '';
     return `<path class="archive-country-line" d="${esc(commands.join(' '))}"></path>`;
   }).join('');
@@ -570,10 +442,7 @@ function archiveBoundaryLinesSvg(extent) {
 function archiveBoundaryPointNearExtent(lng, lat, extent) {
   const latBuffer = Math.max((extent.maxLat - extent.minLat) * 0.22, 1.5);
   const lngBuffer = Math.max((extent.maxLng - extent.minLng) * 0.22, 1.5);
-  return lat >= extent.minLat - latBuffer
-    && lat <= extent.maxLat + latBuffer
-    && lng >= extent.minLng - lngBuffer
-    && lng <= extent.maxLng + lngBuffer;
+  return lat >= extent.minLat - latBuffer && lat <= extent.maxLat + latBuffer && lng >= extent.minLng - lngBuffer && lng <= extent.maxLng + lngBuffer;
 }
 
 function archiveMapExtent(records) {
@@ -582,42 +451,19 @@ function archiveMapExtent(records) {
     if (record.point) coords.push(record.point);
     (record.polylines || []).forEach((line) => coords.push(...line.points));
   });
-
   let minLat = Math.min(...coords.map((p) => p.lat));
   let maxLat = Math.max(...coords.map((p) => p.lat));
   let minLng = Math.min(...coords.map((p) => p.lng));
   let maxLng = Math.max(...coords.map((p) => p.lng));
-
-  if (!Number.isFinite(minLat) || !Number.isFinite(maxLat) || !Number.isFinite(minLng) || !Number.isFinite(maxLng)) {
-    return { minLat: 35, maxLat: 45, minLng: -10, maxLng: 5 };
-  }
-
+  if (!Number.isFinite(minLat) || !Number.isFinite(maxLat) || !Number.isFinite(minLng) || !Number.isFinite(maxLng)) return { minLat: 35, maxLat: 45, minLng: -10, maxLng: 5 };
   const latSpan = Math.max(maxLat - minLat, 1);
   const lngSpan = Math.max(maxLng - minLng, 1);
-  const padLat = Math.max(latSpan * 0.18, 0.5);
-  const padLng = Math.max(lngSpan * 0.18, 0.5);
-
-  minLat = Math.max(-85, minLat - padLat);
-  maxLat = Math.min(85, maxLat + padLat);
-  minLng = Math.max(-180, minLng - padLng);
-  maxLng = Math.min(180, maxLng + padLng);
-
-  // The Archive map is a geography overview, not a tight GPX chart.
-  // Keep a generous minimum viewport so one trip does not become an oversized bar
-  // and coarse country outlines do not collapse into strange diagonal fragments.
-  const minLatSpan = 8;
-  const minLngSpan = 12;
-  if (maxLat - minLat < minLatSpan) {
-    const mid = (minLat + maxLat) / 2;
-    minLat = Math.max(-85, mid - minLatSpan / 2);
-    maxLat = Math.min(85, mid + minLatSpan / 2);
-  }
-  if (maxLng - minLng < minLngSpan) {
-    const mid = (minLng + maxLng) / 2;
-    minLng = Math.max(-180, mid - minLngSpan / 2);
-    maxLng = Math.min(180, mid + minLngSpan / 2);
-  }
-
+  minLat = Math.max(-85, minLat - Math.max(latSpan * .18, .5));
+  maxLat = Math.min(85, maxLat + Math.max(latSpan * .18, .5));
+  minLng = Math.max(-180, minLng - Math.max(lngSpan * .18, .5));
+  maxLng = Math.min(180, maxLng + Math.max(lngSpan * .18, .5));
+  if (maxLat - minLat < 8) { const mid = (minLat + maxLat) / 2; minLat = Math.max(-85, mid - 4); maxLat = Math.min(85, mid + 4); }
+  if (maxLng - minLng < 12) { const mid = (minLng + maxLng) / 2; minLng = Math.max(-180, mid - 6); maxLng = Math.min(180, mid + 6); }
   return { minLat, maxLat, minLng, maxLng };
 }
 
@@ -628,118 +474,14 @@ function projectArchivePoint(point, extent) {
   const yMax = 568;
   const x = xMin + ((point.lng - extent.minLng) / (extent.maxLng - extent.minLng)) * (xMax - xMin);
   const y = yMax - ((point.lat - extent.minLat) / (extent.maxLat - extent.minLat)) * (yMax - yMin);
-  return {
-    x: Number.isFinite(x) ? Math.round(x * 10) / 10 : 500,
-    y: Number.isFinite(y) ? Math.round(y * 10) / 10 : 300,
-  };
-}
-
-function archiveMapTicks(extent) {
-  return {
-    lat: niceTicks(extent.minLat, extent.maxLat, 4),
-    lng: niceTicks(extent.minLng, extent.maxLng, 5),
-  };
-}
-
-function niceTicks(min, max, target) {
-  const span = Math.max(max - min, 1);
-  const rawStep = span / Math.max(target, 1);
-  const pow = 10 ** Math.floor(Math.log10(rawStep));
-  const norm = rawStep / pow;
-  const step = (norm <= 1 ? 1 : norm <= 2 ? 2 : norm <= 5 ? 5 : 10) * pow;
-  const first = Math.ceil(min / step) * step;
-  const ticks = [];
-  for (let v = first; v <= max + step * 0.25; v += step) {
-    if (v > min && v < max) ticks.push(Math.round(v * 100) / 100);
-  }
-  return ticks.slice(0, target + 2);
-}
-
-function formatLat(lat) {
-  const hemi = lat >= 0 ? 'N' : 'S';
-  return `${Math.abs(Math.round(lat * 10) / 10)}°${hemi}`;
-}
-
-function formatLng(lng) {
-  const hemi = lng >= 0 ? 'E' : 'W';
-  return `${Math.abs(Math.round(lng * 10) / 10)}°${hemi}`;
+  return { x: Number.isFinite(x) ? Math.round(x * 10) / 10 : 500, y: Number.isFinite(y) ? Math.round(y * 10) / 10 : 300 };
 }
 
 export function bindArchiveMapEvents(root = document, onOpenTrip = null) {
   root.querySelectorAll('[data-map-trip-id]').forEach((el) => {
-    el.addEventListener('click', () => {
-      if (typeof onOpenTrip === 'function') onOpenTrip(el.dataset.mapTripId);
-    });
+    el.addEventListener('click', () => { if (typeof onOpenTrip === 'function') onOpenTrip(el.dataset.mapTripId); });
   });
 }
-
-function archiveTripMetaText(trip) {
-  const stages = STATE.stagesByTrip[trip.id];
-  const expenses = STATE.expensesByTrip[trip.id];
-  const stagesLoaded = Array.isArray(stages);
-  const expensesLoaded = Array.isArray(expenses);
-  const stageCount = stagesLoaded ? stages.length : null;
-  const distance = stagesLoaded ? stages.reduce((sum, s) => sum + (Number(s.distance_km) || 0), 0) : null;
-  const cost = expensesLoaded ? expenses.reduce((sum, e) => sum + (Number(e.amount) || 0), 0) : null;
-  let entries = 0;
-  let entriesLoaded = stagesLoaded;
-
-  if (stagesLoaded) {
-    stages.forEach((stage) => {
-      const stageEntries = STATE.entriesByStage[stage.id];
-      if (Array.isArray(stageEntries)) entries += stageEntries.length;
-      else entriesLoaded = false;
-    });
-  }
-
-  return [
-    stagesLoaded ? `${stageCount} stage${stageCount === 1 ? '' : 's'}` : 'Stages …',
-    stagesLoaded && distance ? `${Math.round(distance)} km` : (stagesLoaded ? null : 'Distance …'),
-    expensesLoaded && cost ? fmtEuro(cost, { compact: true }) : (expensesLoaded ? null : 'Cost …'),
-    entriesLoaded ? `${entries} entr${entries === 1 ? 'y' : 'ies'}` : 'Entries …',
-  ].filter(Boolean).join(' · ');
-}
-
-function archiveTripMetaHtml(trip) {
-  const meta = archiveTripMetaText(trip);
-  return meta ? `<div class="trip-desc archive-trip-meta">${esc(meta)}</div>` : '';
-}
-
-function archiveTripCardHtml(trip) {
-  const base = tripCardHtml(trip);
-  return base.replace('</button>', `${archiveTripMetaHtml(trip)}</button>`);
-}
-
-function archiveResultsListHtml() {
-  const allArchived = archiveTripsBase();
-  const trips = filteredArchiveTrips();
-  const hasFilters = STATE.archiveSearch.trim() || STATE.archiveStatusFilter !== 'all';
-
-  if (!allArchived.length) {
-    return `
-      <div class="empty-state">
-        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
-          <circle cx="12" cy="12" r="9"/>
-          <path d="M3 12h18M12 3a14 14 0 010 18M12 3a14 14 0 000 18"/>
-        </svg>
-        <div class="empty-title">Archive</div>
-        <div class="empty-sub">Completed and cancelled trips will appear here.</div>
-      </div>
-    `;
-  }
-
-  if (!trips.length) {
-    return `
-      <div class="empty-state">
-        <div class="empty-title">No matching archived trips</div>
-        <div class="empty-sub">${hasFilters ? 'Adjust the search or status filter.' : 'No archived trips to show.'}</div>
-      </div>
-    `;
-  }
-
-  return `<div class="trip-list">${trips.map(archiveTripCardHtml).join('')}</div>`;
-}
-
 
 export function archiveResultsHtml() {
   return STATE.archiveViewMode === 'map' ? archiveMapHtml() : archiveResultsListHtml();
@@ -748,27 +490,30 @@ export function archiveResultsHtml() {
 export function renderArchive() {
   if (!STATE.user) return signedOutState('Sign in to see the archive', 'Completed and cancelled trips will appear here.');
 
-  if (STATE.tripsLoading && !STATE.trips.length) {
-    return `<div class="empty-state"><div class="empty-sub">Loading archive…</div></div>`;
-  }
-
+  if (STATE.tripsLoading && !STATE.trips.length) return `<div class="empty-state"><div class="empty-sub">Loading archive…</div></div>`;
   if (STATE.tripsError) return errorCard(STATE.tripsError, 'retryTripsBtn');
 
-  return `
-    <div class="card">
-      <div class="card-title">Archive</div>
-      <div style="font-size:14px;color:#c5d0e0;line-height:1.5;margin-bottom:12px;">
-        Completed trips count toward archive totals. Cancelled trips stay listed for reference but do not affect totals.
-      </div>
-      ${archiveMetricsHtml()}
-    </div>
+  const archived = archiveTripsBase();
+  const completed = completedArchiveTrips();
+  const cancelled = archived.filter((trip) => trip.status === 'cancelled').length;
 
-    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px;gap:8px;">
-      <div class="section-label" style="margin-bottom:0;">Past trips</div>
-      ${archiveViewToggleHtml()}
-    </div>
-    ${archiveFiltersHtml()}
-    <div id="archiveResults">${archiveResultsHtml()}</div>
+  return `
+    <section class="rf-archive-screen">
+      <div class="rf-mobile-brand" aria-hidden="true"></div>
+      <header class="rf-header rf-archive-header">
+        <div class="rf-header__kicker">The collection</div>
+        <h1 class="rf-page-title">Archive</h1>
+        <p class="rf-page-subtitle">${esc(completed.length)} put to bed · ${esc(cancelled)} called off</p>
+      </header>
+      ${archiveFiltersHtml()}
+      ${archiveMetricsHtml()}
+      <section class="rf-archive-geography">
+        <div class="rf-archive-geo-head">
+          <h2 class="rf-account-section-title">The geography</h2>
+          <button class="rf-map-mode-label" id="archiveFiltersToggle" type="button" aria-expanded="${STATE.archiveFiltersOpen ? 'true' : 'false'}">${esc((STATE.archiveMapLayer || 'heatmap').toUpperCase())}</button>
+        </div>
+        <div id="archiveResults">${archiveResultsHtml()}</div>
+      </section>
+    </section>
   `;
 }
-
