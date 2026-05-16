@@ -1,7 +1,7 @@
 // ============================================================
 // routefolk — screens/trips-screen.js
 // Trips list screen rendering and filtering helpers.
-// Claude Design UI reset.
+// Screenshot fidelity pass: visible status pills + hidden search.
 // ============================================================
 
 import { STATE } from '../state/app-state.js';
@@ -18,12 +18,16 @@ function activeTripsBase() {
   return STATE.trips.filter((trip) => TRIPS_SCREEN_STATUSES.includes(trip.status));
 }
 
+function archiveCount() {
+  return STATE.trips.filter((trip) => trip.status === 'completed' || trip.status === 'cancelled').length;
+}
+
 export function filteredTripsForTripsScreen() {
   const query = STATE.tripSearch.trim().toLowerCase();
   const statusFilter = TRIPS_SCREEN_STATUSES.includes(STATE.tripStatusFilter) ? STATE.tripStatusFilter : 'all';
   return activeTripsBase().filter((trip) => {
     const matchesStatus = statusFilter === 'all' || trip.status === statusFilter;
-    const matchesSearch = !query || String(trip.title || '').toLowerCase().includes(query);
+    const matchesSearch = !query || String(trip.title || '').toLowerCase().includes(query) || String(trip.description || '').toLowerCase().includes(query);
     return matchesStatus && matchesSearch;
   });
 }
@@ -32,13 +36,13 @@ function tripsScreenStatsHtml() {
   const activeTrips = activeTripsBase();
   const planning = activeTrips.filter((trip) => trip.status === 'planning').length;
   const active = activeTrips.filter((trip) => trip.status === 'active').length;
-  const archived = STATE.trips.filter((trip) => trip.status === 'completed' || trip.status === 'cancelled').length;
+  const archived = archiveCount();
 
   return `
     <div class="rf-stats__grid" aria-label="Trip counts">
-      <div class="rf-stat"><div class="rf-stat__v">${esc(activeTrips.length)}</div><div class="rf-stat__l">Active files</div></div>
+      <div class="rf-stat"><div class="rf-stat__v">${esc(activeTrips.length)}</div><div class="rf-stat__l">On road</div></div>
       <div class="rf-stat"><div class="rf-stat__v">${esc(planning)}</div><div class="rf-stat__l">Planning</div></div>
-      <div class="rf-stat"><div class="rf-stat__v">${esc(active)}</div><div class="rf-stat__l">On road</div></div>
+      <div class="rf-stat"><div class="rf-stat__v">${esc(active)}</div><div class="rf-stat__l">Active</div></div>
       <div class="rf-stat"><div class="rf-stat__v">${esc(archived)}</div><div class="rf-stat__l">Archive</div></div>
     </div>
   `;
@@ -46,19 +50,15 @@ function tripsScreenStatsHtml() {
 
 export function tripFiltersHtml() {
   const chips = [
-    { key: 'all', label: 'All active' },
-    ...TRIPS_SCREEN_STATUSES.map((key) => ({ key, label: STATUS_META[key]?.label || key })),
+    { key: 'all', label: 'All' },
+    { key: 'planning', label: 'Planning' },
+    { key: 'active', label: 'Active' },
   ];
   const hasQuery = Boolean(STATE.tripSearch.trim());
-  const label = hasQuery ? `Search: ${STATE.tripSearch.trim()}` : 'Search';
 
   return `
     <div class="rf-trip-filters">
       <div class="rf-filter-row">
-        <button class="rf-search-pill ${hasQuery ? 'is-open' : ''}" id="searchPillBtn" data-search-pill="trips" type="button" aria-expanded="${hasQuery ? 'true' : 'false'}">
-          <span class="rf-search-pill__icon">⌕</span>
-          <span class="rf-search-pill__label">${esc(label)}</span>
-        </button>
         <div class="rf-chips" role="group" aria-label="Trip status filter">
           ${chips.map((chip) => `
             <button class="rf-chip ${STATE.tripStatusFilter === chip.key ? 'is-active' : ''}" data-status-chip="${esc(chip.key)}" type="button">
@@ -66,6 +66,10 @@ export function tripFiltersHtml() {
             </button>
           `).join('')}
         </div>
+        <button class="rf-search-pill ${hasQuery ? 'is-open' : ''}" id="searchPillBtn" data-search-pill="trips" type="button" aria-expanded="${hasQuery ? 'true' : 'false'}" aria-label="Search trips">
+          <span class="rf-search-pill__icon" aria-hidden="true">⌕</span>
+          <span class="rf-search-pill__label">Search</span>
+        </button>
       </div>
       <div class="rf-search-drawer" id="searchDrawer" ${hasQuery ? '' : 'hidden'}>
         <input class="rf-search-input" id="tripSearchInput" type="search" placeholder="Search by name" value="${esc(STATE.tripSearch)}">
@@ -105,9 +109,9 @@ export function renderTripsPane() {
   return `
     <section class="rf-pane">
       <div class="rf-header">
-        <div class="rf-header__kicker">Routefolk</div>
+        <div class="rf-header__kicker">The road map</div>
         <h2 class="rf-title">Trips</h2>
-        <p class="rf-sub">${activeTripsBase().length} on the road map · ${STATE.trips.filter((t) => t.status === 'completed' || t.status === 'cancelled').length} in archive</p>
+        <p class="rf-sub">${activeTripsBase().length} on the road map · ${archiveCount()} in archive</p>
       </div>
       ${tripFiltersHtml()}
       <div id="tripResults" class="rf-trip-results">${tripResultsHtml({ compact: true })}</div>
@@ -126,11 +130,12 @@ export function renderTrips() {
 
   return `
     <section class="rf-trips-layout">
+      <div class="rf-mobile-brand" aria-hidden="true"></div>
       <div class="rf-header">
         <div class="rf-header__kicker">Routefolk</div>
         <h1 class="rf-page-title">Trips</h1>
-        <p class="rf-page-subtitle">Plan active routes, keep road notes, and send completed journeys to the archive.</p>
-        <button class="btn btn-primary btn-sm rf-new-trip-btn" id="newTripBtn"${writeDisabledAttr()}>+ New trip</button>
+        <p class="rf-page-subtitle">${activeTripsBase().length} on the road map · ${archiveCount()} in archive</p>
+        <button class="btn btn-primary btn-sm rf-new-trip-btn" id="newTripBtn"${writeDisabledAttr()}>+ New</button>
       </div>
       ${tripsScreenStatsHtml()}
       ${tripFiltersHtml()}
