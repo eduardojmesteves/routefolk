@@ -26,6 +26,10 @@
 .rf-v2-gpx-upload input{display:none;}
 .rf-v2-gpx-help{font:11px var(--rf-d2-font-ui);color:var(--rf-d2-muted);line-height:1.35;margin-top:10px;}
 .rf-v2-gpx-error{border:1px solid rgba(125,52,88,.35);background:rgba(125,52,88,.08);color:#7d3458;border-radius:4px;padding:8px 10px;margin-bottom:10px;font:700 12px var(--rf-d2-font-ui);}
+.rf-v2-archive-map{width:100%;height:360px;border:1px solid var(--rf-d2-rule-2);background:var(--rf-d2-surface-2);border-radius:4px;overflow:hidden;filter:saturate(.78) contrast(.96);}
+.rf-v2-archive-map-status{font:11px var(--rf-d2-font-mono);letter-spacing:.06em;color:var(--rf-d2-muted);margin-top:10px;text-transform:uppercase;}
+.rf-v2-archive-map .leaflet-control-attribution{font-size:10px;background:rgba(243,240,228,.78);}
+.rf-v2-archive-map .leaflet-control-zoom a{color:var(--rf-d2-ink);background:var(--rf-d2-surface);border-color:var(--rf-d2-rule-2);}
 .rf-d2-btn.is-danger,.rf-m2-btn.is-danger{border-color:rgba(125,52,88,.35);color:#7d3458;background:rgba(125,52,88,.06);}
 .rf-d2-btn.is-danger:hover,.rf-m2-btn.is-danger:hover{background:rgba(125,52,88,.12);}
 @media(max-width:959px){
@@ -35,4 +39,5 @@
   .rf-v2-hero-actions{justify-content:flex-start;}
   .rf-v2-entry-actions,.rf-v2-item-actions{margin-left:0;}
   .rf-v2-gpx-row{grid-template-columns:1fr;}
+  .rf-v2-archive-map{height:300px;}
 }
