@@ -9,8 +9,16 @@
 .rf-v2-wizard-error{border:1px solid rgba(125,52,88,.35);background:rgba(125,52,88,.08);color:#7d3458;border-radius:4px;padding:10px 12px;margin:12px 0;font:700 12px var(--rf-d2-font-ui);}
 .rf-v2-cost-cta{margin-top:18px;text-align:right;}
 .rf-v2-add-expense-btn{min-width:140px;}
+.rf-v2-hero-actions,.rf-v2-stage-actions,.rf-v2-entry-actions{display:flex;gap:8px;align-items:center;flex-wrap:wrap;margin-top:14px;}
+.rf-v2-hero-actions{justify-content:flex-end;}
+.rf-v2-stage-actions{margin-top:18px;}
+.rf-v2-entry-actions{grid-column:1/-1;margin:10px 0 0 38px;}
+.rf-d2-btn.is-danger,.rf-m2-btn.is-danger{border-color:rgba(125,52,88,.35);color:#7d3458;background:rgba(125,52,88,.06);}
+.rf-d2-btn.is-danger:hover,.rf-m2-btn.is-danger:hover{background:rgba(125,52,88,.12);}
 @media(max-width:959px){
   .rf-v2-cost-cta{text-align:left;}
   .rf-v2-add-expense-btn{width:100%;}
   .rf-v2-wizard-panel .rf-d2-form-row-pair{grid-template-columns:1fr;}
+  .rf-v2-hero-actions{justify-content:flex-start;}
+  .rf-v2-entry-actions{margin-left:0;}
 }
