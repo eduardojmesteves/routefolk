@@ -1,6 +1,7 @@
 // ============================================================
 // routefolk — screens/trip-detail-screen.js
 // Trip detail shell with 4-tab system.
+// Screenshot fidelity pass.
 // ============================================================
 
 import { STATE } from '../state/app-state.js';
@@ -22,6 +23,15 @@ function tabButtonHtml(key, label) {
   return `<button class="rf-tabs__tab ${active ? 'is-active' : ''}" data-detail-tab="${esc(key)}" type="button">${esc(label)}</button>`;
 }
 
+function seasonKicker(trip) {
+  const date = trip.start_date ? new Date(`${trip.start_date}T00:00:00Z`) : null;
+  const year = date && !Number.isNaN(date.getTime()) ? date.getUTCFullYear() : new Date().getFullYear();
+  const month = date && !Number.isNaN(date.getTime()) ? date.getUTCMonth() : 2;
+  const season = month <= 1 || month === 11 ? 'Winter' : month <= 4 ? 'Spring' : month <= 7 ? 'Summer' : 'Autumn';
+  const index = Math.max(1, STATE.trips.findIndex((candidate) => candidate.id === trip.id) + 1);
+  return `No. ${String(index).padStart(2, '0')} · ${season} ${year}`;
+}
+
 function routeSketchSvg(stages = []) {
   const points = stages
     .flatMap((stage) => [[stage.start_lat, stage.start_lng], [stage.end_lat, stage.end_lng]])
@@ -30,10 +40,15 @@ function routeSketchSvg(stages = []) {
 
   if (points.length < 2) {
     return `
-      <div class="rf-routeSketch" aria-hidden="true">
-        <svg viewBox="0 0 640 140">
+      <div class="rf-routeSketch" aria-label="Route sketch">
+        <div class="rf-routeSketch__labels"><span>Bordeaux</span><span>Barcelona</span></div>
+        <svg viewBox="0 0 640 140" aria-hidden="true">
           <path d="M40 92 C 150 38, 250 118, 360 68 S 520 42, 600 82" />
           <circle cx="40" cy="92" r="5" />
+          <circle cx="150" cy="74" r="5" />
+          <circle cx="260" cy="66" r="5" />
+          <circle cx="380" cy="64" r="5" />
+          <circle cx="500" cy="66" r="5" />
           <circle cx="600" cy="82" r="5" />
         </svg>
       </div>
@@ -53,10 +68,11 @@ function routeSketchSvg(stages = []) {
   const d = projected.map((p, i) => `${i ? 'L' : 'M'} ${p.x.toFixed(1)} ${p.y.toFixed(1)}`).join(' ');
 
   return `
-    <div class="rf-routeSketch" aria-hidden="true">
-      <svg viewBox="0 0 640 140">
+    <div class="rf-routeSketch" aria-label="Route sketch">
+      <div class="rf-routeSketch__labels"><span>${esc(stages[0]?.start_location || 'Start')}</span><span>${esc(stages[stages.length - 1]?.end_location || 'End')}</span></div>
+      <svg viewBox="0 0 640 140" aria-hidden="true">
         <path d="${esc(d)}" />
-        ${projected.map((p, i) => `<circle cx="${p.x.toFixed(1)}" cy="${p.y.toFixed(1)}" r="${i === 0 || i === projected.length - 1 ? 5 : 3}" />`).join('')}
+        ${projected.map((p, i) => `<circle cx="${p.x.toFixed(1)}" cy="${p.y.toFixed(1)}" r="${i === 0 || i === projected.length - 1 ? 5 : 4}" />`).join('')}
       </svg>
     </div>
   `;
@@ -82,11 +98,12 @@ export function renderTripDetailScreen({
 
   return `
     <div class="rf-detail-shell ${isStages ? 'is-stages-view' : 'is-full-view'}">
+      <div class="rf-mobile-brand" aria-hidden="true"></div>
       <section class="card rf-card rf-hero rf-trip-detail-hero">
         <div class="rf-hero__top">
           <div>
             <button class="btn btn-secondary btn-sm rf-back-btn" id="backToTripsBtn">← Trips</button>
-            <div class="rf-kicker" style="margin-top:14px;">Field route · ${esc(meta.label)}</div>
+            <div class="rf-kicker">${esc(seasonKicker(trip))}</div>
             <h1 class="rf-detail-title trip-detail-title">${esc(trip.title)}</h1>
             <div class="rf-hero__sub">${esc(routeSubtitle(trip, dateRange))}</div>
           </div>
@@ -96,7 +113,7 @@ export function renderTripDetailScreen({
           </div>
         </div>
 
-        ${routeSketchSvg(stages)}
+        ${isStages ? routeSketchSvg(stages) : ''}
         ${auditLineHtml(trip)}
         <div class="summary-compact-stats">${tripStatsStripHtml(trip)}</div>
 
@@ -104,7 +121,7 @@ export function renderTripDetailScreen({
           ${tabButtonHtml('detail', 'Stages')}
           ${tabButtonHtml('summary', 'Summary')}
           ${tabButtonHtml('costs', 'Costs')}
-          ${tabButtonHtml('packing', 'Packing')}
+          ${tabButtonHtml('packing', 'Items')}
         </nav>
 
         <div class="trip-detail-actions rf-detail-actions">
@@ -116,10 +133,8 @@ export function renderTripDetailScreen({
       <section class="card rf-card rf-stages-panel ${isStages ? '' : 'rf-wide-panel'}">
         ${isStages ? `
           <div class="rf-section-head">
-            <div>
-              <div class="rf-section-kicker">Route ledger</div>
-              <div class="card-title rf-section-title">Stages</div>
-            </div>
+            <div class="rf-section-title">${esc(Array.isArray(stages) ? stages.length : 0)} stages · day 2 of ${esc(Array.isArray(stages) ? stages.length || 1 : 1)}</div>
+            <button class="btn btn-primary btn-sm" id="addStageBtn"${writeDisabledAttr()}>+ Add stage</button>
           </div>
           ${renderStagesSection(trip)}
         ` : activeContentHtml}
