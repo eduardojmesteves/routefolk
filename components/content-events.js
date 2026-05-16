@@ -47,6 +47,17 @@ export function createContentEvents(actions) {
     }
   }
 
+  function refreshArchiveResults(content) {
+    const results = content.querySelector('#archiveResults');
+    if (!results) return;
+    results.innerHTML = archiveResultsHtml();
+    bindTripCards(results);
+    if (STATE.archiveViewMode === 'map') {
+      bindArchiveMapEvents(results, openTrip);
+      ensureArchiveGpxGeometries();
+    }
+  }
+
   function toggleStageJournal(stageId) {
     if (STATE.expandedStages.has(stageId)) {
       STATE.expandedStages.delete(stageId);
@@ -91,6 +102,19 @@ export function createContentEvents(actions) {
     else renderAll();
   }
 
+  function bindSearchCollapse(input, clearSearch, renderAfterClear) {
+    input?.addEventListener('keydown', (event) => {
+      if (event.key !== 'Escape') return;
+      clearSearch();
+      renderAfterClear();
+    });
+    input?.addEventListener('blur', () => {
+      if (input.value.trim()) return;
+      const drawer = input.closest('.rf-search-drawer');
+      if (drawer) drawer.hidden = true;
+    });
+  }
+
   function bindContentEvents(content) {
     content.querySelector('#emptySignInBtn')?.addEventListener('click', handleSignIn);
     content.querySelector('#accountSignInBtn')?.addEventListener('click', handleSignIn);
@@ -102,10 +126,13 @@ export function createContentEvents(actions) {
     content.querySelector('#retryExpensesBtn')?.addEventListener('click', () => { if (STATE.viewTripId) loadExpensesForTrip(STATE.viewTripId); });
     content.querySelector('#retryArchiveDataBtn')?.addEventListener('click', ensureArchiveData);
 
-    content.querySelector('#tripSearchInput')?.addEventListener('input', (e) => {
+    const tripSearchInput = content.querySelector('#tripSearchInput');
+    tripSearchInput?.addEventListener('input', (e) => {
       STATE.tripSearch = e.target.value || '';
       refreshTripResults(content);
     });
+    bindSearchCollapse(tripSearchInput, () => { STATE.tripSearch = ''; }, renderAll);
+
     content.querySelectorAll('[data-search-pill]').forEach((btn) => {
       btn.addEventListener('click', () => {
         const drawer = content.querySelector('#searchDrawer');
@@ -121,7 +148,6 @@ export function createContentEvents(actions) {
         if (drawer && !drawer.hidden) setTimeout(() => input?.focus(), 0);
       });
     });
-
 
     content.querySelectorAll('[data-status-chip]').forEach((btn) => {
       btn.addEventListener('click', () => {
@@ -157,18 +183,12 @@ export function createContentEvents(actions) {
       renderAll();
     });
 
-    content.querySelector('#archiveSearchInput')?.addEventListener('input', (e) => {
+    const archiveSearchInput = content.querySelector('#archiveSearchInput');
+    archiveSearchInput?.addEventListener('input', (e) => {
       STATE.archiveSearch = e.target.value || '';
-      const results = content.querySelector('#archiveResults');
-      if (results) {
-        results.innerHTML = archiveResultsHtml();
-        bindTripCards(results);
-        if (STATE.archiveViewMode === 'map') {
-          bindArchiveMapEvents(results, openTrip);
-          ensureArchiveGpxGeometries();
-        }
-      }
+      refreshArchiveResults(content);
     });
+    bindSearchCollapse(archiveSearchInput, () => { STATE.archiveSearch = ''; }, renderAll);
 
     content.querySelector('#archiveSearchPillBtn')?.addEventListener('click', () => {
       const drawer = content.querySelector('#archiveSearchDrawer');
@@ -193,15 +213,7 @@ export function createContentEvents(actions) {
 
     content.querySelector('#archiveStatusFilter')?.addEventListener('change', (e) => {
       STATE.archiveStatusFilter = e.target.value || 'all';
-      const results = content.querySelector('#archiveResults');
-      if (results) {
-        results.innerHTML = archiveResultsHtml();
-        bindTripCards(results);
-        if (STATE.archiveViewMode === 'map') {
-          bindArchiveMapEvents(results, openTrip);
-          ensureArchiveGpxGeometries();
-        }
-      }
+      refreshArchiveResults(content);
     });
 
     content.querySelectorAll('[data-detail-tab]').forEach((btn) => {
@@ -233,10 +245,11 @@ export function createContentEvents(actions) {
       const form = event.currentTarget;
       addPackingItem?.(trip.id, {
         text: form.elements.text?.value || '',
-        category: form.elements.category?.value || 'Other',
+        category_id: form.elements.category_id?.value || null,
         status: form.elements.status?.value || 'planned',
+        notes: form.elements.notes?.value || '',
       });
-      renderAll();
+      form.reset();
     });
 
     content.querySelectorAll('[data-pack-toggle]').forEach((btn) => {
@@ -244,7 +257,6 @@ export function createContentEvents(actions) {
         const trip = tripForCurrentView();
         if (!trip) return;
         togglePackingItem?.(trip.id, btn.dataset.packToggle);
-        renderAll();
       });
     });
 
@@ -253,7 +265,6 @@ export function createContentEvents(actions) {
         const trip = tripForCurrentView();
         if (!trip) return;
         deletePackingItem?.(trip.id, btn.dataset.packDelete);
-        renderAll();
       });
     });
 
