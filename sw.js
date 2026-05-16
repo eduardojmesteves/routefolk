@@ -4,7 +4,7 @@
 // Bump CACHE whenever shell assets change.
 // ============================================================
 
-const CACHE = 'routefolk-shell-v79-v2-map-01';
+const CACHE = 'routefolk-shell-v80-vendor-leaflet-01';
 
 const SHELL_ASSETS = [
   './',
@@ -15,6 +15,8 @@ const SHELL_ASSETS = [
   './styles/v2-integration.css?v=20260516-v2-shell-01',
   './styles/v2-cleanup.css?v=20260516-v2-shell-02',
   './styles/v2-wizards.css?v=20260516-v2-map-01',
+  './vendor/leaflet/leaflet.css?v=1.9.4-routefolk-01',
+  './vendor/leaflet/leaflet.js?v=1.9.4-routefolk-01',
   './app-v2.js?v=20260516-v2-app-01',
   './screens/v2/v2-app.js?v=20260516-v2-shell-01',
   './screens/v2/v2-wizards.js?v=20260516-v2-wizards-02',
