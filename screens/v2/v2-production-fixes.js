@@ -9,7 +9,6 @@ const stages = (tripId) => arr(STATE.stagesByTrip[tripId]);
 const expenses = (tripId) => arr(STATE.expensesByTrip[tripId]);
 const isDesktop = () => window.matchMedia('(min-width:960px)').matches;
 
-function api() { return window.routefolkData || {}; }
 function tripNo(trip) { return `No. ${String(Math.max(0, STATE.trips.findIndex((candidate) => candidate.id === trip?.id)) + 1).padStart(2, '0')}`; }
 function subtitle(trip) { return trip?.description || fmtDateRange(trip?.start_date, trip?.end_date) || 'A road journal'; }
 function season(trip) {
@@ -27,7 +26,6 @@ function stats(trip) {
   const spent = ex.reduce((sum, expense) => sum + (Number(expense.amount) || 0), 0);
   return { stages: st.length, entries, distance, spent };
 }
-function stageSpent(tripId, stageId) { return expenses(tripId).filter((expense) => expense.stage_id === stageId).reduce((sum, expense) => sum + (Number(expense.amount) || 0), 0); }
 
 function signedOutLanding() {
   if (STATE.user) return;
@@ -37,7 +35,7 @@ function signedOutLanding() {
 }
 
 function summaryTable(trip, ns = 'rf-d2') {
-  return `<div class="${ns}-table rf-v2-summary-table"><div class="rf-v2-summary-head"><span>Stage</span><span>Route</span><span>Date</span><span>Distance</span><span>Spent</span><span>Status / notes</span></div>${stages(trip.id).map((stage, index) => `<div class="rf-v2-summary-row"><span>${index + 1}</span><span><strong>${esc(stage.start_location || 'Start')} to ${esc(stage.end_location || 'End')}</strong></span><span>${esc(fmtDate(stage.planned_date) || '—')}</span><span>${Math.round(Number(stage.distance_km) || 0)} km</span><span>${fmtEuro(stageSpent(trip.id, stage.id))}</span><span>${esc(stage.notes || '—')}</span></div>`).join('') || `<div class="${ns}-empty">No stages yet.</div>`}</div>`;
+  return `<div class="${ns}-table rf-v2-summary-table"><div class="rf-v2-summary-head"><span>Stage</span><span>Route</span><span>Date</span><span>Distance</span><span>Status / notes</span></div>${stages(trip.id).map((stage, index) => `<div class="rf-v2-summary-row"><span>${index + 1}</span><span><strong>${esc(stage.start_location || 'Start')} to ${esc(stage.end_location || 'End')}</strong></span><span>${esc(fmtDate(stage.planned_date) || '—')}</span><span>${Math.round(Number(stage.distance_km) || 0)} km</span><span>${esc(stage.notes || '—')}</span></div>`).join('') || `<div class="${ns}-empty">No stages yet.</div>`}</div>`;
 }
 
 function patchSummary() {
