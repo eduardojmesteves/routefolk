@@ -5,6 +5,11 @@
 
 import { getCurrentUser, onAuthChange } from './lib/auth.js';
 import { createStage, updateStage, deleteStage, swapStageOrder } from './lib/stages.js';
+import {
+  createTripItem,
+  deleteTripItem,
+  toggleTripItemPacked,
+} from './lib/items.js';
 import { STATE } from './state/app-state.js';
 import { resetSessionState } from './state/session-reset.js';
 import { currentTrip, findStageById } from './utils/state-selectors.js';
@@ -19,7 +24,7 @@ import { showModal, closeModal } from './components/modal.js';
 import { stageFormHtml, readStageForm, validateStageFormAgainstTrip } from './components/stage-form.js';
 import { createActionModals } from './components/action-modals.js';
 import { createContentEvents } from './components/content-events.js';
-import { addPackingItem, togglePackingItem, deletePackingItem, renderPackingScreen } from './screens/packing-screen.js';
+import { renderPackingScreen } from './screens/packing-screen.js';
 import { createDataLoaders } from './state/data-loaders.js';
 import { createSessionController } from './state/session-controller.js';
 import { createWriteHandlers } from './handlers/write-handlers.js';
@@ -38,12 +43,12 @@ import {
   expenseTotalsHtml as expenseTotalsHtmlView,
 } from './screens/trip-detail-expenses.js';
 
-const EXPECTED_SCHEMA_VERSION = '013';
+const EXPECTED_SCHEMA_VERSION = '014';
 const PALETTE_KEY = 'rf.palette';
 const PALETTES = ['forest', 'midnight', 'oxblood', 'alpine'];
 
 const {
-  loadTrips, loadProfiles, loadStagesForTrip, loadEntriesForStage, loadExpensesForTrip, loadGpxForTrip,
+  loadTrips, loadProfiles, loadStagesForTrip, loadEntriesForStage, loadExpensesForTrip, loadItemsForTrip, loadGpxForTrip,
   ensureArchiveGpxGeometries, ensureArchiveData, openTrip,
 } = createDataLoaders({ renderAll });
 
@@ -77,13 +82,52 @@ const {
   handleUploadStageGpx, handleDeleteGpx,
 });
 
+async function handleAddPackingItem(tripId, fields) {
+  if (!ensureOnline()) return;
+  try {
+    await createTripItem(tripId, fields);
+    await loadItemsForTrip(tripId, { quiet: true });
+    toast('Item added.');
+  } catch (err) {
+    console.error(err);
+    toast(friendlyError('save packing item', err));
+  }
+}
+
+async function handleTogglePackingItem(tripId, itemId) {
+  if (!ensureOnline()) return;
+  const item = (STATE.itemsByTrip[tripId] || []).find((candidate) => candidate.id === itemId);
+  if (!item) return;
+  try {
+    await toggleTripItemPacked(item);
+    await loadItemsForTrip(tripId, { quiet: true });
+  } catch (err) {
+    console.error(err);
+    toast(friendlyError('update packing item', err));
+  }
+}
+
+async function handleDeletePackingItem(tripId, itemId) {
+  if (!ensureOnline()) return;
+  try {
+    await deleteTripItem(itemId);
+    await loadItemsForTrip(tripId, { quiet: true });
+    toast('Item deleted.');
+  } catch (err) {
+    console.error(err);
+    toast(friendlyError('delete packing item', err));
+  }
+}
+
 const { bindContentEvents } = createContentEvents({
   handleSignIn, handleSignOut, loadTrips, loadSignedInData, loadStagesForTrip, loadExpensesForTrip,
   loadEntriesForStage, loadGpxForTrip, ensureArchiveData, ensureArchiveGpxGeometries, openTrip, renderAll,
   ensureOnline, handleMoveStage, showNewTripModal, showEditTripModal, showDeleteTripConfirm, showNewStageModal,
   showEditStageModal, showDeleteStageConfirm, showNewEntryModal, showEditEntryModal, showDeleteEntryConfirm,
   showNewExpenseModal, showEditExpenseModal, showDeleteExpenseConfirm, showGpxUploadModal, showDeleteGpxConfirm,
-  addPackingItem, togglePackingItem, deletePackingItem,
+  addPackingItem: handleAddPackingItem,
+  togglePackingItem: handleTogglePackingItem,
+  deletePackingItem: handleDeletePackingItem,
 });
 
 function goTo(tab) {
@@ -332,15 +376,15 @@ function bindStageActionFallbacks(content) {
 }
 
 function setPalette(palette) {
-  const next = PALETTES.includes(palette) ? palette : 'forest';
+  const next = PALETTES.includes(palette) ? palette : 'midnight';
   document.documentElement.dataset.palette = next;
   try { localStorage.setItem(PALETTE_KEY, next); } catch {}
   document.querySelectorAll('[data-palette]').forEach((btn) => btn.classList.toggle('is-active', btn.dataset.palette === next));
 }
 
 function initPaletteSwitcher() {
-  let stored = 'forest';
-  try { stored = localStorage.getItem(PALETTE_KEY) || localStorage.getItem('routefolk.palette') || 'forest'; } catch {}
+  let stored = 'midnight';
+  try { stored = localStorage.getItem(PALETTE_KEY) || localStorage.getItem('routefolk.palette') || 'midnight'; } catch {}
   setPalette(stored);
   const fab = $('rf-paletteFab');
   const sheet = $('rf-paletteSheet');
