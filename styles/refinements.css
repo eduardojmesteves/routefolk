@@ -3,6 +3,24 @@
    Small focused fixes after manual visual QA.
    ============================================================ */
 
+/* Palette overrides for the redesigned production token set. */
+[data-palette="forest"]{
+  --rf-d2-bg:#ebe5d3;--rf-d2-surface:#f7f2e3;--rf-d2-surface-2:#ede5cf;--rf-d2-ink:#1c1a17;--rf-d2-ink-2:#3d4a40;--rf-d2-muted:#7a7565;--rf-d2-rule:rgba(31,42,35,.10);--rf-d2-rule-2:rgba(31,42,35,.20);--rf-d2-primary:#355d3f;--rf-d2-primary-soft:#cad9c8;--rf-d2-accent:#b3823a;--rf-d2-accent-soft:#e6d3a8;--rf-d2-danger:#a14b3e;
+  --rf-m2-bg:var(--rf-d2-bg);--rf-m2-surface:var(--rf-d2-surface);--rf-m2-ink:var(--rf-d2-ink);--rf-m2-ink-2:var(--rf-d2-ink-2);--rf-m2-muted:var(--rf-d2-muted);--rf-m2-rule:var(--rf-d2-rule);--rf-m2-rule-2:var(--rf-d2-rule-2);--rf-m2-primary:var(--rf-d2-primary);--rf-m2-primary-soft:var(--rf-d2-primary-soft);--rf-m2-accent:var(--rf-d2-accent);--rf-m2-accent-soft:var(--rf-d2-accent-soft);
+}
+[data-palette="midnight"]{
+  --rf-d2-bg:#e7e4d8;--rf-d2-surface:#f3f0e4;--rf-d2-surface-2:#e1ddd0;--rf-d2-ink:#171a26;--rf-d2-ink-2:#3b405a;--rf-d2-muted:#787a8a;--rf-d2-rule:rgba(23,26,38,.10);--rf-d2-rule-2:rgba(23,26,38,.20);--rf-d2-primary:#26345e;--rf-d2-primary-soft:#ccd3e4;--rf-d2-accent:#b85a2e;--rf-d2-accent-soft:#edcdb8;--rf-d2-danger:#7d3458;
+  --rf-m2-bg:var(--rf-d2-bg);--rf-m2-surface:var(--rf-d2-surface);--rf-m2-ink:var(--rf-d2-ink);--rf-m2-ink-2:var(--rf-d2-ink-2);--rf-m2-muted:var(--rf-d2-muted);--rf-m2-rule:var(--rf-d2-rule);--rf-m2-rule-2:var(--rf-d2-rule-2);--rf-m2-primary:var(--rf-d2-primary);--rf-m2-primary-soft:var(--rf-d2-primary-soft);--rf-m2-accent:var(--rf-d2-accent);--rf-m2-accent-soft:var(--rf-d2-accent-soft);
+}
+[data-palette="oxblood"]{
+  --rf-d2-bg:#ece7df;--rf-d2-surface:#f8f4ec;--rf-d2-surface-2:#e4dfd5;--rf-d2-ink:#21201e;--rf-d2-ink-2:#4a4642;--rf-d2-muted:#857f76;--rf-d2-rule:rgba(33,32,30,.10);--rf-d2-rule-2:rgba(33,32,30,.20);--rf-d2-primary:#566970;--rf-d2-primary-soft:#d2d8da;--rf-d2-accent:#8a4554;--rf-d2-accent-soft:#e6c8d0;--rf-d2-danger:#a05442;
+  --rf-m2-bg:var(--rf-d2-bg);--rf-m2-surface:var(--rf-d2-surface);--rf-m2-ink:var(--rf-d2-ink);--rf-m2-ink-2:var(--rf-d2-ink-2);--rf-m2-muted:var(--rf-d2-muted);--rf-m2-rule:var(--rf-d2-rule);--rf-m2-rule-2:var(--rf-d2-rule-2);--rf-m2-primary:var(--rf-d2-primary);--rf-m2-primary-soft:var(--rf-d2-primary-soft);--rf-m2-accent:var(--rf-d2-accent);--rf-m2-accent-soft:var(--rf-d2-accent-soft);
+}
+[data-palette="alpine"]{
+  --rf-d2-bg:#e9e6dd;--rf-d2-surface:#f5f2e9;--rf-d2-surface-2:#dedacf;--rf-d2-ink:#1c1c1a;--rf-d2-ink-2:#403e38;--rf-d2-muted:#7a7670;--rf-d2-rule:rgba(28,28,26,.10);--rf-d2-rule-2:rgba(28,28,26,.20);--rf-d2-primary:#2c3133;--rf-d2-primary-soft:#c9cccd;--rf-d2-accent:#c69842;--rf-d2-accent-soft:#ecd9b0;--rf-d2-danger:#9c5b3b;
+  --rf-m2-bg:var(--rf-d2-bg);--rf-m2-surface:var(--rf-d2-surface);--rf-m2-ink:var(--rf-d2-ink);--rf-m2-ink-2:var(--rf-d2-ink-2);--rf-m2-muted:var(--rf-d2-muted);--rf-m2-rule:var(--rf-d2-rule);--rf-m2-rule-2:var(--rf-d2-rule-2);--rf-m2-primary:var(--rf-d2-primary);--rf-m2-primary-soft:var(--rf-d2-primary-soft);--rf-m2-accent:var(--rf-d2-accent);--rf-m2-accent-soft:var(--rf-d2-accent-soft);
+}
+
 /* Collapsed rail brand: use a clean monogram only. */
 .rf-d2-sidebar.is-collapsed .rf-d2-sidebar-head{
   padding:24px 0 18px;
@@ -121,6 +139,10 @@
   letter-spacing:.08em;
   text-transform:uppercase;
 }
+.rf-v2-map-svg{width:100%;height:100%;min-height:360px;display:block;background:rgba(225,221,208,.72);}
+.rf-v2-map-route{fill:none;stroke:var(--rf-d2-primary);stroke-width:3.5;stroke-linecap:round;stroke-linejoin:round;opacity:.95;}
+.rf-v2-map-start{fill:var(--rf-d2-surface);stroke:var(--rf-d2-primary);stroke-width:3;}
+.rf-v2-map-end{fill:var(--rf-d2-accent-soft);stroke:var(--rf-d2-accent);stroke-width:3;}
 
 /* Account page: cleaner, Google-photo friendly, no duplicate signout. */
 .rf-d2-account-card{
@@ -167,6 +189,10 @@
 .rf-d2-sidebar:not(.is-collapsed) .rf-d2-lifetime{
   margin-bottom:8px;
 }
+.rf-d2-sidebar.is-collapsed .rf-d2-user,
+.rf-d2-sidebar.is-collapsed .rf-d2-lifetime{
+  display:none!important;
+}
 
 @media(max-width:959px){
   .rf-v2-summary-entry{
@@ -174,7 +200,7 @@
     gap:8px;
   }
   .rf-v2-summary-entry span:nth-child(n+3){grid-column:2;}
-  .rf-v2-map-fallback{min-height:300px;}
+  .rf-v2-map-fallback,.rf-v2-map-svg{min-height:300px;}
   .rf-d2-account-card,.rf-m2-account-card{grid-template-columns:1fr;text-align:center;}
   .rf-d2-account-card .rf-d2-btn.is-signout,
   .rf-m2-account-card .rf-m2-btn.is-signout,
