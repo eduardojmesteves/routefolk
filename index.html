@@ -26,12 +26,7 @@
 <body>
   <a class="skip-link" href="#content">Skip to main content</a>
   <div class="rf-app" id="app">
-    <nav class="rf-tabbar" id="nav" role="tablist" aria-label="Primary navigation"></nav>
-    <div class="rf-main" id="rf-main">
-      <aside class="rf-list-pane" id="trips-pane" aria-hidden="true"></aside>
-      <main class="rf-screen" id="content" tabindex="-1" aria-live="polite"></main>
-      <aside class="rf-detail-pane" id="detail-pane" aria-hidden="true"></aside>
-    </div>
+    <main class="rf-screen" id="content" tabindex="-1" aria-live="polite"></main>
   </div>
   <div id="toast" aria-live="polite" aria-atomic="true"></div>
   <button class="rf-paletteFab" id="rf-paletteFab" aria-label="Change palette" type="button">
@@ -69,8 +64,8 @@
       if (!localStorage.getItem('rf.palette')) localStorage.setItem('rf.palette', 'midnight');
     } catch {}
   </script>
-  <script src="app.js?v=20260516-redesign-ink-rust-01" type="module"></script>
-  <script src="screens/v2/v2-actions.js?v=20260516-v2-shell-01" type="module"></script>
   <script src="screens/v2/v2-app.js?v=20260516-v2-shell-01" type="module"></script>
+  <script src="screens/v2/v2-actions.js?v=20260516-v2-shell-01" type="module"></script>
+  <script src="app-v2.js?v=20260516-v2-app-01" type="module"></script>
 </body>
 </html>
