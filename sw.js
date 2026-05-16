@@ -4,7 +4,7 @@
 // Bump CACHE whenever shell assets change.
 // ============================================================
 
-const CACHE = 'routefolk-shell-v81-stage-map-fixes-01';
+const CACHE = 'routefolk-shell-v82-production-fixes-01';
 
 const SHELL_ASSETS = [
   './',
@@ -12,19 +12,17 @@ const SHELL_ASSETS = [
   './style.css?v=20260516-redesign-ink-rust-01',
   './style-fidelity.css?v=20260516-fidelity-01',
   './styles/v2-shell.css?v=20260516-v2-shell-01',
-  './styles/v2-integration.css?v=20260516-v2-fix-stage-map-01',
+  './styles/v2-integration.css?v=20260516-v2-production-fixes-01',
   './styles/v2-cleanup.css?v=20260516-v2-shell-02',
   './styles/v2-wizards.css?v=20260516-v2-map-01',
-  './vendor/leaflet/leaflet.css?v=1.9.4-routefolk-01',
-  './vendor/leaflet/leaflet.js?v=1.9.4-routefolk-01',
   './app-v2.js?v=20260516-v2-app-01',
   './screens/v2/v2-app.js?v=20260516-v2-shell-01',
   './screens/v2/v2-wizards.js?v=20260516-v2-wizards-02',
   './screens/v2/v2-extra-writes.js?v=20260516-v2-writes-01',
   './screens/v2/v2-gpx.js?v=20260516-v2-gpx-01',
-  './screens/v2/v2-archive-map.js?v=20260516-v2-svg-map-01',
+  './screens/v2/v2-archive-map.js?v=20260516-v2-real-map-01',
+  './screens/v2/v2-production-fixes.js?v=20260516-v2-production-fixes-01',
   './screens/v2/v2-actions.js?v=20260516-v2-archive-open-01',
-  './screens/v2/v2-actions.js?v=20260516-v2-shell-01',
   './manifest.json',
   './icons/icon-192.png',
   './icons/icon-512.png',
