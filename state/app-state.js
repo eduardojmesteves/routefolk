@@ -9,8 +9,10 @@ export const STATE = {
   viewTripId: null,
   selectedTripId: null,
   selectedStageId: null,
+  selectedEntryId: null,
   selectedCategoryKey: null,
-  wizard: null, // null | trip | stage | journal | expense | item
+  wizard: null, // null | trip | trip-edit | stage | stage-edit | journal | journal-edit | expense | item
+  editTargetId: null,
   journalType: 'note',
   user: null,
   appAccess: null,
