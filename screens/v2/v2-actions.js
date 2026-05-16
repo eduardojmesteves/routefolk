@@ -38,14 +38,19 @@ function selectedStage() {
   return stages.find((stage) => stage.id === STATE.selectedStageId) || stages[0] || null;
 }
 
-async function openTripWithData(tripId, view = 'detail') {
-  STATE.tab = 'trips';
+async function openTripWithData(tripId, view = 'detail', tab = 'trips') {
+  STATE.tab = tab;
   STATE.viewTripId = tripId;
   STATE.selectedTripId = tripId;
   STATE.view = view;
   STATE.wizard = null;
   renderSoon();
   if (appApi().openTrip) await appApi().openTrip(tripId, view);
+  STATE.tab = tab;
+  STATE.viewTripId = tripId;
+  STATE.selectedTripId = tripId;
+  STATE.view = view;
+  renderSoon();
 }
 
 async function createNewTrip(event) {
@@ -54,7 +59,7 @@ async function createNewTrip(event) {
   if (!title?.trim()) return;
   const trip = await createTrip({ title: title.trim(), description: '', start_date: null, end_date: null, status: 'planning', visibility: 'group' });
   STATE.trips = [trip, ...STATE.trips.filter((item) => item.id !== trip.id)];
-  await openTripWithData(trip.id, 'detail');
+  await openTripWithData(trip.id, 'detail', 'trips');
 }
 
 async function saveStage(event) {
@@ -144,7 +149,13 @@ document.addEventListener('click', async (event) => {
 
   if (action.endsWith('select-trip')) {
     claim(event);
-    await openTripWithData(btn.dataset.tripId, 'detail');
+    await openTripWithData(btn.dataset.tripId, 'detail', 'trips');
+    return;
+  }
+
+  if (action.endsWith('select-archived')) {
+    claim(event);
+    await openTripWithData(btn.dataset.tripId, 'summary', 'archive');
     return;
   }
 
@@ -163,7 +174,7 @@ document.addEventListener('click', async (event) => {
     claim(event);
     const trip = activeTrip();
     const view = viewForTab(btn.dataset.value);
-    if (trip?.id) await openTripWithData(trip.id, view);
+    if (trip?.id) await openTripWithData(trip.id, view, STATE.tab || 'trips');
     else { STATE.view = view; renderSoon(); }
     return;
   }
