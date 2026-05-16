@@ -4,14 +4,15 @@
 // Bump CACHE and RELEASE whenever shell assets change.
 // ============================================================
 
-const RELEASE = '20260516-redesign-ink-rust-01';
-const CACHE = 'routefolk-shell-v70-redesign-ink-rust-01';
+const RELEASE = '20260516-fidelity-01';
+const CACHE = 'routefolk-shell-v71-fidelity-01';
 
 const SHELL_ASSETS = [
   './',
   './index.html',
-  `./style.css?v=${RELEASE}`,
-  `./app.js?v=${RELEASE}`,
+  './style.css?v=20260516-redesign-ink-rust-01',
+  './style-fidelity.css?v=20260516-fidelity-01',
+  './app.js?v=20260516-redesign-ink-rust-01',
   './manifest.json',
   './icons/icon-192.png',
   './icons/icon-512.png',
@@ -67,6 +68,7 @@ const SHELL_ASSETS = [
   './lib/journal.js',
   './lib/profiles.js',
   './lib/expenses.js',
+  './lib/items.js',
   './lib/gpx.js',
 ];
 
