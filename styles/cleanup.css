@@ -1,1 +1,4 @@
-@import url('./v2-cleanup.css?v=20260516-v2-shell-02');
+/* routefolk cleanup overrides */
+.rf-d2-commandbar{
+  display:none!important;
+}
