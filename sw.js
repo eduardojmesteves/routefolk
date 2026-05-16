@@ -1,18 +1,21 @@
 // ============================================================
 // routefolk — sw.js (service worker)
 // Network-first for app code, cache fallback for installed PWA use.
-// Bump CACHE and RELEASE whenever shell assets change.
+// Bump CACHE whenever shell assets change.
 // ============================================================
 
-const RELEASE = '20260516-fidelity-01';
-const CACHE = 'routefolk-shell-v71-fidelity-01';
+const CACHE = 'routefolk-shell-v72-v2-shell-01';
 
 const SHELL_ASSETS = [
   './',
   './index.html',
   './style.css?v=20260516-redesign-ink-rust-01',
   './style-fidelity.css?v=20260516-fidelity-01',
+  './styles/v2-shell.css?v=20260516-v2-shell-01',
+  './styles/v2-integration.css?v=20260516-v2-shell-01',
   './app.js?v=20260516-redesign-ink-rust-01',
+  './screens/v2/v2-actions.js?v=20260516-v2-shell-01',
+  './screens/v2/v2-app.js?v=20260516-v2-shell-01',
   './manifest.json',
   './icons/icon-192.png',
   './icons/icon-512.png',
