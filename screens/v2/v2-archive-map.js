@@ -1,13 +1,13 @@
 // ============================================================
 // routefolk — screens/v2/v2-archive-map.js
-// Leaflet + OpenStreetMap archive geography.
+// Leaflet-compatible archive geography with OpenStreetMap tiles.
 // Uses completed/cancelled trip GPX geometry already loaded into STATE.
 // ============================================================
 
 import { STATE } from '../../state/app-state.js';
 
-const LEAFLET_CSS = 'https://unpkg.com/leaflet@1.9.4/dist/leaflet.css';
-const LEAFLET_JS = 'https://unpkg.com/leaflet@1.9.4/dist/leaflet.js';
+const LEAFLET_CSS = './vendor/leaflet/leaflet.css?v=1.9.4-routefolk-01';
+const LEAFLET_JS = './vendor/leaflet/leaflet.js?v=1.9.4-routefolk-01';
 const TILE_URL = 'https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png';
 const TILE_ATTRIBUTION = '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors';
 
@@ -74,7 +74,7 @@ function ensureLeaflet() {
     const existing = document.querySelector('script[data-rf-leaflet]');
     if (existing) {
       existing.addEventListener('load', () => resolve(window.L));
-      existing.addEventListener('error', () => reject(new Error('Leaflet failed to load.')));
+      existing.addEventListener('error', () => reject(new Error('Local Leaflet runtime failed to load.')));
       return;
     }
 
@@ -83,7 +83,7 @@ function ensureLeaflet() {
     script.async = true;
     script.dataset.rfLeaflet = 'true';
     script.onload = () => resolve(window.L);
-    script.onerror = () => reject(new Error('Leaflet failed to load.'));
+    script.onerror = () => reject(new Error('Local Leaflet runtime failed to load.'));
     document.head.appendChild(script);
   });
   return leafletPromise;
