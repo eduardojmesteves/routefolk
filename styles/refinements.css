@@ -1,0 +1,182 @@
+/* ============================================================
+   routefolk — final production refinements
+   Small focused fixes after manual visual QA.
+   ============================================================ */
+
+/* Collapsed rail brand: use a clean monogram only. */
+.rf-d2-sidebar.is-collapsed .rf-d2-sidebar-head{
+  padding:24px 0 18px;
+  min-height:78px;
+  display:grid;
+  place-items:center;
+}
+.rf-d2-sidebar.is-collapsed .rf-d2-sidebar-mark{
+  width:34px;
+  height:34px;
+  border:1px solid var(--rf-d2-primary);
+  border-radius:50%;
+  display:grid;
+  place-items:center;
+  font:italic 17px var(--rf-d2-font-serif);
+  letter-spacing:0;
+  color:var(--rf-d2-primary);
+  background:rgba(243,240,228,.58);
+}
+.rf-d2-sidebar.is-collapsed .rf-d2-sidebar-mark-sub{display:none;}
+
+/* New trip button: same family as the other add buttons, less blob-like. */
+.rf-d2-trips-head .rf-d2-btn.is-primary,
+.rf-m2-header .rf-m2-btn.is-primary{
+  min-width:78px;
+  height:38px;
+  padding:0 16px;
+  border-radius:999px;
+  display:inline-flex;
+  align-items:center;
+  justify-content:center;
+  font-size:13px;
+  white-space:nowrap;
+}
+.rf-d2-trips-head{align-items:flex-start;}
+
+/* Stage-cost block: make the empty card read as a deliberate module. */
+.rf-d2-aside .rf-d2-section-head + .rf-d2-mini-table,
+.rf-m2-aside .rf-m2-section-head + .rf-m2-mini-table{
+  margin-top:8px;
+}
+.rf-d2-aside .rf-d2-section-head .rf-d2-btn,
+.rf-m2-aside .rf-m2-section-head .rf-d2-btn{
+  height:34px;
+  min-width:70px;
+}
+
+/* Palette FAB must sit above map/aside content and be obviously clickable. */
+.rf-paletteFab{
+  z-index:3000!important;
+  pointer-events:auto!important;
+  cursor:pointer;
+  box-shadow:0 8px 22px rgba(23,26,38,.15);
+}
+.rf-paletteSheet{
+  z-index:3001!important;
+}
+
+/* Summary with journal subrows. */
+.rf-v2-summary-entry{
+  display:grid;
+  grid-template-columns:62px minmax(240px,1.5fr) 130px 110px minmax(220px,1fr);
+  gap:14px;
+  align-items:start;
+  padding:10px 18px 12px;
+  border-bottom:1px dotted var(--rf-d2-rule);
+  background:rgba(231,228,216,.28);
+  color:var(--rf-d2-muted);
+  font:12px var(--rf-d2-font-ui);
+}
+.rf-v2-summary-entry em{
+  display:block;
+  font:italic 12px var(--rf-d2-font-serif);
+  color:var(--rf-d2-muted);
+}
+.rf-v2-summary-entry strong{
+  display:block;
+  font:500 14px var(--rf-d2-font-serif);
+  color:var(--rf-d2-ink-2);
+  margin-top:2px;
+}
+.rf-v2-summary-entry small{
+  display:block;
+  font:10px var(--rf-d2-font-mono);
+  color:var(--rf-d2-muted);
+  margin-top:2px;
+}
+
+/* Archive map fallback/Leaflet shell. */
+.rf-d2-map-card,
+.rf-m2-map-card{
+  position:relative;
+}
+.rf-v2-map-fallback{
+  width:100%;
+  height:100%;
+  min-height:360px;
+  display:grid;
+  place-items:center;
+  border:1px solid var(--rf-d2-rule-2);
+  background:rgba(225,221,208,.72);
+  background-image:var(--rf-d2-contour-bg);
+  background-size:var(--rf-d2-contour-size);
+  color:var(--rf-d2-muted);
+  text-align:center;
+  padding:24px;
+}
+.rf-v2-map-fallback strong{
+  display:block;
+  font:500 22px var(--rf-d2-font-serif);
+  color:var(--rf-d2-ink);
+  margin-bottom:6px;
+}
+.rf-v2-map-fallback span{
+  font:12px var(--rf-d2-font-mono);
+  letter-spacing:.08em;
+  text-transform:uppercase;
+}
+
+/* Account page: cleaner, Google-photo friendly, no duplicate signout. */
+.rf-d2-account-card{
+  grid-template-columns:92px minmax(0,1fr) 190px;
+}
+.rf-d2-account-avatar,
+.rf-m2-account-avatar,
+.rf-m2-passport-avatar{
+  overflow:hidden;
+}
+.rf-d2-account-avatar img,
+.rf-m2-account-avatar img,
+.rf-m2-passport-avatar img{
+  width:100%;
+  height:100%;
+  object-fit:cover;
+  display:block;
+}
+.rf-d2-account-card p,
+.rf-m2-account-card p{
+  display:none;
+}
+.rf-d2-account-card .rf-d2-btn.is-signout,
+.rf-m2-account-card .rf-m2-btn.is-signout,
+.rf-m2-account-card .rf-d2-btn.is-signout{
+  justify-self:end;
+  min-width:132px;
+  color:var(--rf-d2-danger);
+  border-color:rgba(125,52,88,.34);
+  background:rgba(125,52,88,.05);
+}
+.rf-d2-main.is-account > .rf-d2-btn[data-action$="sign-out"]{
+  display:none!important;
+}
+
+/* Sidebar footer refinement. */
+.rf-d2-sidebar:not(.is-collapsed) .rf-d2-user{
+  border-top:1px solid var(--rf-d2-rule);
+  margin-top:8px;
+}
+.rf-d2-sidebar:not(.is-collapsed) .rf-d2-user-meta small{
+  display:none;
+}
+.rf-d2-sidebar:not(.is-collapsed) .rf-d2-lifetime{
+  margin-bottom:8px;
+}
+
+@media(max-width:959px){
+  .rf-v2-summary-entry{
+    grid-template-columns:32px 1fr;
+    gap:8px;
+  }
+  .rf-v2-summary-entry span:nth-child(n+3){grid-column:2;}
+  .rf-v2-map-fallback{min-height:300px;}
+  .rf-d2-account-card,.rf-m2-account-card{grid-template-columns:1fr;text-align:center;}
+  .rf-d2-account-card .rf-d2-btn.is-signout,
+  .rf-m2-account-card .rf-m2-btn.is-signout,
+  .rf-m2-account-card .rf-d2-btn.is-signout{justify-self:center;width:100%;}
+}
