@@ -1,10 +1,10 @@
 // ============================================================
 // routefolk — screens/v2/v2-actions.js
-// Capture-phase bridge actions for controls that cannot rely on
-// the legacy hidden DOM after the v2 render takeover.
+// Capture-phase bridge actions for the v2 shell.
+// Routes navigation through app-v2 data loaders so the designer UI
+// receives the original PWA data: stages, journal, costs, GPX, items.
 // ============================================================
 
-import { signInWithGoogle, signOut } from '../../lib/auth.js';
 import { createTrip } from '../../lib/trips.js';
 import { createStage } from '../../lib/stages.js';
 import { createEntry } from '../../lib/journal.js';
@@ -15,14 +15,20 @@ const byId = (id) => document.getElementById(id);
 const activeTrip = () => STATE.trips.find((trip) => trip.id === (STATE.viewTripId || STATE.selectedTripId)) || null;
 const tripStages = (tripId) => Array.isArray(STATE.stagesByTrip[tripId]) ? STATE.stagesByTrip[tripId] : [];
 const tripItems = (tripId) => Array.isArray(STATE.itemsByTrip[tripId]) ? STATE.itemsByTrip[tripId] : [];
+const viewForTab = (key) => key === 'summary' ? 'summary' : key === 'costs' ? 'costs' : key === 'items' ? 'packing' : 'detail';
+
+function appApi() {
+  return window.routefolkData || {};
+}
+
+function renderSoon() {
+  appApi().renderAll?.();
+  if (typeof window.__routefolkV2Render === 'function') window.__routefolkV2Render();
+}
 
 function claim(event) {
   event.preventDefault();
   event.stopImmediatePropagation();
-}
-
-function reloadSoon() {
-  setTimeout(() => window.location.reload(), 250);
 }
 
 function selectedStage() {
@@ -32,17 +38,23 @@ function selectedStage() {
   return stages.find((stage) => stage.id === STATE.selectedStageId) || stages[0] || null;
 }
 
+async function openTripWithData(tripId, view = 'detail') {
+  STATE.tab = 'trips';
+  STATE.viewTripId = tripId;
+  STATE.selectedTripId = tripId;
+  STATE.view = view;
+  STATE.wizard = null;
+  renderSoon();
+  if (appApi().openTrip) await appApi().openTrip(tripId, view);
+}
+
 async function createNewTrip(event) {
   claim(event);
   const title = window.prompt('Trip title');
   if (!title?.trim()) return;
   const trip = await createTrip({ title: title.trim(), description: '', start_date: null, end_date: null, status: 'planning', visibility: 'group' });
   STATE.trips = [trip, ...STATE.trips.filter((item) => item.id !== trip.id)];
-  STATE.tab = 'trips';
-  STATE.view = 'detail';
-  STATE.viewTripId = trip.id;
-  STATE.selectedTripId = trip.id;
-  STATE.wizard = null;
+  await openTripWithData(trip.id, 'detail');
 }
 
 async function saveStage(event) {
@@ -59,6 +71,9 @@ async function saveStage(event) {
   STATE.stagesByTrip[trip.id] = [...tripStages(trip.id), stage];
   STATE.selectedStageId = stage.id;
   STATE.wizard = null;
+  await appApi().loadEntriesForStage?.(stage.id, { quiet: true });
+  await appApi().loadStagesForTrip?.(trip.id);
+  renderSoon();
 }
 
 async function saveJournal(event) {
@@ -77,6 +92,8 @@ async function saveJournal(event) {
   const existing = STATE.entriesByStage[stage.id];
   STATE.entriesByStage[stage.id] = Array.isArray(existing) ? [...existing, entry] : [entry];
   STATE.wizard = null;
+  await appApi().loadEntriesForStage?.(stage.id, { quiet: true });
+  renderSoon();
 }
 
 async function toggleItem(event, btn) {
@@ -87,6 +104,7 @@ async function toggleItem(event, btn) {
   if (!item) return;
   const updated = await toggleTripItemPacked(item);
   STATE.itemsByTrip[trip.id] = tripItems(trip.id).map((candidate) => candidate.id === updated.id ? updated : candidate);
+  renderSoon();
 }
 
 async function addItem(event, form) {
@@ -97,6 +115,8 @@ async function addItem(event, form) {
   const item = await createTripItem(trip.id, { text: fd.get('text'), category_id: fd.get('category_id') || null, status: 'planned' });
   STATE.itemsByTrip[trip.id] = [...tripItems(trip.id), item];
   form.reset();
+  await appApi().loadItemsForTrip?.(trip.id, { quiet: true });
+  renderSoon();
 }
 
 document.addEventListener('click', async (event) => {
@@ -105,13 +125,86 @@ document.addEventListener('click', async (event) => {
   if (!btn) return;
   const action = btn.dataset.action || '';
 
-  if (action.endsWith('sign-in')) { claim(event); await signInWithGoogle(); return; }
-  if (action.endsWith('sign-out')) { claim(event); await signOut(); reloadSoon(); return; }
+  if (action.endsWith('sign-in')) { claim(event); await appApi().handleSignIn?.(); return; }
+  if (action.endsWith('sign-out')) { claim(event); await appApi().handleSignOut?.(); window.location.reload(); return; }
   if (action.endsWith('new-trip')) { await createNewTrip(event); return; }
+
+  if (action.endsWith('nav')) {
+    claim(event);
+    STATE.tab = btn.dataset.tab || 'trips';
+    STATE.view = 'list';
+    STATE.viewTripId = null;
+    STATE.selectedTripId = null;
+    STATE.selectedStageId = null;
+    STATE.wizard = null;
+    if (STATE.tab === 'archive') await appApi().ensureArchiveData?.();
+    renderSoon();
+    return;
+  }
+
+  if (action.endsWith('select-trip')) {
+    claim(event);
+    await openTripWithData(btn.dataset.tripId, 'detail');
+    return;
+  }
+
+  if (action.endsWith('back-to-trips')) {
+    claim(event);
+    STATE.view = 'list';
+    STATE.viewTripId = null;
+    STATE.selectedTripId = null;
+    STATE.selectedStageId = null;
+    STATE.wizard = null;
+    renderSoon();
+    return;
+  }
+
+  if (action.endsWith('tab')) {
+    claim(event);
+    const trip = activeTrip();
+    const view = viewForTab(btn.dataset.value);
+    if (trip?.id) await openTripWithData(trip.id, view);
+    else { STATE.view = view; renderSoon(); }
+    return;
+  }
+
+  if (action.endsWith('select-stage')) {
+    claim(event);
+    STATE.selectedStageId = btn.dataset.stageId;
+    STATE.wizard = null;
+    await appApi().loadEntriesForStage?.(STATE.selectedStageId, { quiet: true });
+    renderSoon();
+    return;
+  }
+
+  if (action.endsWith('open-stage')) {
+    claim(event);
+    STATE.selectedStageId = btn.dataset.stageId;
+    STATE.view = 'journal';
+    await appApi().loadEntriesForStage?.(STATE.selectedStageId, { quiet: true });
+    renderSoon();
+    return;
+  }
+
+  if (action.endsWith('back-to-stages')) { claim(event); STATE.view = 'detail'; renderSoon(); return; }
+  if (action.endsWith('add-stage')) { claim(event); STATE.wizard = 'stage'; renderSoon(); return; }
+  if (action.endsWith('add-journal')) { claim(event); STATE.wizard = 'journal'; renderSoon(); return; }
+  if (action.endsWith('cancel-wizard')) { claim(event); STATE.wizard = null; renderSoon(); return; }
   if (action.endsWith('save-stage')) { await saveStage(event); return; }
   if (action.endsWith('save-journal')) { await saveJournal(event); return; }
-  if (action.endsWith('journal-type')) { claim(event); STATE.journalType = btn.dataset.value || 'note'; return; }
+  if (action.endsWith('journal-type')) { claim(event); STATE.journalType = btn.dataset.value || 'note'; renderSoon(); return; }
+  if (action.endsWith('status-filter')) { claim(event); if (STATE.tab === 'archive') STATE.archiveStatusFilter = btn.dataset.value; else STATE.tripStatusFilter = btn.dataset.value; renderSoon(); return; }
+  if (action.endsWith('search-toggle')) { claim(event); if (STATE.tab === 'archive') STATE.archiveFiltersOpen = !STATE.archiveFiltersOpen; else STATE.tripFiltersOpen = !STATE.tripFiltersOpen; renderSoon(); return; }
+  if (action.endsWith('select-category')) { claim(event); STATE.selectedCategoryKey = btn.dataset.category; renderSoon(); return; }
   if (action.endsWith('toggle-item')) { await toggleItem(event, btn); }
+}, true);
+
+document.addEventListener('input', (event) => {
+  const target = event.target instanceof HTMLInputElement ? event.target : null;
+  if (!target?.dataset?.action?.endsWith('search-input')) return;
+  if (STATE.tab === 'archive') STATE.archiveSearch = target.value;
+  else STATE.tripSearch = target.value;
+  renderSoon();
 }, true);
 
 document.addEventListener('submit', async (event) => {
