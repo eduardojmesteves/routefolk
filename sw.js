@@ -4,18 +4,25 @@
 // Bump CACHE whenever shell assets change.
 // ============================================================
 
-const CACHE = 'routefolk-shell-v83-summary-cleanup-01';
+const CACHE = 'routefolk-shell-v84-production-names-01';
 
 const SHELL_ASSETS = [
   './',
   './index.html',
   './style.css?v=20260516-redesign-ink-rust-01',
   './style-fidelity.css?v=20260516-fidelity-01',
-  './styles/v2-shell.css?v=20260516-v2-shell-01',
-  './styles/v2-integration.css?v=20260516-v2-summary-cleanup-01',
-  './styles/v2-cleanup.css?v=20260516-v2-shell-02',
-  './styles/v2-wizards.css?v=20260516-v2-map-01',
-  './app-v2.js?v=20260516-v2-app-01',
+  './styles/shell.css?v=20260516-production-01',
+  './styles/app-ui.css?v=20260516-production-01',
+  './styles/cleanup.css?v=20260516-production-01',
+  './styles/wizards.css?v=20260516-production-01',
+  './app.js?v=20260516-production-01',
+  './screens/app-renderer.js?v=20260516-production-01',
+  './screens/wizards.js?v=20260516-production-01',
+  './screens/extra-writes.js?v=20260516-production-01',
+  './screens/gpx-panel.js?v=20260516-production-01',
+  './screens/archive-map.js?v=20260516-production-01',
+  './screens/production-fixes.js?v=20260516-production-01',
+  './screens/app-actions.js?v=20260516-production-01',
   './screens/v2/v2-app.js?v=20260516-v2-shell-01',
   './screens/v2/v2-wizards.js?v=20260516-v2-wizards-02',
   './screens/v2/v2-extra-writes.js?v=20260516-v2-writes-01',
@@ -23,6 +30,10 @@ const SHELL_ASSETS = [
   './screens/v2/v2-archive-map.js?v=20260516-v2-real-map-01',
   './screens/v2/v2-production-fixes.js?v=20260516-v2-summary-cleanup-01',
   './screens/v2/v2-actions.js?v=20260516-v2-archive-open-01',
+  './styles/v2-shell.css?v=20260516-v2-shell-01',
+  './styles/v2-integration.css?v=20260516-v2-summary-cleanup-01',
+  './styles/v2-cleanup.css?v=20260516-v2-shell-02',
+  './styles/v2-wizards.css?v=20260516-v2-map-01',
   './manifest.json',
   './icons/icon-192.png',
   './icons/icon-512.png',
