@@ -1,18 +1,20 @@
 /* routefolk v2 wizard layer */
-.rf-v2-wizard-host{position:fixed;inset:0;z-index:1200;pointer-events:none;display:flex;background:rgba(23,26,38,.24);}
-.rf-v2-wizard-host.is-desktop{justify-content:flex-end;align-items:stretch;}
-.rf-v2-wizard-host.is-mobile{justify-content:center;align-items:flex-end;}
+.rf-v2-wizard-host,.rf-v2-extra-host{position:fixed;inset:0;z-index:1200;pointer-events:none;display:flex;background:rgba(23,26,38,.24);}
+.rf-v2-wizard-host.is-desktop,.rf-v2-extra-host.is-desktop{justify-content:flex-end;align-items:stretch;}
+.rf-v2-wizard-host.is-mobile,.rf-v2-extra-host.is-mobile{justify-content:center;align-items:flex-end;}
 .rf-v2-wizard-panel{pointer-events:auto;background:var(--rf-d2-surface);background-image:var(--rf-d2-contour-bg);background-size:var(--rf-d2-contour-size);border:1px solid var(--rf-d2-rule-2);box-shadow:0 24px 70px rgba(0,0,0,.22);color:var(--rf-d2-ink);font-family:var(--rf-d2-font-ui);box-sizing:border-box;overflow-y:auto;}
-.rf-v2-wizard-host.is-desktop .rf-v2-wizard-panel{width:420px;min-height:100vh;padding:30px 28px 86px;border-top:0;border-right:0;border-bottom:0;}
-.rf-v2-wizard-host.is-mobile .rf-v2-wizard-panel{width:100%;max-height:86dvh;padding:24px 22px calc(28px + env(safe-area-inset-bottom));border-radius:22px 22px 0 0;}
+.rf-v2-wizard-host.is-desktop .rf-v2-wizard-panel,.rf-v2-extra-host.is-desktop .rf-v2-wizard-panel{width:420px;min-height:100vh;padding:30px 28px 86px;border-top:0;border-right:0;border-bottom:0;}
+.rf-v2-wizard-host.is-mobile .rf-v2-wizard-panel,.rf-v2-extra-host.is-mobile .rf-v2-wizard-panel{width:100%;max-height:86dvh;padding:24px 22px calc(28px + env(safe-area-inset-bottom));border-radius:22px 22px 0 0;}
 .rf-v2-wizard-head{margin-bottom:22px;}
 .rf-v2-wizard-error{border:1px solid rgba(125,52,88,.35);background:rgba(125,52,88,.08);color:#7d3458;border-radius:4px;padding:10px 12px;margin:12px 0;font:700 12px var(--rf-d2-font-ui);}
 .rf-v2-cost-cta{margin-top:18px;text-align:right;}
 .rf-v2-add-expense-btn{min-width:140px;}
-.rf-v2-hero-actions,.rf-v2-stage-actions,.rf-v2-entry-actions{display:flex;gap:8px;align-items:center;flex-wrap:wrap;margin-top:14px;}
+.rf-v2-hero-actions,.rf-v2-stage-actions,.rf-v2-entry-actions,.rf-v2-expense-actions,.rf-v2-item-actions{display:flex;gap:8px;align-items:center;flex-wrap:wrap;margin-top:14px;}
 .rf-v2-hero-actions{justify-content:flex-end;}
 .rf-v2-stage-actions{margin-top:18px;}
 .rf-v2-entry-actions{grid-column:1/-1;margin:10px 0 0 38px;}
+.rf-v2-expense-actions{grid-column:1/-1;margin-top:8px;}
+.rf-v2-item-actions{grid-column:1/-1;margin:8px 0 0 34px;}
 .rf-d2-btn.is-danger,.rf-m2-btn.is-danger{border-color:rgba(125,52,88,.35);color:#7d3458;background:rgba(125,52,88,.06);}
 .rf-d2-btn.is-danger:hover,.rf-m2-btn.is-danger:hover{background:rgba(125,52,88,.12);}
 @media(max-width:959px){
@@ -20,5 +22,5 @@
   .rf-v2-add-expense-btn{width:100%;}
   .rf-v2-wizard-panel .rf-d2-form-row-pair{grid-template-columns:1fr;}
   .rf-v2-hero-actions{justify-content:flex-start;}
-  .rf-v2-entry-actions{margin-left:0;}
+  .rf-v2-entry-actions,.rf-v2-item-actions{margin-left:0;}
 }
