@@ -1,14 +1,17 @@
 // ============================================================
 // routefolk — state/app-state.js
 // Shared mutable app state.
-// Phase 22: selectedStageId + detail tab views.
 // ============================================================
 
 export const STATE = {
   tab: 'trips',
-  view: 'list', // list | detail | summary | costs | packing
+  view: 'list', // list | detail | summary | costs | packing | journal
   viewTripId: null,
+  selectedTripId: null,
   selectedStageId: null,
+  selectedCategoryKey: null,
+  wizard: null, // null | trip | stage | journal | expense | item
+  journalType: 'note',
   user: null,
   appAccess: null,
   accessLoading: false,
@@ -44,6 +47,7 @@ export const STATE = {
   itemCategoriesByTrip: {},
   itemsLoading: false,
   itemsError: null,
+  itemStatusFilter: 'all',
   tripSearch: '',
   tripStatusFilter: 'all',
   tripFiltersOpen: false,
