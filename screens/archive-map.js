@@ -10,16 +10,20 @@ const LEAFLET_CSS = 'https://unpkg.com/leaflet@1.9.4/dist/leaflet.css';
 const LEAFLET_JS = 'https://unpkg.com/leaflet@1.9.4/dist/leaflet.js';
 const TILE_URL = 'https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png';
 const TILE_ATTRIBUTION = '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors';
+const FALLBACK_WIDTH = 900;
+const FALLBACK_HEIGHT = 420;
+const FALLBACK_PAD = 46;
 
 let leafletPromise = null;
 let map = null;
 let layerGroup = null;
 let lastSignature = '';
 let hydrationStarted = false;
+let renderTimer = null;
 
 function api() { return window.routefolkData || {}; }
 function isArchiveView() { return STATE.user && STATE.tab === 'archive'; }
-function archiveMapCard() { return document.querySelector('.rf-d2-map-card, .rf-m2-map-card'); }
+function archiveMapCard() { return document.querySelector('.rf-d2-map-card, .rf-m2-map-card, .rf-clean-map'); }
 
 function replaceMapCardShell(card) {
   if (!card || card.querySelector('.rf-v2-archive-map')) return;
@@ -127,25 +131,22 @@ function drawSvgFallback(message = '') {
   if (!el) return;
   const geometries = geometriesForArchive();
   if (!geometries.length) {
-    el.innerHTML = `<div class="rf-v2-map-fallback"><div><strong>No archive route yet</strong><span>${STATE.archiveGpxLoading ? 'Loading GPX geometry…' : 'Upload GPX tracks to archived trips'}</span></div></div>`;
+    el.innerHTML = `<div class="rf-v2-map-fallback"><div><strong>${STATE.archiveGpxLoading ? 'Loading routes…' : 'No archive route yet'}</strong><span>${STATE.archiveGpxLoading ? 'GPX geometry is being prepared' : 'Upload GPX tracks to archived trips'}</span></div></div>`;
     status(message || (tracksForArchivedTrips().length ? 'Archived GPX tracks exist, but geometry is unavailable.' : 'No GPX tracks found in archived trips yet.'));
     return;
   }
-  const width = 900;
-  const height = 360;
-  const pad = 44;
   const bounds = boundsForGeometries(geometries);
   const paths = geometries.map(({ track, points }) => {
     const d = points.map((point, index) => {
-      const [x, y] = project(point, bounds, width, height, pad);
+      const [x, y] = project(point, bounds, FALLBACK_WIDTH, FALLBACK_HEIGHT, FALLBACK_PAD);
       return `${index ? 'L' : 'M'} ${x.toFixed(1)} ${y.toFixed(1)}`;
     }).join(' ');
-    const start = project(points[0], bounds, width, height, pad);
-    const end = project(points[points.length - 1], bounds, width, height, pad);
+    const start = project(points[0], bounds, FALLBACK_WIDTH, FALLBACK_HEIGHT, FALLBACK_PAD);
+    const end = project(points[points.length - 1], bounds, FALLBACK_WIDTH, FALLBACK_HEIGHT, FALLBACK_PAD);
     return `<g><path class="rf-v2-map-route" d="${d}"><title>${trackName(track)}</title></path><circle class="rf-v2-map-start" cx="${start[0].toFixed(1)}" cy="${start[1].toFixed(1)}" r="5"/><circle class="rf-v2-map-end" cx="${end[0].toFixed(1)}" cy="${end[1].toFixed(1)}" r="5"/></g>`;
   }).join('');
-  el.innerHTML = `<svg class="rf-v2-map-svg" viewBox="0 0 ${width} ${height}" aria-label="Archive GPX route sketch"><defs><pattern id="rf-map-grid" width="90" height="90" patternUnits="userSpaceOnUse"><path d="M 90 0 L 0 0 0 90" fill="none" stroke="rgba(38,52,94,.09)" stroke-width="1"/></pattern></defs><rect width="${width}" height="${height}" fill="url(#rf-map-grid)"/>${paths}</svg>`;
-  status(message || `${geometries.length} GPX route${geometries.length === 1 ? '' : 's'} shown as GPX sketch.`);
+  el.innerHTML = `<svg class="rf-v2-map-svg" viewBox="0 0 ${FALLBACK_WIDTH} ${FALLBACK_HEIGHT}" aria-label="Archive GPX route sketch"><defs><pattern id="rf-map-grid" width="90" height="90" patternUnits="userSpaceOnUse"><path d="M 90 0 L 0 0 0 90" fill="none" stroke="rgba(38,52,94,.10)" stroke-width="1"/></pattern><radialGradient id="rf-map-glow" cx="50%" cy="50%" r="70%"><stop offset="0%" stop-color="rgba(243,240,228,.9)"/><stop offset="100%" stop-color="rgba(210,207,195,.85)"/></radialGradient></defs><rect width="${FALLBACK_WIDTH}" height="${FALLBACK_HEIGHT}" fill="url(#rf-map-glow)"/><rect width="${FALLBACK_WIDTH}" height="${FALLBACK_HEIGHT}" fill="url(#rf-map-grid)"/>${paths}</svg>`;
+  status(message || `${geometries.length} GPX route${geometries.length === 1 ? '' : 's'} shown.`);
 }
 
 function buildMap(L) {
@@ -153,10 +154,11 @@ function buildMap(L) {
   if (!el) return null;
   if (map) return map;
   el.innerHTML = '';
-  map = L.map(el, { scrollWheelZoom: false, zoomControl: true }).setView([40.2, -3.7], 5);
-  L.tileLayer(TILE_URL, { maxZoom: 18, attribution: TILE_ATTRIBUTION }).addTo(map);
+  map = L.map(el, { scrollWheelZoom: false, zoomControl: true, attributionControl: true }).setView([40.2, -3.7], 5);
+  L.tileLayer(TILE_URL, { maxZoom: 18, attribution: TILE_ATTRIBUTION, crossOrigin: true }).addTo(map);
   layerGroup = L.layerGroup().addTo(map);
   setTimeout(() => map?.invalidateSize(), 80);
+  setTimeout(() => map?.invalidateSize(), 260);
   return map;
 }
 
@@ -198,8 +200,13 @@ async function hydrateArchiveGpx() {
   } finally {
     hydrationStarted = false;
     lastSignature = '';
-    requestAnimationFrame(renderArchiveMap);
+    scheduleRender();
   }
+}
+
+function scheduleRender() {
+  if (renderTimer) clearTimeout(renderTimer);
+  renderTimer = setTimeout(() => requestAnimationFrame(renderArchiveMap), 30);
 }
 
 async function renderArchiveMap() {
@@ -212,7 +219,7 @@ async function renderArchiveMap() {
   if (signature === lastSignature && map) return;
   lastSignature = signature;
   if (STATE.archiveDataLoading || STATE.archiveGpxLoading) status('Loading archive geography…');
-  drawSvgFallback('Loading OpenStreetMap tiles…');
+  drawSvgFallback('Route sketch shown while map tiles load…');
   try {
     const L = await ensureLeaflet();
     buildMap(L);
@@ -223,8 +230,8 @@ async function renderArchiveMap() {
   }
 }
 
-document.addEventListener('routefolk:v2-render', () => requestAnimationFrame(renderArchiveMap));
-document.addEventListener('routefolk:render', () => requestAnimationFrame(renderArchiveMap));
-document.addEventListener('routefolk:archive-map-refresh', () => requestAnimationFrame(renderArchiveMap));
-window.addEventListener('resize', () => requestAnimationFrame(() => { map?.invalidateSize(); renderArchiveMap(); }));
+document.addEventListener('routefolk:v2-render', scheduleRender);
+document.addEventListener('routefolk:render', scheduleRender);
+document.addEventListener('routefolk:archive-map-refresh', scheduleRender);
+window.addEventListener('resize', () => requestAnimationFrame(() => { map?.invalidateSize(); scheduleRender(); }));
 requestAnimationFrame(renderArchiveMap);
