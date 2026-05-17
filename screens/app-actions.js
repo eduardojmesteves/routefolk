@@ -10,18 +10,21 @@ import { createStage } from '../lib/stages.js';
 import { createEntry } from '../lib/journal.js';
 import { createTripItem, toggleTripItemPacked } from '../lib/items.js';
 import { STATE } from '../state/app-state.js';
+import { rememberArchiveContext, rememberTripContext, saveUiState, switchPrimaryTab } from '../state/ui-state.js';
 
 const byId = (id) => document.getElementById(id);
-const activeTrip = () => STATE.trips.find((trip) => trip.id === (STATE.viewTripId || STATE.selectedTripId)) || null;
+const activeTrip = () => STATE.trips.find((trip) => trip.id === (STATE.viewTripId || (STATE.tab === 'archive' ? STATE.selectedArchiveTripId : STATE.selectedTripId))) || null;
 const tripStages = (tripId) => Array.isArray(STATE.stagesByTrip[tripId]) ? STATE.stagesByTrip[tripId] : [];
 const tripItems = (tripId) => Array.isArray(STATE.itemsByTrip[tripId]) ? STATE.itemsByTrip[tripId] : [];
 const viewForTab = (key) => key === 'summary' ? 'summary' : key === 'costs' ? 'costs' : key === 'items' ? 'packing' : 'detail';
+const normalTripView = (view) => ['detail', 'summary', 'costs', 'packing', 'journal'].includes(view) ? view : 'detail';
 
 function appApi() {
   return window.routefolkData || {};
 }
 
 function renderSoon() {
+  saveUiState();
   appApi().renderAll?.();
   if (typeof window.__routefolkV2Render === 'function') window.__routefolkV2Render();
 }
@@ -40,16 +43,18 @@ function selectedStage() {
 
 async function openTripWithData(tripId, view = 'detail', tab = 'trips') {
   STATE.tab = tab;
-  STATE.viewTripId = tripId;
-  STATE.selectedTripId = tripId;
-  STATE.view = view;
   STATE.wizard = null;
+  const nextView = normalTripView(view);
+  if (tab === 'archive') {
+    rememberArchiveContext(tripId, 'summary');
+  } else {
+    rememberTripContext(tripId, nextView);
+  }
   renderSoon();
-  if (appApi().openTrip) await appApi().openTrip(tripId, view);
+  if (appApi().openTrip) await appApi().openTrip(tripId, nextView);
   STATE.tab = tab;
-  STATE.viewTripId = tripId;
-  STATE.selectedTripId = tripId;
-  STATE.view = view;
+  if (tab === 'archive') rememberArchiveContext(tripId, 'summary');
+  else rememberTripContext(tripId, nextView);
   renderSoon();
 }
 
@@ -120,6 +125,7 @@ async function addItem(event, form) {
   const item = await createTripItem(trip.id, { text: fd.get('text'), category_id: fd.get('category_id') || null, status: 'planned' });
   STATE.itemsByTrip[trip.id] = [...tripItems(trip.id), item];
   form.reset();
+  STATE.wizard = null;
   await appApi().loadItemsForTrip?.(trip.id, { quiet: true });
   renderSoon();
 }
@@ -136,13 +142,10 @@ document.addEventListener('click', async (event) => {
 
   if (action.endsWith('nav')) {
     claim(event);
-    STATE.tab = btn.dataset.tab || 'trips';
-    STATE.view = 'list';
-    STATE.viewTripId = null;
-    STATE.selectedTripId = null;
-    STATE.selectedStageId = null;
-    STATE.wizard = null;
+    switchPrimaryTab(btn.dataset.tab || 'trips');
     if (STATE.tab === 'archive') await appApi().ensureArchiveData?.();
+    const id = STATE.viewTripId;
+    if (id && STATE.tab !== 'account') await appApi().openTrip?.(id, STATE.view);
     renderSoon();
     return;
   }
@@ -170,6 +173,14 @@ document.addEventListener('click', async (event) => {
     return;
   }
 
+  if (action.endsWith('back-to-archive')) {
+    claim(event);
+    rememberArchiveContext(null, 'list');
+    await appApi().ensureArchiveData?.();
+    renderSoon();
+    return;
+  }
+
   if (action.endsWith('tab')) {
     claim(event);
     const trip = activeTrip();
@@ -192,14 +203,16 @@ document.addEventListener('click', async (event) => {
     claim(event);
     STATE.selectedStageId = btn.dataset.stageId;
     STATE.view = 'journal';
+    STATE.lastTripView = 'journal';
     await appApi().loadEntriesForStage?.(STATE.selectedStageId, { quiet: true });
     renderSoon();
     return;
   }
 
-  if (action.endsWith('back-to-stages')) { claim(event); STATE.view = 'detail'; renderSoon(); return; }
+  if (action.endsWith('back-to-stages')) { claim(event); STATE.view = 'detail'; STATE.lastTripView = 'detail'; renderSoon(); return; }
   if (action.endsWith('add-stage')) { claim(event); STATE.wizard = 'stage'; renderSoon(); return; }
   if (action.endsWith('add-journal')) { claim(event); STATE.wizard = 'journal'; renderSoon(); return; }
+  if (action.endsWith('add-item')) { claim(event); STATE.wizard = 'item'; renderSoon(); return; }
   if (action.endsWith('cancel-wizard')) { claim(event); STATE.wizard = null; renderSoon(); return; }
   if (action.endsWith('save-stage')) { await saveStage(event); return; }
   if (action.endsWith('save-journal')) { await saveJournal(event); return; }
@@ -220,7 +233,7 @@ document.addEventListener('input', (event) => {
 
 document.addEventListener('submit', async (event) => {
   const target = event.target instanceof Element ? event.target : null;
-  const form = target?.closest('[data-action="rf-d2-item-form"], [data-action="rf-m2-item-form"]');
+  const form = target?.closest('[data-action="rf-d2-item-form"], [data-action="rf-m2-item-form"], [data-action="rf-v3-item-form"]');
   if (!form) return;
   await addItem(event, form);
 }, true);
