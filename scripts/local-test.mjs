@@ -15,6 +15,7 @@ const __dirname = path.dirname(__filename);
 const ROOT = path.resolve(__dirname, '..');
 const REMOVED_FIXES_FILE = ['production', 'fixes.js'].join('-');
 const REMOVED_FIXES_PATH = ['screens', REMOVED_FIXES_FILE].join('/');
+const EXPECTED_CACHE = 'routefolk-shell-v93-wizard-cleanup-01';
 
 const result = { passed: [], warnings: [], failed: [] };
 const pass = (message) => result.passed.push(message);
@@ -112,7 +113,7 @@ function checkServiceWorkerCache() {
     .map((match) => localAssetFromUrl(match[1]))
     .filter(Boolean);
   for (const asset of htmlAssets) if (!cached.includes(asset) && asset !== 'manifest.json') warn(`HTML asset is not explicitly cached by sw.js: ${asset}`);
-  if (!sw.includes('routefolk-shell-v92-clean-ui-01')) fail('Service worker cache name was not bumped to v92 clean UI.');
+  if (!sw.includes(EXPECTED_CACHE)) fail(`Service worker cache name is not current: expected ${EXPECTED_CACHE}`);
   else pass('Service worker cache name is current.');
   if (sw.includes(REMOVED_FIXES_PATH)) fail(`Service worker still caches ${REMOVED_FIXES_PATH}`);
 }
