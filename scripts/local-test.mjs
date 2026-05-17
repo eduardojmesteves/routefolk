@@ -13,6 +13,8 @@ import { fileURLToPath } from 'node:url';
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 const ROOT = path.resolve(__dirname, '..');
+const REMOVED_FIXES_FILE = ['production', 'fixes.js'].join('-');
+const REMOVED_FIXES_PATH = ['screens', REMOVED_FIXES_FILE].join('/');
 
 const result = { passed: [], warnings: [], failed: [] };
 const pass = (message) => result.passed.push(message);
@@ -54,13 +56,14 @@ function checkRequiredFiles() {
 }
 
 function checkNoStaleRefs() {
-  const banned = ['app-v2.js', 'screens/v2', 'styles/v2-', 'production-fixes.js'];
+  const banned = ['app-v2.js', 'screens/v2', 'styles/v2-', REMOVED_FIXES_FILE];
   for (const file of textFiles) {
+    if (rel(file) === 'scripts/local-test.mjs') continue;
     const content = fs.readFileSync(file, 'utf8');
     for (const token of banned) if (content.includes(token)) fail(`Stale reference '${token}' in ${rel(file)}`);
   }
-  if (exists('screens/production-fixes.js')) fail('Obsolete file still exists: screens/production-fixes.js');
-  else pass('Obsolete production-fixes.js removed.');
+  if (exists(REMOVED_FIXES_PATH)) fail(`Obsolete file still exists: ${REMOVED_FIXES_PATH}`);
+  else pass(`${REMOVED_FIXES_PATH} is absent.`);
 }
 
 function checkHtmlAssets() {
@@ -70,7 +73,7 @@ function checkHtmlAssets() {
     .filter(Boolean);
   for (const asset of refs) exists(asset) ? pass(`HTML asset exists: ${asset}`) : fail(`HTML references missing asset: ${asset}`);
   if (!html.includes('screens/ui-enhancements.js')) fail('index.html does not load screens/ui-enhancements.js');
-  if (html.includes('screens/production-fixes.js')) fail('index.html still loads production-fixes.js');
+  if (html.includes(REMOVED_FIXES_PATH)) fail(`index.html still loads ${REMOVED_FIXES_PATH}`);
   if (!html.includes('styles/refinements.css')) fail('index.html does not load styles/refinements.css');
 }
 
@@ -111,7 +114,7 @@ function checkServiceWorkerCache() {
   for (const asset of htmlAssets) if (!cached.includes(asset) && asset !== 'manifest.json') warn(`HTML asset is not explicitly cached by sw.js: ${asset}`);
   if (!sw.includes('routefolk-shell-v92-clean-ui-01')) fail('Service worker cache name was not bumped to v92 clean UI.');
   else pass('Service worker cache name is current.');
-  if (sw.includes('production-fixes.js')) fail('Service worker still caches production-fixes.js');
+  if (sw.includes(REMOVED_FIXES_PATH)) fail(`Service worker still caches ${REMOVED_FIXES_PATH}`);
 }
 
 function checkCriticalUiHooks() {
@@ -121,7 +124,7 @@ function checkCriticalUiHooks() {
   const archiveMap = read('screens/archive-map.js');
   const required = [
     ['renderer', renderer, 'function dSummary'], ['renderer', renderer, 'function dArchive'], ['renderer', renderer, 'function dAccount'],
-    ['ui enhancements', ui, 'function mobileSummary'], ['ui enhancements', ui, 'function mobileCosts'], ['ui enhancements', ui, 'function mobileItems'], ['ui enhancements', ui, 'function desktopPalettePanel'],
+    ['ui enhancements', ui, 'function mobileSummary'], ['ui enhancements', ui, 'function mobileCosts'], ['ui enhancements', ui, 'function mobileItems'], ['ui enhancements', ui, 'function desktopPalettePanel'], ['ui enhancements', ui, 'mobileSignature'],
     ['app state resume', app, 'resumeVisibleView'], ['app state resume', app, 'visibilitychange'],
     ['archive map', archiveMap, 'drawSvgFallback'], ['archive map', archiveMap, 'OpenStreetMap'],
   ];
