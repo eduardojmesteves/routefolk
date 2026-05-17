@@ -11,10 +11,11 @@ import { createStage, updateStage, deleteStage } from '../lib/stages.js';
 import { createEntry, updateEntry, deleteEntry } from '../lib/journal.js';
 import { createExpense } from '../lib/expenses.js';
 import { EXPENSE_CATEGORY_META } from '../constants/app-constants.js';
+import { rememberArchiveContext, rememberTripContext } from '../state/ui-state.js';
 
 const isDesktop = () => window.matchMedia('(min-width:960px)').matches;
 const byId = (id) => document.getElementById(id);
-const activeTrip = () => STATE.trips.find((trip) => trip.id === (STATE.viewTripId || STATE.selectedTripId)) || null;
+const activeTrip = () => STATE.trips.find((trip) => trip.id === (STATE.viewTripId || (STATE.tab === 'archive' ? STATE.selectedArchiveTripId : STATE.selectedTripId))) || null;
 const stagesForTrip = (tripId) => Array.isArray(STATE.stagesByTrip[tripId]) ? STATE.stagesByTrip[tripId] : [];
 const expensesForTrip = (tripId) => Array.isArray(STATE.expensesByTrip[tripId]) ? STATE.expensesByTrip[tripId] : [];
 const selectedStage = () => {
@@ -50,8 +51,9 @@ function removeExisting() {
 
 function injectTripActions() {
   const trip = activeTrip();
-  if (!trip || STATE.tab !== 'trips' || !STATE.viewTripId || STATE.wizard) return;
-  const target = document.querySelector('.rf-d2-hero .rf-d2-hero-top, .rf-m2-detail-hero');
+  if (!trip || !STATE.viewTripId || STATE.wizard) return;
+  if (!['trips', 'archive'].includes(STATE.tab)) return;
+  const target = document.querySelector('.rf-d2-hero .rf-d2-hero-top, .rf-m2-detail-hero, .rf-clean-archive-detail');
   if (!target || target.querySelector('.rf-v2-hero-actions')) return;
   const wrap = document.createElement('div');
   wrap.className = 'rf-v2-hero-actions';
@@ -189,9 +191,10 @@ function journalEditWizardHtml() {
 
 function expenseWizardHtml() {
   const trip = activeTrip();
-  const stages = trip ? stagesForTrip(trip.id) : [];
+  const stageRows = trip ? stagesForTrip(trip.id) : [];
+  const selectedStageId = STATE.editTargetId && stageRows.some((stage) => stage.id === STATE.editTargetId) ? STATE.editTargetId : '';
   const categoryOptions = Object.entries(EXPENSE_CATEGORY_META).map(([key, meta]) => `<option value="${esc(key)}">${esc(meta.label)}</option>`).join('');
-  const stageOptions = ['<option value="">Whole trip</option>', ...stages.map((stage, index) => `<option value="${esc(stage.id)}">${index + 1}. ${esc(stage.start_location || 'Start')} → ${esc(stage.end_location || 'End')}</option>`)].join('');
+  const stageOptions = ['<option value="">Whole trip</option>', ...stageRows.map((stage, index) => `<option value="${esc(stage.id)}" ${selectedStageId === stage.id ? 'selected' : ''}>${index + 1}. ${esc(stage.start_location || 'Start')} → ${esc(stage.end_location || 'End')}</option>`)].join('');
   const payerOptions = [STATE.user, ...STATE.profiles.filter((profile) => profile.id !== STATE.user?.id)].filter(Boolean).map((profile) => `<option value="${esc(profile.id)}">${esc(profile.full_name || profile.email || 'Rider')}</option>`).join('');
   return `<aside class="rf-v2-wizard-panel" role="dialog" aria-modal="true" aria-labelledby="rf-v2-expense-title">
     <div class="rf-v2-wizard-head"><div class="rf-d2-aside-kicker">New expense</div><h2 class="rf-d2-aside-title" id="rf-v2-expense-title">Log an expense</h2><p class="rf-d2-aside-sub">Keep it simple: category, amount, payer, date and optional stage.</p></div>
@@ -238,9 +241,7 @@ async function saveTrip(event) {
     STATE.wizard = null;
     STATE.editTargetId = null;
     STATE.tab = 'trips';
-    STATE.view = 'detail';
-    STATE.viewTripId = trip.id;
-    STATE.selectedTripId = trip.id;
+    rememberTripContext(trip.id, 'detail');
     await api().openTrip?.(trip.id, 'detail');
     renderAll();
   } catch (error) {
@@ -257,6 +258,8 @@ async function saveTripEdit(event) {
     STATE.trips = STATE.trips.map((item) => item.id === updated.id ? updated : item);
     STATE.wizard = null;
     STATE.editTargetId = null;
+    if (STATE.tab === 'archive') rememberArchiveContext(updated.id, 'summary');
+    else rememberTripContext(updated.id, STATE.view || 'detail');
     renderAll();
   } catch (error) {
     showError('v2-trip-error', error);
@@ -273,8 +276,10 @@ async function removeTrip(event) {
     STATE.trips = STATE.trips.filter((item) => item.id !== trip.id);
     STATE.viewTripId = null;
     STATE.selectedTripId = null;
+    STATE.selectedArchiveTripId = null;
     STATE.selectedStageId = null;
     STATE.wizard = null;
+    STATE.editTargetId = null;
     STATE.view = 'list';
     renderAll();
   } catch (error) {
@@ -382,6 +387,7 @@ async function saveExpense(event) {
     });
     STATE.expensesByTrip[trip.id] = [expense, ...expensesForTrip(trip.id)];
     STATE.wizard = null;
+    STATE.editTargetId = null;
     await api().loadExpensesForTrip?.(trip.id, { quiet: true });
     renderAll();
   } catch (error) {
@@ -399,6 +405,7 @@ document.addEventListener('click', async (event) => {
   if (action === 'rf-v2-edit-trip') { claim(event); STATE.wizard = 'trip-edit'; STATE.editTargetId = activeTrip()?.id || null; renderAll(); return; }
   if (action === 'rf-v2-delete-trip') { await removeTrip(event); return; }
   if (action === 'rf-v2-add-expense') { claim(event); STATE.wizard = 'expense'; STATE.editTargetId = null; renderAll(); return; }
+  if (action === 'rf-v2-add-stage-expense') { claim(event); STATE.wizard = 'expense'; STATE.editTargetId = btn.dataset.stageId || STATE.selectedStageId || null; renderAll(); return; }
   if (action === 'rf-v2-edit-stage') { claim(event); STATE.wizard = 'stage-edit'; STATE.editTargetId = btn.dataset.stageId; renderAll(); return; }
   if (action === 'rf-v2-delete-stage') { await removeStage(event, btn.dataset.stageId); return; }
   if (action === 'rf-v2-edit-entry') { claim(event); STATE.wizard = 'journal-edit'; STATE.editTargetId = btn.dataset.entryId; renderAll(); return; }
