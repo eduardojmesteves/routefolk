@@ -152,7 +152,14 @@ function drawSvgFallback(message = '') {
 function buildMap(L) {
   const el = document.getElementById('rf-v2-archive-map');
   if (!el) return null;
-  if (map) return map;
+  if (map) {
+    try {
+      if (map.getContainer() === el) return map;
+    } catch (_) {}
+    map.remove();
+    map = null;
+    layerGroup = null;
+  }
   el.innerHTML = '';
   map = L.map(el, { scrollWheelZoom: false, zoomControl: true, attributionControl: true }).setView([40.2, -3.7], 5);
   L.tileLayer(TILE_URL, { maxZoom: 18, attribution: TILE_ATTRIBUTION, crossOrigin: true }).addTo(map);
@@ -214,6 +221,12 @@ async function renderArchiveMap() {
   const card = archiveMapCard();
   if (!card) return;
   replaceMapCardShell(card);
+  if (map) {
+    try {
+      const el = document.getElementById('rf-v2-archive-map');
+      if (map.getContainer() !== el) destroyMap();
+    } catch (_) { destroyMap(); }
+  }
   hydrateArchiveGpx();
   const signature = mapSignature();
   if (signature === lastSignature && map) return;
