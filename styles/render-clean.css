@@ -1,0 +1,84 @@
+/* ============================================================
+   routefolk — clean renderer styles
+   Small final layer for the single-source renderer.
+   ============================================================ */
+
+.rf-auth-shell{
+  min-height:100dvh;
+  display:grid;
+  place-items:center;
+  padding:32px;
+  background:var(--rf-d2-bg,#e7e4d8);
+  background-image:var(--rf-d2-contour-bg,var(--contour));
+  background-size:420px 420px;
+  color:var(--rf-d2-ink,#171a26);
+}
+.rf-auth-card{
+  width:min(640px,100%);
+  border:1px solid var(--rf-d2-rule-2,rgba(23,26,38,.2));
+  background:rgba(243,240,228,.76);
+  background-image:var(--rf-d2-contour-bg,var(--contour));
+  background-size:420px 420px;
+  padding:42px;
+  box-shadow:0 24px 80px rgba(23,26,38,.10);
+}
+.rf-auth-card h1{
+  font:500 clamp(48px,8vw,86px)/.9 var(--rf-d2-font-serif,serif);
+  letter-spacing:-.055em;
+  margin:12px 0 18px;
+  color:var(--rf-d2-ink,#171a26);
+}
+.rf-auth-card p{
+  max-width:480px;
+  font:18px/1.45 var(--rf-d2-font-ui,sans-serif);
+  color:var(--rf-d2-muted,#787a8a);
+  margin:0 0 28px;
+}
+.rf-auth-card .rf-d2-btn{height:46px;padding:0 22px;}
+
+.rf-clean-summary-entry{
+  display:grid;
+  grid-template-columns:80px 1.5fr 150px 130px 1fr;
+  gap:12px;
+  align-items:center;
+  padding:10px 16px 10px;
+  border-bottom:1px dotted var(--rf-d2-rule,rgba(23,26,38,.1));
+  background:rgba(231,228,216,.34);
+  color:var(--rf-d2-muted,#787a8a);
+  font:13px var(--rf-d2-font-ui,sans-serif);
+}
+.rf-clean-summary-entry strong{
+  font:500 15px var(--rf-d2-font-serif,serif);
+  color:var(--rf-d2-ink-2,#3b405a);
+}
+.rf-clean-summary-entry span{
+  min-width:0;
+  overflow-wrap:anywhere;
+}
+.rf-d2-account-avatar img{
+  width:100%;
+  height:100%;
+  display:block;
+  object-fit:cover;
+}
+.rf-d2-account-card .rf-d2-btn.is-danger{
+  color:var(--rf-d2-danger,#7d3458);
+  border-color:rgba(125,52,88,.34);
+  background:rgba(125,52,88,.05);
+}
+
+@media(max-width:959px){
+  .rf-auth-shell{
+    min-height:100dvh;
+    padding:24px;
+  }
+  .rf-auth-card{
+    padding:28px;
+  }
+  .rf-auth-card h1{
+    font-size:48px;
+  }
+  .rf-auth-card p{
+    font-size:16px;
+  }
+}
