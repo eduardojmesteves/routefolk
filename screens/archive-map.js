@@ -36,8 +36,6 @@ function ensureLeafletCss() {
   const link = document.createElement('link');
   link.rel = 'stylesheet';
   link.href = LEAFLET_CSS;
-  link.integrity = 'sha256-p4NxAoJBhIINfQO8vuVcx0xTdJ61XtN2oCWtcK3t5r8=';
-  link.crossOrigin = '';
   link.dataset.rfLeaflet = 'real';
   document.head.appendChild(link);
 }
@@ -49,8 +47,6 @@ function ensureLeaflet() {
   leafletPromise = new Promise((resolve, reject) => {
     const script = document.createElement('script');
     script.src = LEAFLET_JS;
-    script.integrity = 'sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV1lvTlZBo=';
-    script.crossOrigin = '';
     script.async = true;
     script.dataset.rfLeaflet = 'real';
     script.onload = () => window.L ? resolve(window.L) : reject(new Error('Leaflet loaded but L is unavailable.'));
@@ -229,5 +225,6 @@ async function renderArchiveMap() {
 
 document.addEventListener('routefolk:v2-render', () => requestAnimationFrame(renderArchiveMap));
 document.addEventListener('routefolk:render', () => requestAnimationFrame(renderArchiveMap));
+document.addEventListener('routefolk:archive-map-refresh', () => requestAnimationFrame(renderArchiveMap));
 window.addEventListener('resize', () => requestAnimationFrame(() => { map?.invalidateSize(); renderArchiveMap(); }));
 requestAnimationFrame(renderArchiveMap);
