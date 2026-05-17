@@ -24,6 +24,22 @@ let renderTimer = null;
 function api() { return window.routefolkData || {}; }
 function isArchiveView() { return STATE.user && STATE.tab === 'archive'; }
 function archiveMapCard() { return document.querySelector('.rf-d2-map-card, .rf-m2-map-card, .rf-clean-map'); }
+function archiveMapElement() { return document.getElementById('rf-v2-archive-map'); }
+function isAttached(node) { return !!node && document.documentElement.contains(node); }
+function currentMapContainer() {
+  if (!map) return null;
+  try { return map.getContainer(); } catch (_) { return null; }
+}
+function mapIsCurrent() {
+  const el = archiveMapElement();
+  return !!map && !!el && currentMapContainer() === el && isAttached(el);
+}
+function safeInvalidate(delay = 0) {
+  setTimeout(() => {
+    if (!mapIsCurrent()) return;
+    try { map.invalidateSize(); } catch (_) { destroyMap(); }
+  }, delay);
+}
 
 function replaceMapCardShell(card) {
   if (!card || card.querySelector('.rf-v2-archive-map')) return;
@@ -106,7 +122,10 @@ function trackName(track) {
 }
 
 function destroyMap() {
-  if (map) map.remove();
+  if (map) {
+    try { map.off(); } catch (_) {}
+    try { map.remove(); } catch (_) {}
+  }
   map = null;
   layerGroup = null;
   lastSignature = '';
@@ -127,7 +146,7 @@ function project(point, bounds, width, height, pad) {
   return [x, y];
 }
 function drawSvgFallback(message = '') {
-  const el = document.getElementById('rf-v2-archive-map');
+  const el = archiveMapElement();
   if (!el) return;
   const geometries = geometriesForArchive();
   if (!geometries.length) {
@@ -150,27 +169,41 @@ function drawSvgFallback(message = '') {
 }
 
 function buildMap(L) {
-  const el = document.getElementById('rf-v2-archive-map');
+  const el = archiveMapElement();
   if (!el) return null;
   if (map) {
     try {
-      if (map.getContainer() === el) return map;
+      if (map.getContainer() === el && isAttached(el)) return map;
     } catch (_) {}
-    map.remove();
-    map = null;
-    layerGroup = null;
+    destroyMap();
   }
   el.innerHTML = '';
-  map = L.map(el, { scrollWheelZoom: false, zoomControl: true, attributionControl: true }).setView([40.2, -3.7], 5);
-  L.tileLayer(TILE_URL, { maxZoom: 18, attribution: TILE_ATTRIBUTION, crossOrigin: true }).addTo(map);
+  map = L.map(el, {
+    attributionControl: true,
+    boxZoom: false,
+    doubleClickZoom: false,
+    dragging: false,
+    keyboard: false,
+    scrollWheelZoom: false,
+    tap: false,
+    touchZoom: false,
+    zoomControl: false,
+  }).setView([40.2, -3.7], 5);
+  L.tileLayer(TILE_URL, {
+    maxZoom: 18,
+    attribution: TILE_ATTRIBUTION,
+    crossOrigin: true,
+    updateWhenIdle: true,
+    keepBuffer: 2,
+  }).addTo(map);
   layerGroup = L.layerGroup().addTo(map);
-  setTimeout(() => map?.invalidateSize(), 80);
-  setTimeout(() => map?.invalidateSize(), 260);
+  safeInvalidate(80);
+  safeInvalidate(260);
   return map;
 }
 
 function renderTracks(L) {
-  if (!map || !layerGroup) return;
+  if (!mapIsCurrent() || !layerGroup) return;
   layerGroup.clearLayers();
   const tracks = tracksForArchivedTrips();
   const geometries = geometriesForArchive();
@@ -186,16 +219,16 @@ function renderTracks(L) {
   }
   const bounds = [];
   geometries.forEach(({ track, points }) => {
-    const polyline = L.polyline(points, { color: '#26345e', weight: 4, opacity: 0.88, lineCap: 'round', lineJoin: 'round' }).addTo(layerGroup);
+    const polyline = L.polyline(points, { color: '#26345e', weight: 4, opacity: 0.88, lineCap: 'round', lineJoin: 'round', interactive: false }).addTo(layerGroup);
     polyline.bindTooltip(trackName(track));
     bounds.push(...points);
-    L.circleMarker(points[0], { radius: 5, color: '#26345e', fillColor: '#f3f0e4', fillOpacity: 1, weight: 2 }).addTo(layerGroup);
-    L.circleMarker(points[points.length - 1], { radius: 5, color: '#b85a2e', fillColor: '#edcdb8', fillOpacity: 1, weight: 2 }).addTo(layerGroup);
+    L.circleMarker(points[0], { radius: 5, color: '#26345e', fillColor: '#f3f0e4', fillOpacity: 1, weight: 2, interactive: false }).addTo(layerGroup);
+    L.circleMarker(points[points.length - 1], { radius: 5, color: '#b85a2e', fillColor: '#edcdb8', fillOpacity: 1, weight: 2, interactive: false }).addTo(layerGroup);
   });
   const latLngBounds = L.latLngBounds(bounds);
-  if (latLngBounds.isValid()) map.fitBounds(latLngBounds, { padding: [30, 30], maxZoom: 12 });
+  if (latLngBounds.isValid() && mapIsCurrent()) map.fitBounds(latLngBounds, { padding: [30, 30], maxZoom: 12, animate: false });
   status(`${geometries.length} GPX route${geometries.length === 1 ? '' : 's'} shown on OpenStreetMap.`);
-  setTimeout(() => map?.invalidateSize(), 80);
+  safeInvalidate(80);
 }
 
 async function hydrateArchiveGpx() {
@@ -221,21 +254,17 @@ async function renderArchiveMap() {
   const card = archiveMapCard();
   if (!card) return;
   replaceMapCardShell(card);
-  if (map) {
-    try {
-      const el = document.getElementById('rf-v2-archive-map');
-      if (map.getContainer() !== el) destroyMap();
-    } catch (_) { destroyMap(); }
-  }
+  if (map && !mapIsCurrent()) destroyMap();
   hydrateArchiveGpx();
   const signature = mapSignature();
-  if (signature === lastSignature && map) return;
+  if (signature === lastSignature && mapIsCurrent()) return;
   lastSignature = signature;
   if (STATE.archiveDataLoading || STATE.archiveGpxLoading) status('Loading archive geography…');
   drawSvgFallback('Route sketch shown while map tiles load…');
   try {
     const L = await ensureLeaflet();
-    buildMap(L);
+    const built = buildMap(L);
+    if (!built || !mapIsCurrent()) return;
     renderTracks(L);
   } catch (error) {
     destroyMap();
@@ -246,5 +275,5 @@ async function renderArchiveMap() {
 document.addEventListener('routefolk:v2-render', scheduleRender);
 document.addEventListener('routefolk:render', scheduleRender);
 document.addEventListener('routefolk:archive-map-refresh', scheduleRender);
-window.addEventListener('resize', () => requestAnimationFrame(() => { map?.invalidateSize(); scheduleRender(); }));
+window.addEventListener('resize', () => requestAnimationFrame(() => { safeInvalidate(); scheduleRender(); }));
 requestAnimationFrame(renderArchiveMap);
