@@ -23,7 +23,7 @@
   <link rel="stylesheet" href="styles/app-ui.css?v=20260516-production-01">
   <link rel="stylesheet" href="styles/cleanup.css?v=20260516-production-01">
   <link rel="stylesheet" href="styles/wizards.css?v=20260516-production-01">
-  <link rel="stylesheet" href="styles/refinements.css?v=20260516-refinements-01">
+  <link rel="stylesheet" href="styles/refinements.css?v=20260517-mobile-01">
 </head>
 <body>
   <a class="skip-link" href="#content">Skip to main content</a>
@@ -31,47 +31,19 @@
     <main class="rf-screen" id="content" tabindex="-1" aria-live="polite"></main>
   </div>
   <div id="toast" aria-live="polite" aria-atomic="true"></div>
-  <button class="rf-paletteFab" id="rf-paletteFab" aria-label="Change palette" type="button">
-    <span class="rf-paletteFab__dot rf-paletteFab__dot--primary"></span>
-    <span class="rf-paletteFab__dot rf-paletteFab__dot--accent"></span>
-  </button>
-  <div class="rf-paletteSheet" id="rf-paletteSheet" hidden>
-    <div class="rf-paletteSheet__kicker">Palette</div>
-    <div class="rf-paletteSheet__title">Field journal · colours</div>
-    <div class="rf-paletteSheet__list">
-      <button class="rf-paletteOpt" data-palette="midnight" type="button">
-        <span class="rf-paletteOpt__swatch" style="--a:#26345e;--b:#b85a2e;--c:#e7e4d8"></span>
-        <span class="rf-paletteOpt__name">Ink &amp; Rust</span>
-        <span class="rf-paletteOpt__sub">Cool cream · ink · rust</span>
-      </button>
-      <button class="rf-paletteOpt" data-palette="forest" type="button">
-        <span class="rf-paletteOpt__swatch" style="--a:#355d3f;--b:#b3823a;--c:#ebe5d3"></span>
-        <span class="rf-paletteOpt__name">Forest &amp; Ochre</span>
-        <span class="rf-paletteOpt__sub">Warm cream · forest · ochre</span>
-      </button>
-      <button class="rf-paletteOpt" data-palette="oxblood" type="button">
-        <span class="rf-paletteOpt__swatch" style="--a:#566970;--b:#8a4554;--c:#ece7df"></span>
-        <span class="rf-paletteOpt__name">Slate &amp; Bordeaux</span>
-        <span class="rf-paletteOpt__sub">Warm white · slate · bordeaux</span>
-      </button>
-      <button class="rf-paletteOpt" data-palette="alpine" type="button">
-        <span class="rf-paletteOpt__swatch" style="--a:#2c3133;--b:#c69842;--c:#e9e6dd"></span>
-        <span class="rf-paletteOpt__name">Graphite &amp; Sun</span>
-        <span class="rf-paletteOpt__sub">Soft beige · graphite · sun</span>
-      </button>
-    </div>
-  </div>
   <script>
     try {
-      if (!localStorage.getItem('rf.palette')) localStorage.setItem('rf.palette', 'midnight');
+      const palette = localStorage.getItem('rf.palette') || 'midnight';
+      document.documentElement.dataset.palette = palette;
+      if (!localStorage.getItem('rf.palette')) localStorage.setItem('rf.palette', palette);
     } catch {}
   </script>
   <script src="screens/app-renderer.js?v=20260516-production-01" type="module"></script>
   <script src="screens/wizards.js?v=20260516-production-01" type="module"></script>
   <script src="screens/extra-writes.js?v=20260516-production-01" type="module"></script>
   <script src="screens/gpx-panel.js?v=20260516-production-01" type="module"></script>
-  <script src="screens/archive-map.js?v=20260516-production-01" type="module"></script>
-  <script src="screens/production-fixes.js?v=20260516-production-01" type="module"></script>
+  <script src="screens/archive-map.js?v=20260517-mobile-01" type="module"></script>
+  <script src="screens/production-fixes.js?v=20260517-mobile-01" type="module"></script>
   <script src="screens/app-actions.js?v=20260516-production-01" type="module"></script>
   <script src="app.js?v=20260516-production-01" type="module"></script>
 </body>
