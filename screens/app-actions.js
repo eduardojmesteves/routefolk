@@ -11,6 +11,7 @@ import { createEntry } from '../lib/journal.js';
 import { createTripItem, toggleTripItemPacked } from '../lib/items.js';
 import { STATE } from '../state/app-state.js';
 import { rememberArchiveContext, rememberTripContext, saveUiState, switchPrimaryTab } from '../state/ui-state.js';
+import { setPalette } from './render/shared.js';
 
 const byId = (id) => document.getElementById(id);
 const activeTrip = () => STATE.trips.find((trip) => trip.id === (STATE.viewTripId || (STATE.tab === 'archive' ? STATE.selectedArchiveTripId : STATE.selectedTripId))) || null;
@@ -136,6 +137,7 @@ document.addEventListener('click', async (event) => {
   if (!btn) return;
   const action = btn.dataset.action || '';
 
+  if (action === 'rf-palette-select') { claim(event); setPalette(btn.dataset.palette || 'midnight'); renderSoon(); return; }
   if (action.endsWith('sign-in')) { claim(event); await appApi().handleSignIn?.(); return; }
   if (action.endsWith('sign-out')) { claim(event); await appApi().handleSignOut?.(); window.location.reload(); return; }
   if (action.endsWith('new-trip')) { await createNewTrip(event); return; }
