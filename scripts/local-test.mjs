@@ -122,9 +122,11 @@ function checkCriticalUiHooks() {
   const ui = read('screens/ui-enhancements.js');
   const app = read('app.js');
   const archiveMap = read('screens/archive-map.js');
+  const wizards = read('screens/wizards.js');
   const required = [
     ['renderer', renderer, 'function dSummary'], ['renderer', renderer, 'function dArchive'], ['renderer', renderer, 'function dAccount'],
-    ['ui enhancements', ui, 'function mobileSummary'], ['ui enhancements', ui, 'function mobileCosts'], ['ui enhancements', ui, 'function mobileItems'], ['ui enhancements', ui, 'function desktopPalettePanel'], ['ui enhancements', ui, 'mobileSignature'],
+    ['ui enhancements', ui, 'function mobileSummary'], ['ui enhancements', ui, 'function mobileCosts'], ['ui enhancements', ui, 'function mobileItems'], ['ui enhancements', ui, 'function desktopPalettePanel'], ['ui enhancements', ui, 'function patchMobile'],
+    ['wizards', wizards, 'rf-v2-add-stage-expense'], ['wizards', wizards, 'selectedArchiveTripId'],
     ['app state resume', app, 'resumeVisibleView'], ['app state resume', app, 'visibilitychange'],
     ['archive map', archiveMap, 'drawSvgFallback'], ['archive map', archiveMap, 'OpenStreetMap'],
   ];
