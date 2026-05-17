@@ -4,7 +4,7 @@
 // Bump CACHE whenever shell assets change.
 // ============================================================
 
-const CACHE = 'routefolk-shell-v96-final-polish-01';
+const CACHE = 'routefolk-shell-v97-clean-render-01';
 
 const SHELL_ASSETS = [
   './',
@@ -15,18 +15,17 @@ const SHELL_ASSETS = [
   './styles/app-ui.css?v=20260516-production-01',
   './styles/cleanup.css?v=20260516-production-01',
   './styles/wizards.css?v=20260517-wizard-01',
-  './styles/refinements.css?v=20260517-final-polish-01',
+  './styles/refinements.css?v=20260517-clean-render-01',
   './app.js?v=20260517-state-01',
-  './screens/app-renderer.js?v=20260516-production-01',
+  './screens/app-renderer.js?v=20260517-clean-render-01',
   './screens/wizards.js?v=20260517-wizard-01',
   './screens/extra-writes.js?v=20260516-production-01',
   './screens/gpx-panel.js?v=20260516-production-01',
   './screens/archive-map.js?v=20260517-final-polish-01',
-  './screens/ui-enhancements.js?v=20260517-ui-clean-01',
   './screens/render/shared.js',
   './screens/render/mobile.js',
   './screens/render/desktop.js',
-  './screens/app-actions.js?v=20260516-production-01',
+  './screens/app-actions.js?v=20260517-clean-render-01',
   './manifest.json',
   './icons/icon-192.png',
   './icons/icon-512.png',
