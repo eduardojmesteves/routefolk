@@ -16,6 +16,7 @@ const EXPECTED_SCHEMA_VERSION = '014';
 const PALETTE_KEY = 'rf.palette';
 const PALETTES = ['forest', 'midnight', 'oxblood', 'alpine'];
 let lastAuthUserId = null;
+let resumeInFlight = false;
 
 function renderAll() {
   if (STATE.user) saveUiState();
@@ -85,25 +86,44 @@ function initPaletteSwitcher() {
   }, true);
 }
 
+function selectedContextId() {
+  if (!STATE.user || STATE.tab === 'account') return null;
+  return STATE.viewTripId || (STATE.tab === 'archive' ? STATE.selectedArchiveTripId : STATE.selectedTripId) || null;
+}
+
 async function hydrateSelectedTripAfterTripsLoad() {
   if (!STATE.user || !STATE.trips.length) return;
   validateUiSelection();
-  const id = STATE.viewTripId || (STATE.tab === 'archive' ? STATE.selectedArchiveTripId : STATE.selectedTripId);
-  if (!id || STATE.tab === 'account') return;
-  await openTrip(id, STATE.view || 'detail');
+  const id = selectedContextId();
+  if (!id) return;
+  if (STATE.tab === 'archive') await ensureArchiveData();
+  await openTrip(id, STATE.view || (STATE.tab === 'archive' ? 'summary' : 'detail'));
   validateUiSelection();
+}
+
+async function resumeVisibleView() {
+  if (!STATE.user || resumeInFlight) return;
+  resumeInFlight = true;
+  try {
+    restoreUiState(STATE.user);
+    validateUiSelection();
+    if (!STATE.trips.length) await loadSignedInData();
+    await hydrateSelectedTripAfterTripsLoad();
+    validateUiSelection();
+    renderAll();
+  } finally {
+    resumeInFlight = false;
+  }
 }
 
 function initPersistenceGuards() {
   window.addEventListener('pagehide', () => saveUiState());
+  window.addEventListener('beforeunload', () => saveUiState());
   document.addEventListener('visibilitychange', () => {
     if (document.visibilityState === 'hidden') saveUiState();
-    if (document.visibilityState === 'visible') {
-      restoreUiState();
-      validateUiSelection();
-      renderAll();
-    }
+    if (document.visibilityState === 'visible') resumeVisibleView();
   });
+  window.addEventListener('focus', () => resumeVisibleView());
 }
 
 async function init() {
@@ -130,6 +150,7 @@ async function init() {
     await loadSignedInData();
     validateUiSelection();
     await hydrateSelectedTripAfterTripsLoad();
+    renderAll();
   }
 
   onAuthChange(async (user) => {
@@ -148,6 +169,7 @@ async function init() {
       await loadSignedInData();
       validateUiSelection();
       await hydrateSelectedTripAfterTripsLoad();
+      renderAll();
     }
   });
 
