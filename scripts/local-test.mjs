@@ -15,7 +15,7 @@ const __dirname = path.dirname(__filename);
 const ROOT = path.resolve(__dirname, '..');
 const REMOVED_FIXES_FILE = ['production', 'fixes.js'].join('-');
 const REMOVED_FIXES_PATH = ['screens', REMOVED_FIXES_FILE].join('/');
-const EXPECTED_CACHE = 'routefolk-shell-v93-wizard-cleanup-01';
+const EXPECTED_CACHE = 'routefolk-shell-v94-render-split-01';
 
 const result = { passed: [], warnings: [], failed: [] };
 const pass = (message) => result.passed.push(message);
@@ -49,6 +49,7 @@ function checkRequiredFiles() {
   const required = [
     'index.html', 'app.js', 'sw.js', 'manifest.json',
     'screens/app-renderer.js', 'screens/app-actions.js', 'screens/ui-enhancements.js',
+    'screens/render/shared.js', 'screens/render/mobile.js',
     'screens/wizards.js', 'screens/extra-writes.js', 'screens/gpx-panel.js', 'screens/archive-map.js',
     'styles/shell.css', 'styles/app-ui.css', 'styles/cleanup.css', 'styles/wizards.css', 'styles/refinements.css',
     'lib/items.js', 'migrations/014_items.sql', 'state/ui-state.js',
@@ -121,12 +122,16 @@ function checkServiceWorkerCache() {
 function checkCriticalUiHooks() {
   const renderer = read('screens/app-renderer.js');
   const ui = read('screens/ui-enhancements.js');
+  const mobile = read('screens/render/mobile.js');
+  const shared = read('screens/render/shared.js');
   const app = read('app.js');
   const archiveMap = read('screens/archive-map.js');
   const wizards = read('screens/wizards.js');
   const required = [
     ['renderer', renderer, 'function dSummary'], ['renderer', renderer, 'function dArchive'], ['renderer', renderer, 'function dAccount'],
-    ['ui enhancements', ui, 'function mobileSummary'], ['ui enhancements', ui, 'function mobileCosts'], ['ui enhancements', ui, 'function mobileItems'], ['ui enhancements', ui, 'function desktopPalettePanel'], ['ui enhancements', ui, 'function patchMobile'],
+    ['ui enhancements', ui, 'renderMobileMarkup'], ['ui enhancements', ui, 'function desktopPalettePanel'], ['ui enhancements', ui, 'function patchMobile'],
+    ['mobile renderer', mobile, 'export function renderMobileMarkup'], ['mobile renderer', mobile, 'export function mobileSignature'], ['mobile renderer', mobile, 'function mobileSummary'], ['mobile renderer', mobile, 'function mobileCosts'], ['mobile renderer', mobile, 'function mobileItems'],
+    ['shared renderer', shared, 'export function stats'], ['shared renderer', shared, 'export function palettePanel'],
     ['wizards', wizards, 'rf-v2-add-stage-expense'], ['wizards', wizards, 'selectedArchiveTripId'],
     ['app state resume', app, 'resumeVisibleView'], ['app state resume', app, 'visibilitychange'],
     ['archive map', archiveMap, 'drawSvgFallback'], ['archive map', archiveMap, 'OpenStreetMap'],
