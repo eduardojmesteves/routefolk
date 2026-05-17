@@ -8,9 +8,12 @@ export const STATE = {
   view: 'list', // list | detail | summary | costs | packing | journal
   viewTripId: null,
   selectedTripId: null,
+  selectedArchiveTripId: null,
   selectedStageId: null,
   selectedEntryId: null,
   selectedCategoryKey: null,
+  lastTripView: 'detail',
+  lastArchiveView: 'list',
   wizard: null, // null | trip | trip-edit | stage | stage-edit | journal | journal-edit | expense | item
   editTargetId: null,
   journalType: 'note',
