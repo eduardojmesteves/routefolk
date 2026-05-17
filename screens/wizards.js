@@ -53,7 +53,7 @@ function injectTripActions() {
   const trip = activeTrip();
   if (!trip || !STATE.viewTripId || STATE.wizard) return;
   if (!['trips', 'archive'].includes(STATE.tab)) return;
-  const target = document.querySelector('.rf-d2-hero .rf-d2-hero-top, .rf-m2-detail-hero, .rf-clean-archive-detail');
+  const target = document.querySelector('.rf-d2-hero .rf-d2-hero-stamps, .rf-clean-trip-head .rf-clean-stamps, .rf-m2-detail-hero');
   if (!target || target.querySelector('.rf-v2-hero-actions')) return;
   const wrap = document.createElement('div');
   wrap.className = 'rf-v2-hero-actions';
@@ -260,6 +260,7 @@ async function saveTripEdit(event) {
     STATE.editTargetId = null;
     if (STATE.tab === 'archive') rememberArchiveContext(updated.id, 'summary');
     else rememberTripContext(updated.id, STATE.view || 'detail');
+    await api().openTrip?.(updated.id, STATE.view || 'detail');
     renderAll();
   } catch (error) {
     showError('v2-trip-error', error);
@@ -270,41 +271,35 @@ async function removeTrip(event) {
   claim(event);
   const trip = activeTrip();
   if (!trip) return;
-  if (!window.confirm(`Delete trip “${trip.title}”? This cannot be undone.`)) return;
-  try {
-    await deleteTrip(trip.id);
-    STATE.trips = STATE.trips.filter((item) => item.id !== trip.id);
-    STATE.viewTripId = null;
-    STATE.selectedTripId = null;
-    STATE.selectedArchiveTripId = null;
-    STATE.selectedStageId = null;
-    STATE.wizard = null;
-    STATE.editTargetId = null;
-    STATE.view = 'list';
-    renderAll();
-  } catch (error) {
-    window.alert(error?.message || 'Could not delete trip.');
-  }
+  if (!window.confirm(`Delete trip “${trip.title || 'Untitled'}”? This cannot be undone.`)) return;
+  await deleteTrip(trip.id);
+  STATE.trips = STATE.trips.filter((item) => item.id !== trip.id);
+  STATE.wizard = null;
+  STATE.editTargetId = null;
+  if (STATE.tab === 'archive') rememberArchiveContext(null, 'list');
+  else rememberTripContext(null, 'list');
+  renderAll();
 }
 
 async function saveStageEdit(event) {
   claim(event);
-  const trip = activeTrip();
   const stage = selectedStage();
-  if (!trip || !stage) return;
+  const trip = activeTrip();
+  if (!stage || !trip) return;
   try {
     const updated = await updateStage(stage.id, {
       start_location: byId('v2-stage-from-edit')?.value?.trim() || '',
       end_location: byId('v2-stage-to-edit')?.value?.trim() || '',
-      planned_date: byId('v2-stage-date-edit')?.value || '',
-      distance_km: byId('v2-stage-km-edit')?.value?.trim() || '',
-      custom_route_url: byId('v2-stage-route-edit')?.value?.trim() || '',
+      planned_date: byId('v2-stage-date-edit')?.value || null,
+      distance_km: byId('v2-stage-km-edit')?.value || null,
+      custom_route_url: byId('v2-stage-route-edit')?.value?.trim() || null,
       notes: byId('v2-stage-notes-edit')?.value?.trim() || '',
     });
-    STATE.stagesByTrip[trip.id] = stagesForTrip(trip.id).map((item) => item.id === updated.id ? updated : item);
+    STATE.stagesByTrip[trip.id] = stagesForTrip(trip.id).map((candidate) => candidate.id === updated.id ? updated : candidate);
     STATE.selectedStageId = updated.id;
     STATE.wizard = null;
     STATE.editTargetId = null;
+    await api().loadStagesForTrip?.(trip.id);
     renderAll();
   } catch (error) {
     showError('v2-stage-error', error);
@@ -314,40 +309,37 @@ async function saveStageEdit(event) {
 async function removeStage(event, stageId) {
   claim(event);
   const trip = activeTrip();
-  const stage = stagesForTrip(trip?.id).find((item) => item.id === stageId);
+  const stage = stagesForTrip(trip?.id).find((candidate) => candidate.id === stageId);
   if (!trip || !stage) return;
-  if (!window.confirm(`Delete this stage? Journal entries attached to it may also be removed.`)) return;
-  try {
-    await deleteStage(stage.id);
-    STATE.stagesByTrip[trip.id] = stagesForTrip(trip.id).filter((item) => item.id !== stage.id);
-    STATE.selectedStageId = STATE.stagesByTrip[trip.id][0]?.id || null;
-    STATE.wizard = null;
-    STATE.editTargetId = null;
-    renderAll();
-  } catch (error) {
-    window.alert(error?.message || 'Could not delete stage.');
-  }
+  if (!window.confirm(`Delete stage “${stage.start_location || 'Start'} to ${stage.end_location || 'End'}”?`)) return;
+  await deleteStage(stage.id);
+  STATE.stagesByTrip[trip.id] = stagesForTrip(trip.id).filter((candidate) => candidate.id !== stage.id);
+  STATE.selectedStageId = stagesForTrip(trip.id)[0]?.id || null;
+  STATE.wizard = null;
+  STATE.editTargetId = null;
+  renderAll();
 }
 
 async function saveEntryEdit(event) {
   claim(event);
-  const stage = selectedStage();
   const entry = selectedEntry();
-  if (!stage || !entry) return;
-  const time = byId('v2-entry-time-edit')?.value || '';
-  const date = stage.planned_date || new Date().toISOString().slice(0, 10);
+  const stage = selectedStage();
+  if (!entry || !stage) return;
   try {
+    const time = byId('v2-entry-time-edit')?.value || '';
+    const date = stage.planned_date || new Date().toISOString().slice(0, 10);
     const updated = await updateEntry(entry.id, {
       entry_type: byId('v2-entry-type-edit')?.value || 'note',
       title: byId('v2-entry-title-edit')?.value?.trim() || '',
       location: byId('v2-entry-place-edit')?.value?.trim() || '',
       description: byId('v2-entry-note-edit')?.value?.trim() || '',
-      location_url: byId('v2-entry-location-url-edit')?.value?.trim() || '',
+      location_url: byId('v2-entry-location-url-edit')?.value?.trim() || null,
       timestamp: time ? `${date}T${time}:00` : null,
     });
-    STATE.entriesByStage[stage.id] = entriesForStage(stage.id).map((item) => item.id === updated.id ? updated : item);
+    STATE.entriesByStage[stage.id] = entriesForStage(stage.id).map((candidate) => candidate.id === updated.id ? updated : candidate);
     STATE.wizard = null;
     STATE.editTargetId = null;
+    await api().loadEntriesForStage?.(stage.id, { quiet: true });
     renderAll();
   } catch (error) {
     showError('v2-entry-error', error);
@@ -357,19 +349,14 @@ async function saveEntryEdit(event) {
 async function removeEntry(event, entryId) {
   claim(event);
   const stage = selectedStage();
-  if (!stage) return;
-  const entry = entriesForStage(stage.id).find((item) => item.id === entryId);
-  if (!entry) return;
+  const entry = entriesForStage(stage?.id).find((candidate) => candidate.id === entryId);
+  if (!stage || !entry) return;
   if (!window.confirm(`Delete journal entry “${entry.title || 'Untitled'}”?`)) return;
-  try {
-    await deleteEntry(entry.id);
-    STATE.entriesByStage[stage.id] = entriesForStage(stage.id).filter((item) => item.id !== entry.id);
-    STATE.wizard = null;
-    STATE.editTargetId = null;
-    renderAll();
-  } catch (error) {
-    window.alert(error?.message || 'Could not delete journal entry.');
-  }
+  await deleteEntry(entry.id);
+  STATE.entriesByStage[stage.id] = entriesForStage(stage.id).filter((candidate) => candidate.id !== entry.id);
+  STATE.wizard = null;
+  STATE.editTargetId = null;
+  renderAll();
 }
 
 async function saveExpense(event) {
@@ -385,7 +372,7 @@ async function saveExpense(event) {
       stage_id: byId('v2-expense-stage')?.value || null,
       description: byId('v2-expense-description')?.value?.trim() || '',
     });
-    STATE.expensesByTrip[trip.id] = [expense, ...expensesForTrip(trip.id)];
+    STATE.expensesByTrip[trip.id] = [...expensesForTrip(trip.id), expense];
     STATE.wizard = null;
     STATE.editTargetId = null;
     await api().loadExpensesForTrip?.(trip.id, { quiet: true });
@@ -401,20 +388,18 @@ document.addEventListener('click', async (event) => {
   if (!btn) return;
   const action = btn.dataset.action || '';
 
-  if (action.endsWith('new-trip')) { claim(event); STATE.wizard = 'trip'; STATE.editTargetId = null; renderAll(); return; }
-  if (action === 'rf-v2-edit-trip') { claim(event); STATE.wizard = 'trip-edit'; STATE.editTargetId = activeTrip()?.id || null; renderAll(); return; }
+  if (action === 'rf-v2-edit-trip') { claim(event); STATE.wizard = 'trip-edit'; renderAll(); return; }
   if (action === 'rf-v2-delete-trip') { await removeTrip(event); return; }
-  if (action === 'rf-v2-add-expense') { claim(event); STATE.wizard = 'expense'; STATE.editTargetId = null; renderAll(); return; }
-  if (action === 'rf-v2-add-stage-expense') { claim(event); STATE.wizard = 'expense'; STATE.editTargetId = btn.dataset.stageId || STATE.selectedStageId || null; renderAll(); return; }
+  if (action === 'rf-v2-cancel-wizard') { claim(event); STATE.wizard = null; STATE.editTargetId = null; renderAll(); return; }
+  if (action === 'rf-v2-save-trip') { await saveTrip(event); return; }
+  if (action === 'rf-v2-update-trip') { await saveTripEdit(event); return; }
   if (action === 'rf-v2-edit-stage') { claim(event); STATE.wizard = 'stage-edit'; STATE.editTargetId = btn.dataset.stageId; renderAll(); return; }
   if (action === 'rf-v2-delete-stage') { await removeStage(event, btn.dataset.stageId); return; }
   if (action === 'rf-v2-edit-entry') { claim(event); STATE.wizard = 'journal-edit'; STATE.editTargetId = btn.dataset.entryId; renderAll(); return; }
   if (action === 'rf-v2-delete-entry') { await removeEntry(event, btn.dataset.entryId); return; }
-  if (action === 'rf-v2-cancel-wizard') { claim(event); STATE.wizard = null; STATE.editTargetId = null; renderAll(); return; }
-  if (action === 'rf-v2-save-trip') { await saveTrip(event); return; }
-  if (action === 'rf-v2-update-trip') { await saveTripEdit(event); return; }
   if (action === 'rf-v2-update-stage') { await saveStageEdit(event); return; }
   if (action === 'rf-v2-update-entry') { await saveEntryEdit(event); return; }
+  if (action === 'rf-v2-add-expense' || action === 'rf-v2-add-stage-expense') { claim(event); STATE.wizard = 'expense'; STATE.editTargetId = btn.dataset.stageId || null; renderAll(); return; }
   if (action === 'rf-v2-save-expense') { await saveExpense(event); }
 }, true);
 
