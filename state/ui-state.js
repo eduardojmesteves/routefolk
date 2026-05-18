@@ -19,6 +19,10 @@ function normalTripView(value, fallback = 'detail') {
   return TRIP_VIEWS.has(value) ? value : fallback;
 }
 
+function normalMobileItemsView(value) {
+  return value === 'category' ? 'category' : 'list';
+}
+
 function serialise() {
   return {
     version: VERSION,
@@ -32,6 +36,7 @@ function serialise() {
     lastTripView: normalTripView(STATE.lastTripView, 'detail'),
     lastArchiveView: STATE.lastArchiveView === 'summary' ? 'summary' : 'list',
     itemStatusFilter: STATE.itemStatusFilter || 'all',
+    mobileItemsView: normalMobileItemsView(STATE.mobileItemsView),
     tripSearch: STATE.tripSearch || '',
     tripStatusFilter: STATE.tripStatusFilter || 'all',
     tripFiltersOpen: Boolean(STATE.tripFiltersOpen),
@@ -74,6 +79,7 @@ export function restoreUiState(user = STATE.user) {
     STATE.lastTripView = normalTripView(payload.lastTripView || (STATE.tab === 'trips' ? payload.view : null), 'detail');
     STATE.lastArchiveView = payload.lastArchiveView === 'summary' || STATE.tab === 'archive' && payload.view === 'summary' ? 'summary' : 'list';
     STATE.itemStatusFilter = payload.itemStatusFilter || 'all';
+    STATE.mobileItemsView = normalMobileItemsView(payload.mobileItemsView);
     STATE.tripSearch = payload.tripSearch || '';
     STATE.tripStatusFilter = payload.tripStatusFilter || 'all';
     STATE.tripFiltersOpen = Boolean(payload.tripFiltersOpen || payload.tripSearch);
