@@ -235,6 +235,7 @@ document.addEventListener('click', async (event) => {
   if (action.endsWith('journal-type')) { claim(event); STATE.journalType = btn.dataset.value || 'note'; renderSoon(); return; }
   if (action.endsWith('status-filter')) { claim(event); if (STATE.tab === 'archive') STATE.archiveStatusFilter = btn.dataset.value; else STATE.tripStatusFilter = btn.dataset.value; renderSoon(); return; }
   if (action.endsWith('item-filter')) { claim(event); STATE.itemStatusFilter = btn.dataset.value === 'done' ? 'done' : 'todo'; renderSoon(); return; }
+  if (action.endsWith('item-view')) { claim(event); STATE.mobileItemsView = btn.dataset.value === 'category' ? 'category' : 'list'; renderSoon(); return; }
   if (action.endsWith('search-toggle')) { claim(event); if (STATE.tab === 'archive') STATE.archiveFiltersOpen = !STATE.archiveFiltersOpen; else STATE.tripFiltersOpen = !STATE.tripFiltersOpen; renderSoon(); return; }
   if (action.endsWith('select-category')) { claim(event); STATE.selectedCategoryKey = btn.dataset.category; STATE.wizard = null; renderSoon(); return; }
   if (action.endsWith('toggle-item')) { await toggleItem(event, btn); return; }
