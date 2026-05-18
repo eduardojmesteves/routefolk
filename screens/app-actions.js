@@ -5,7 +5,6 @@
 // stages, journal, costs, GPX, and items before rendering.
 // ============================================================
 
-import { createTrip } from '../lib/trips.js';
 import { createStage } from '../lib/stages.js';
 import { createEntry } from '../lib/journal.js';
 import { createTripItem, deleteTripItem, toggleTripItemPacked, updateTripItem } from '../lib/items.js';
@@ -57,15 +56,6 @@ async function openTripWithData(tripId, view = 'detail', tab = 'trips') {
   if (tab === 'archive') rememberArchiveContext(tripId, 'summary');
   else rememberTripContext(tripId, nextView);
   renderSoon();
-}
-
-async function createNewTrip(event) {
-  claim(event);
-  const title = window.prompt('Trip title');
-  if (!title?.trim()) return;
-  const trip = await createTrip({ title: title.trim(), description: '', start_date: null, end_date: null, status: 'planning', visibility: 'group' });
-  STATE.trips = [trip, ...STATE.trips.filter((item) => item.id !== trip.id)];
-  await openTripWithData(trip.id, 'detail', 'trips');
 }
 
 async function saveStage(event) {
@@ -124,11 +114,8 @@ async function editItem(event, btn) {
   if (!trip) return;
   const item = tripItems(trip.id).find((candidate) => candidate.id === btn.dataset.itemId);
   if (!item) return;
-  const name = window.prompt('Item name', item.name || '');
-  if (name === null) return;
-  if (!name.trim()) return;
-  const updated = await updateTripItem(item.id, { name: name.trim() });
-  STATE.itemsByTrip[trip.id] = tripItems(trip.id).map((candidate) => candidate.id === updated.id ? updated : candidate);
+  STATE.wizard = 'item-edit';
+  STATE.editTargetId = item.id;
   renderSoon();
 }
 
@@ -150,7 +137,7 @@ async function addItem(event, form) {
   const trip = activeTrip();
   if (!trip) return;
   const fd = new FormData(form);
-  const item = await createTripItem(trip.id, { text: fd.get('text'), category_id: fd.get('category_id') || null, status: 'planned' });
+  const item = await createTripItem(trip.id, { text: fd.get('text'), category_id: fd.get('category_id') || null, status: fd.get('status') || 'planned', notes: fd.get('notes') || '' });
   STATE.itemsByTrip[trip.id] = [...tripItems(trip.id), item];
   form.reset();
   STATE.wizard = null;
@@ -167,7 +154,7 @@ document.addEventListener('click', async (event) => {
   if (action === 'rf-palette-select') { claim(event); setPalette(btn.dataset.palette || 'midnight'); renderSoon(); return; }
   if (action.endsWith('sign-in')) { claim(event); await appApi().handleSignIn?.(); return; }
   if (action.endsWith('sign-out')) { claim(event); await appApi().handleSignOut?.(); window.location.reload(); return; }
-  if (action.endsWith('new-trip')) { await createNewTrip(event); return; }
+  if (action.endsWith('new-trip')) { claim(event); STATE.wizard = 'trip'; renderSoon(); return; }
 
   if (action.endsWith('nav')) {
     claim(event);
@@ -242,7 +229,7 @@ document.addEventListener('click', async (event) => {
   if (action.endsWith('add-stage')) { claim(event); STATE.wizard = 'stage'; renderSoon(); return; }
   if (action.endsWith('add-journal')) { claim(event); STATE.wizard = 'journal'; renderSoon(); return; }
   if (action.endsWith('add-item')) { claim(event); STATE.wizard = 'item'; renderSoon(); return; }
-  if (action.endsWith('cancel-wizard')) { claim(event); STATE.wizard = null; renderSoon(); return; }
+  if (action.endsWith('cancel-wizard')) { claim(event); STATE.wizard = null; STATE.editTargetId = null; renderSoon(); return; }
   if (action.endsWith('save-stage')) { await saveStage(event); return; }
   if (action.endsWith('save-journal')) { await saveJournal(event); return; }
   if (action.endsWith('journal-type')) { claim(event); STATE.journalType = btn.dataset.value || 'note'; renderSoon(); return; }
