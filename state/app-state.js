@@ -53,6 +53,7 @@ export const STATE = {
   itemsLoading: false,
   itemsError: null,
   itemStatusFilter: 'all',
+  mobileItemsView: 'list',
   tripSearch: '',
   tripStatusFilter: 'all',
   tripFiltersOpen: false,
