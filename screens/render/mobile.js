@@ -37,6 +37,8 @@ import {
   userName,
 } from './shared.js';
 
+const TRIP_FILTERS = [['all', 'All'], ['planning', 'Planning'], ['active', 'Active']];
+
 function bottomNav(active) {
   return `<nav class="rf-clean-bottom"><button class="${active === 'trips' ? 'is-active' : ''}" data-action="rf-m2-nav" data-tab="trips">Trips</button><button class="${active === 'archive' ? 'is-active' : ''}" data-action="rf-m2-nav" data-tab="archive">Archive</button><button class="${active === 'account' ? 'is-active' : ''}" data-action="rf-m2-nav" data-tab="account">You</button></nav>`;
 }
@@ -54,11 +56,30 @@ function selectedStage(trip) {
   return st.find((stage) => stage.id === STATE.selectedStageId) || st[0] || null;
 }
 
+function activeTrips() {
+  const query = (STATE.tripSearch || '').trim().toLowerCase();
+  const filter = STATE.tripStatusFilter || 'all';
+  return STATE.trips
+    .filter((trip) => ['planning', 'active'].includes(trip.status))
+    .filter((trip) => (filter === 'all' || trip.status === filter) && (!query || `${trip.title || ''} ${trip.description || ''}`.toLowerCase().includes(query)));
+}
+
 function itemDone(item) { return item?.status === 'packed'; }
 function itemTodo(item) { return !itemDone(item); }
 function itemFilter() { return STATE.itemStatusFilter === 'done' ? 'done' : 'todo'; }
 function itemCompletionLabel(item) { return itemDone(item) ? 'Done' : 'To-do'; }
 function itemGroupForCategory(all, categoryKey) { return all.filter((item) => slug(item.category?.name || item.category_name || 'Other') === categoryKey); }
+
+function mobileTrips() {
+  const rows = activeTrips();
+  if (STATE.tripsLoading && !STATE.trips.length) {
+    return screen('<main class="rf-clean-page"><div class="rf-clean-empty">Loading trips…</div></main>', 'trips');
+  }
+  if (STATE.tripsError) {
+    return screen(`<main class="rf-clean-page"><div class="rf-clean-empty">${esc(STATE.tripsError)}</div></main>`, 'trips');
+  }
+  return screen(`<header class="rf-clean-trip-head"><div class="rf-clean-kicker">Routefolk</div><h1>Trips</h1><p>${rows.length} on the road map · ${archiveTrips().length} in archive</p></header><main class="rf-clean-page"><div class="rf-clean-section-head"><h2>The road map</h2><button data-action="rf-m2-new-trip">+ New</button></div><div class="rf-clean-toolbar"><div>${TRIP_FILTERS.map(([key, label]) => `<button class="${(STATE.tripStatusFilter || 'all') === key ? 'is-active' : ''}" data-action="rf-m2-status-filter" data-value="${key}">${label}</button>`).join('')}</div>${STATE.tripFiltersOpen || STATE.tripSearch ? `<input data-action="rf-m2-search-input" value="${esc(STATE.tripSearch || '')}" placeholder="Search by name"><button data-action="rf-m2-search-toggle">×</button>` : `<button data-action="rf-m2-search-toggle">⌕</button>`}</div><div class="rf-clean-card-list">${rows.map((trip) => { const s = stats(trip); return `<button class="rf-clean-trip-card" data-action="rf-m2-select-trip" data-trip-id="${esc(trip.id)}"><div><small>${esc(tripNo(trip))} · ${esc(season(trip))}</small><strong>${esc(trip.title || 'Untitled trip')}</strong><span>${esc(subtitle(trip))}</span></div><b>${Math.round(s.distance).toLocaleString()} km</b></button>`; }).join('') || '<div class="rf-clean-empty">No matching trips.</div>'}</div></main>`, 'trips');
+}
 
 function mobileStages(trip) {
   const st = stages(trip.id);
@@ -118,10 +139,10 @@ export function renderMobileMarkup() {
   if (trip && STATE.view === 'costs') return mobileCosts(trip);
   if (trip && STATE.view === 'packing') return mobileItems(trip);
   if (trip) return mobileStages(trip);
-  return '';
+  return mobileTrips();
 }
 
 export function mobileSignature() {
   const trip = currentTrip();
-  return `${STATE.tab}:${STATE.view}:${trip?.id || ''}:${STATE.wizard || ''}:${STATE.selectedCategoryKey || ''}:${STATE.itemStatusFilter || ''}:${STATE.archiveSearch || ''}:${STATE.archiveStatusFilter || ''}:${currentPalette()}:${JSON.stringify([stages(trip?.id || '').length, expenses(trip?.id || '').length, items(trip?.id || '').length])}`;
+  return `${STATE.tab}:${STATE.view}:${trip?.id || ''}:${STATE.wizard || ''}:${STATE.tripSearch || ''}:${STATE.tripStatusFilter || ''}:${STATE.selectedCategoryKey || ''}:${STATE.itemStatusFilter || ''}:${STATE.archiveSearch || ''}:${STATE.archiveStatusFilter || ''}:${currentPalette()}:${JSON.stringify([STATE.trips.length, stages(trip?.id || '').length, expenses(trip?.id || '').length, items(trip?.id || '').length])}`;
 }
