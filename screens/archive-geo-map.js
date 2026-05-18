@@ -1,8 +1,8 @@
 // ============================================================
 // routefolk — screens/archive-geo-map.js
 // Interactive cumulative Archive GPX map.
-// The lifecycle is keyed to the actual map slot DOM object because
-// routefolk re-renders #content with innerHTML.
+// Falls back to a local SVG route drawing when Leaflet/OpenStreetMap
+// cannot load, so archived GPX geography never becomes a dead panel.
 // ============================================================
 
 import { STATE } from '../state/app-state.js';
@@ -27,6 +27,7 @@ function statusSlot() { return document.getElementById('rf-v2-archive-map-status
 function isArchiveView() { return !!STATE.user && STATE.tab === 'archive' && !STATE.selectedArchiveTripId; }
 function setStatus(text) { const el = statusSlot(); if (el) el.textContent = text || ''; }
 function isAttached(el) { return !!el && document.documentElement.contains(el); }
+function esc(value) { return String(value ?? '').replace(/[&<>"]/g, (char) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[char])); }
 
 function mapIsAlive() {
   const el = slot();
@@ -124,6 +125,12 @@ function pointsForTrack(track) {
   const points = Array.isArray(geo) ? geo : geo.points;
   if (!Array.isArray(points)) return [];
   return points.map(pointToLatLng).filter(Boolean);
+}
+
+function drawableTracks() {
+  return completedTracks()
+    .map((track) => ({ track, points: pointsForTrack(track) }))
+    .filter((row) => row.points.length >= 2);
 }
 
 function routeKey() {
@@ -225,6 +232,50 @@ function drawRoutes(L) {
   setStatus(`${drawable.length} completed GPX route${drawable.length === 1 ? '' : 's'} shown on OpenStreetMap.`);
 }
 
+function projectedPath(points, bounds, width, height, padding) {
+  const [minLat, maxLat, minLng, maxLng] = bounds;
+  const latSpan = Math.max(0.000001, maxLat - minLat);
+  const lngSpan = Math.max(0.000001, maxLng - minLng);
+  return points.map(([lat, lng]) => {
+    const x = padding + ((lng - minLng) / lngSpan) * (width - padding * 2);
+    const y = padding + ((maxLat - lat) / latSpan) * (height - padding * 2);
+    return `${x.toFixed(1)},${y.toFixed(1)}`;
+  }).join(' ');
+}
+
+function drawSvgFallback(error) {
+  const el = slot();
+  if (!el || !isAttached(el)) return;
+
+  const drawable = drawableTracks();
+  if (!drawable.length) {
+    el.innerHTML = `<div class="rf-v2-map-fallback"><div><strong>Map unavailable</strong><span>${esc(error?.message || 'No drawable GPX geometry yet.')}</span></div></div>`;
+    setStatus('Interactive map unavailable. No drawable GPX route geometry found yet.');
+    return;
+  }
+
+  const points = drawable.flatMap((row) => row.points);
+  const lats = points.map(([lat]) => lat);
+  const lngs = points.map(([, lng]) => lng);
+  const bounds = [Math.min(...lats), Math.max(...lats), Math.min(...lngs), Math.max(...lngs)];
+  const width = 1200;
+  const height = 360;
+  const padding = 36;
+  const paths = drawable.map((row, index) => {
+    const d = projectedPath(row.points, bounds, width, height, padding);
+    const first = row.points[0];
+    const last = row.points[row.points.length - 1];
+    const firstPoint = projectedPath([first], bounds, width, height, padding);
+    const lastPoint = projectedPath([last], bounds, width, height, padding);
+    const [sx, sy] = firstPoint.split(',');
+    const [ex, ey] = lastPoint.split(',');
+    return `<polyline class="rf-v2-map-route" points="${d}"><title>${esc(trackLabel(row.track))}</title></polyline>${index === 0 ? `<circle class="rf-v2-map-start" cx="${sx}" cy="${sy}" r="6"/>` : ''}<circle class="rf-v2-map-end" cx="${ex}" cy="${ey}" r="6"/>`;
+  }).join('');
+
+  el.innerHTML = `<svg class="rf-v2-map-svg" viewBox="0 0 ${width} ${height}" role="img" aria-label="Archive GPX route map fallback"><defs><pattern id="rf-map-grid" width="80" height="80" patternUnits="userSpaceOnUse"><path d="M 80 0 L 0 0 0 80" fill="none" stroke="currentColor" stroke-opacity="0.08" stroke-width="1"/></pattern></defs><rect width="100%" height="100%" fill="url(#rf-map-grid)"/>${paths}</svg>`;
+  setStatus(`${drawable.length} completed GPX route${drawable.length === 1 ? '' : 's'} shown as a local GPX fallback. OpenStreetMap tiles are unavailable.`);
+}
+
 async function render() {
   if (!isArchiveView()) {
     destroyMap();
@@ -240,6 +291,7 @@ async function render() {
   if (el === lastSlot && mapIsAlive()) {
     const L = await ensureLeaflet().catch(() => null);
     if (L) drawRoutes(L);
+    else drawSvgFallback(new Error('Leaflet unavailable.'));
     return;
   }
 
@@ -262,10 +314,7 @@ async function render() {
     buildMap(L, el);
     drawRoutes(L);
   } catch (error) {
-    if (slot() === el && isAttached(el)) {
-      el.innerHTML = `<div class="rf-v2-map-fallback"><div><strong>Map failed to load</strong><span>${String(error?.message || 'OpenStreetMap is unavailable.')}</span></div></div>`;
-      setStatus('Interactive map unavailable. GPX data is still safe.');
-    }
+    if (slot() === el && isAttached(el)) drawSvgFallback(error);
   } finally {
     initInFlight = false;
     if (renderAgain) schedule();
