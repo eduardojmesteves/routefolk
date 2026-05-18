@@ -4,7 +4,7 @@
 // Bump CACHE whenever shell assets change.
 // ============================================================
 
-const CACHE = 'routefolk-shell-v100-trip-controls-01';
+const CACHE = 'routefolk-shell-v101-archive-map-stable-01';
 
 const SHELL_ASSETS = [
   './',
@@ -22,7 +22,7 @@ const SHELL_ASSETS = [
   './screens/wizards.js?v=20260517-desktop-fix-01',
   './screens/extra-writes.js?v=20260516-production-01',
   './screens/gpx-panel.js?v=20260516-production-01',
-  './screens/archive-map.js?v=20260517-final-polish-01',
+  './screens/archive-map.js?v=20260517-archive-map-stable-01',
   './screens/render/shared.js',
   './screens/render/mobile.js',
   './screens/render/desktop.js',
