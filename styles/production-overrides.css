@@ -1,0 +1,14 @@
+/* ============================================================
+   routefolk — production overrides
+   Final non-visual shell rules that must override older layers.
+   ============================================================ */
+
+.rf-d2-commandbar{
+  display:none!important;
+}
+
+/* The Costs screen already renders one primary Log expense action.
+   Hide the legacy injected CTA so the ledger card does not duplicate it. */
+.rf-v2-cost-cta{
+  display:none!important;
+}
