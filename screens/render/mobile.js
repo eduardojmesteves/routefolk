@@ -54,6 +54,12 @@ function selectedStage(trip) {
   return st.find((stage) => stage.id === STATE.selectedStageId) || st[0] || null;
 }
 
+function itemDone(item) { return item?.status === 'packed'; }
+function itemTodo(item) { return !itemDone(item); }
+function itemFilter() { return STATE.itemStatusFilter === 'done' ? 'done' : 'todo'; }
+function itemCompletionLabel(item) { return itemDone(item) ? 'Done' : 'To-do'; }
+function itemGroupForCategory(all, categoryKey) { return all.filter((item) => slug(item.category?.name || item.category_name || 'Other') === categoryKey); }
+
 function mobileStages(trip) {
   const st = stages(trip.id);
   return screen(`${tripHeader(trip, 'stages')}<main class="rf-clean-page"><div class="rf-clean-section-head"><h2>${st.length} stages</h2><button data-action="rf-m2-add-stage">+ Add stage</button></div>${st.map((stage, index) => `<button class="rf-clean-stage" data-action="rf-m2-open-stage" data-stage-id="${esc(stage.id)}"><span>${index + 1}</span><div><strong>${esc(stage.start_location || 'Start')} <em>to</em> ${esc(stage.end_location || 'End')}</strong><small>${esc(day(stage.planned_date))} · ${Math.round(Number(stage.distance_km) || 0)} km · ${esc(fmtDate(stage.planned_date) || '')}</small>${stage.notes ? `<p>${esc(stage.notes)}</p>` : ''}</div></button>`).join('') || '<div class="rf-clean-empty">No stages yet.</div>'}</main>`);
@@ -74,9 +80,12 @@ function mobileItems(trip) {
   const all = items(trip.id);
   const cats = categories(trip.id);
   const selected = STATE.selectedCategoryKey || slug(cats[0]?.name);
-  const group = all.filter((item) => slug(item.category?.name || item.category_name || 'Other') === selected);
-  const packed = all.filter((item) => item.status === 'packed').length;
-  return screen(`${tripHeader(trip, 'items')}<main class="rf-clean-page"><section class="rf-clean-ledger"><div><small>The packing list</small><strong>${packed}<span> / ${all.length}</span></strong><span>packed</span></div><button data-action="rf-m2-add-item">+ Add item</button></section><h2>Categories</h2><div class="rf-clean-card-list">${cats.map((cat, index) => { const key = slug(cat.name); const rows = all.filter((item) => slug(item.category?.name || item.category_name || 'Other') === key); const done = rows.filter((item) => item.status === 'packed').length; return `<button class="rf-clean-category ${selected === key ? 'is-active' : ''}" data-action="rf-m2-select-category" data-category="${esc(key)}"><span>${index + 1}</span><strong>${esc(cat.name)}</strong><b>${done}/${rows.length}</b></button>`; }).join('')}</div><h2>${esc(cats.find((cat) => slug(cat.name) === selected)?.name || 'Items')}</h2>${group.map((item) => `<article class="rf-clean-expense"><div><strong>${esc(item.name)}</strong><small>${esc(item.status || 'planned')}</small></div><button data-action="rf-m2-toggle-item" data-item-id="${esc(item.id)}">${item.status === 'packed' ? 'Packed' : 'Pack'}</button></article>`).join('') || '<div class="rf-clean-empty">No items in this category yet.</div>'}${STATE.wizard === 'item' ? `<form class="rf-clean-form" data-action="rf-m2-item-form"><input name="text" placeholder="e.g. Rain gloves"><select name="category_id">${cats.map((cat) => `<option value="${esc(cat.id || '')}">${esc(cat.name)}</option>`).join('')}</select><button type="submit">Add item</button></form>` : ''}</main>`);
+  const selectedCat = cats.find((cat) => slug(cat.name) === selected);
+  const filter = itemFilter();
+  const done = all.filter(itemDone).length;
+  const todo = all.length - done;
+  const group = itemGroupForCategory(all, selected).filter((item) => filter === 'done' ? itemDone(item) : itemTodo(item));
+  return screen(`${tripHeader(trip, 'items')}<main class="rf-clean-page"><section class="rf-clean-ledger rf-clean-items-ledger"><div><small>The packing list</small><strong>${done}<span> / ${all.length}</span></strong><span>${todo} left · ${done} done</span></div><button data-action="rf-m2-add-item">+ Add item</button></section><h2>Categories</h2><div class="rf-clean-card-list">${cats.map((cat, index) => { const key = slug(cat.name); const rows = itemGroupForCategory(all, key); const catDone = rows.filter(itemDone).length; const catTodo = rows.length - catDone; return `<button class="rf-clean-category ${selected === key ? 'is-active' : ''}" data-action="rf-m2-select-category" data-category="${esc(key)}"><span>${index + 1}</span><strong>${esc(cat.name)}</strong><b>${catTodo} left · ${catDone} done</b></button>${selected === key && rows.length ? `<div class="rf-clean-category-preview">${rows.slice(0,4).map((item) => `<span>${itemDone(item) ? '✓' : '○'} ${esc(item.name)}</span>`).join('')}</div>` : ''}`; }).join('')}</div><div class="rf-clean-section-head"><h2>${esc(selectedCat?.name || 'Items')}</h2><div class="rf-clean-mini-pills"><button class="${filter === 'todo' ? 'is-active' : ''}" data-action="rf-m2-item-filter" data-value="todo">To-do</button><button class="${filter === 'done' ? 'is-active' : ''}" data-action="rf-m2-item-filter" data-value="done">Done</button></div></div>${STATE.wizard === 'item' ? `<form class="rf-clean-form" data-action="rf-m2-item-form"><input name="text" placeholder="e.g. Rain gloves"><select name="category_id">${cats.map((cat) => `<option value="${esc(cat.id || '')}">${esc(cat.name)}</option>`).join('')}</select><button type="submit">Add item</button></form>` : ''}<div class="rf-clean-card-list">${group.map((item) => `<article class="rf-clean-item-card ${itemDone(item) ? 'is-done' : 'is-todo'}"><button class="rf-clean-item-check" data-action="rf-m2-toggle-item" data-item-id="${esc(item.id)}">${itemDone(item) ? '✓' : ''}</button><div><strong>${esc(item.name)}</strong><small>${itemCompletionLabel(item)}${item.status === 'optional' ? ' · optional' : ''}</small></div><div class="rf-clean-actions"><button data-action="rf-m2-edit-item" data-item-id="${esc(item.id)}">Edit</button><button data-action="rf-m2-delete-item" data-item-id="${esc(item.id)}">Delete</button></div></article>`).join('') || `<div class="rf-clean-empty">No ${filter === 'done' ? 'done' : 'to-do'} items in this category yet.</div>`}</div></main>`);
 }
 
 function mobileJournal(trip) {
@@ -114,5 +123,5 @@ export function renderMobileMarkup() {
 
 export function mobileSignature() {
   const trip = currentTrip();
-  return `${STATE.tab}:${STATE.view}:${trip?.id || ''}:${STATE.wizard || ''}:${STATE.selectedCategoryKey || ''}:${STATE.archiveSearch || ''}:${STATE.archiveStatusFilter || ''}:${currentPalette()}:${JSON.stringify([stages(trip?.id || '').length, expenses(trip?.id || '').length, items(trip?.id || '').length])}`;
+  return `${STATE.tab}:${STATE.view}:${trip?.id || ''}:${STATE.wizard || ''}:${STATE.selectedCategoryKey || ''}:${STATE.itemStatusFilter || ''}:${STATE.archiveSearch || ''}:${STATE.archiveStatusFilter || ''}:${currentPalette()}:${JSON.stringify([stages(trip?.id || '').length, expenses(trip?.id || '').length, items(trip?.id || '').length])}`;
 }
