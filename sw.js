@@ -4,7 +4,7 @@
 // Bump CACHE whenever shell assets change.
 // ============================================================
 
-const CACHE = 'routefolk-shell-v101-archive-map-stable-01';
+const CACHE = 'routefolk-shell-v102-geo-map-01';
 
 const SHELL_ASSETS = [
   './',
@@ -12,7 +12,7 @@ const SHELL_ASSETS = [
   './style.css?v=20260516-redesign-ink-rust-01',
   './style-fidelity.css?v=20260516-fidelity-01',
   './styles/shell.css?v=20260516-production-01',
-  './styles/app-ui.css?v=20260516-production-01',
+  './styles/app-ui.css?v=20260518-geo-map-01',
   './styles/cleanup.css?v=20260516-production-01',
   './styles/wizards.css?v=20260517-wizard-01',
   './styles/refinements.css?v=20260517-clean-render-01',
@@ -22,7 +22,7 @@ const SHELL_ASSETS = [
   './screens/wizards.js?v=20260517-desktop-fix-01',
   './screens/extra-writes.js?v=20260516-production-01',
   './screens/gpx-panel.js?v=20260516-production-01',
-  './screens/archive-map.js?v=20260517-archive-map-stable-01',
+  './screens/archive-geo-map.js?v=20260518-geo-map-01',
   './screens/render/shared.js',
   './screens/render/mobile.js',
   './screens/render/desktop.js',
