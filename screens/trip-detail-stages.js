@@ -4,6 +4,7 @@
 //
 // This module is still UI-only. Data loading and write handlers stay in app.js
 // until the Trip Detail area is split into smaller controller modules.
+// Phase 20: renders from/to pairs as “from <em>to</em> to” instead of arrows.
 // ============================================================
 
 import { trackFileName } from '../lib/gpx.js';
@@ -228,8 +229,11 @@ function stageNavigateUrl(stage) {
   return stage.custom_route_url || stage.gmaps_url || null;
 }
 
-function stageRouteLabel(stage, index = 0) {
-  return [stage.start_location, stage.end_location].filter(Boolean).join(' → ') || stage.title || `Stage ${index + 1}`;
+function stageRouteHtml(stage, index = 0) {
+  const from = stage.start_location;
+  const to = stage.end_location;
+  if (from && to) return `${esc(from)} <em class="rf-stage-to">to</em> ${esc(to)}`;
+  return esc([from, to].filter(Boolean).join(' → ') || stage.title || `Stage ${index + 1}`);
 }
 
 function stageDateWarningHtml(stage, trip) {
@@ -238,7 +242,8 @@ function stageDateWarningHtml(stage, trip) {
 }
 
 function stageCardHtml(stage, trip, index, total) {
-  const route = stageRouteLabel(stage, index);
+  const selected = STATE.selectedStageId === stage.id;
+  const route = stageRouteHtml(stage, index);
   const meta = [];
   if (stage.planned_date) meta.push(fmtDate(stage.planned_date));
   if (stage.distance_km != null) meta.push(`${stage.distance_km} km`);
@@ -246,14 +251,14 @@ function stageCardHtml(stage, trip, index, total) {
   const navUrl = stageNavigateUrl(stage);
 
   return `
-    <div class="stage-card">
+    <div class="stage-card rf-stage ${selected ? 'is-selected' : ''}" data-stage-select="${esc(stage.id)}">
       <div class="stage-card-row">
         <div class="stage-order">
           <button class="stage-order-btn" data-stage-action="up" data-id="${esc(stage.id)}" ${index === 0 || !canWrite() ? 'disabled' : ''} title="Move up">↑</button>
           <button class="stage-order-btn" data-stage-action="down" data-id="${esc(stage.id)}" ${index === total - 1 || !canWrite() ? 'disabled' : ''} title="Move down">↓</button>
         </div>
         <div class="stage-body">
-          <div class="stage-title">${esc(route)}</div>
+          <div class="stage-title">${route}</div>
           ${meta.length ? `<div class="stage-meta">${esc(meta.join(' · '))}</div>` : ''}
           ${stage.notes ? `<div class="stage-notes">${esc(stage.notes)}</div>` : ''}
           ${auditLineHtml(stage, 'Edited')}
@@ -293,5 +298,62 @@ export function renderStagesSection(trip) {
       ${stages.map((s, i) => stageCardHtml(s, trip, i, stages.length)).join('')}
     </div>
     <button class="btn btn-primary btn-block" style="margin-top:12px;" id="addStageBtn"${writeDisabledAttr()}>+ Add stage</button>
+  `;
+}
+
+
+export function renderStagePaneHtml(stageId, trip) {
+  const stages = STATE.stagesByTrip[trip.id] || [];
+  const stage = stages.find((item) => item.id === stageId) || stages[0];
+  if (!stage) {
+    return `<section class="rf-stagePane"><div class="empty-sub">Select a stage to see weather, journal, GPX and costs.</div></section>`;
+  }
+
+  const index = stages.findIndex((item) => item.id === stage.id);
+  const expenses = Array.isArray(STATE.expensesByTrip[trip.id])
+    ? STATE.expensesByTrip[trip.id].filter((expense) => expense.stage_id === stage.id)
+    : [];
+
+  return `
+    <section class="rf-stagePane">
+      <div class="rf-stagePane__head">
+        <div class="rf-kicker">Stage ${esc(index + 1)} / ${esc(stages.length)}</div>
+        <div class="rf-stagePane__title">${stageRouteHtml(stage, index)}</div>
+        <div class="stage-meta">
+          ${stage.planned_date ? `<span>${esc(fmtDate(stage.planned_date))}</span>` : ''}
+          ${stage.distance_km != null ? `<span>${esc(stage.distance_km)} km</span>` : ''}
+        </div>
+        ${stage.notes ? `<div class="stage-notes">${esc(stage.notes)}</div>` : ''}
+      </div>
+
+      <div class="rf-stagePane__block">
+        <div class="rf-section-kicker">Sky advisory</div>
+        ${weatherStripHtml(stage)}
+      </div>
+
+      <div class="rf-stagePane__block">
+        <div class="rf-section-kicker">The day's notes</div>
+        ${journalSectionHtml(stage)}
+      </div>
+
+      <div class="rf-stagePane__block">
+        <div class="rf-section-kicker">Track file</div>
+        ${gpxStageSectionHtml(stage, trip)}
+      </div>
+
+      <div class="rf-stagePane__block">
+        <div class="rf-section-kicker">Stage costs</div>
+        ${expenses.length ? `
+          <div class="summary-expense-list">
+            ${expenses.map((expense) => `
+              <div class="summary-expense-item">
+                <div class="summary-expense-title">${esc(expense.description || expense.category || 'Expense')} · €${esc(Number(expense.amount || 0).toFixed(2))}</div>
+                <div class="summary-expense-meta">${expense.date ? esc(fmtDate(expense.date)) : 'No date'}</div>
+              </div>
+            `).join('')}
+          </div>
+        ` : '<div class="empty-sub">No costs assigned to this stage.</div>'}
+      </div>
+    </section>
   `;
 }

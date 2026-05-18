@@ -1,6 +1,7 @@
 // ============================================================
 // routefolk — screens/summary-screen.js
 // Trip Summary Review screen rendering.
+// Phase 22: restore table-first review layout.
 // ============================================================
 
 import { STATE } from '../state/app-state.js';
@@ -21,33 +22,43 @@ export function renderTripSummary(ctx) {
   if (!trip) return tripNotFoundHtml();
 
   const stages = STATE.stagesByTrip[trip.id] || [];
-  const expenses = CONTEXT.expensesForTrip(trip.id);
+  const expenses = expensesForTrip(trip.id);
+  const statusMeta = STATUS_META[trip.status] || STATUS_META.planning;
+  const embedded = Boolean(CONTEXT.embedded);
+
+  const body = `
+    <section class="card rf-card summary-table-card">
+      <div class="card-title">Summary table</div>
+      <div class="form-help">Review the road plan first. Stage journal and expenses expand inside the table.</div>
+      ${summaryTableHtml(stages, trip)}
+      ${summaryTripLevelExpensesHtml(trip)}
+    </section>
+
+    <section class="card rf-card summary-cost-card">
+      <div class="card-title">Trip cost</div>
+      ${expenseTotalsHtml(expenseTotals(expenses))}
+    </section>
+  `;
+
+  if (embedded) return body;
+
   return `
     <button class="btn btn-secondary btn-sm" id="backToDetailBtn" style="margin-bottom:12px;">← Back to trip</button>
-
-    <div class="card">
-      <div class="trip-detail-head">
-        <h1 class="trip-detail-title">${esc(trip.title)}</h1>
+    <section class="card rf-card summary-review-hero">
+      <div class="trip-detail-head summary-review-head">
+        <div>
+          <div class="rf-kicker">Trip Summary Review</div>
+          <h1 class="trip-detail-title rf-detail-title">${esc(trip.title)}</h1>
+          <div class="trip-detail-dates">${esc(fmtDateRange(trip.start_date, trip.end_date))}</div>
+        </div>
         <div class="trip-detail-pills">
-          <span class="status-pill ${(STATUS_META[trip.status] || STATUS_META.planning).cls}">${esc((STATUS_META[trip.status] || STATUS_META.planning).label)}</span>
+          <span class="status-pill rf-pill ${statusMeta.cls}">${esc(statusMeta.label)}</span>
           ${visibilityPillHtml(trip)}
         </div>
       </div>
-      <div class="trip-detail-dates">${esc(fmtDateRange(trip.start_date, trip.end_date))}</div>
-      <div class="section-label" style="margin-top:12px;margin-bottom:8px;">Trip Summary Review</div>
-      ${tripStatsStripHtml(trip)}
-    </div>
-
-    <div class="card">
-      <div class="card-title">Trip cost</div>
-      ${expenseTotalsHtml(expenseTotals(expenses))}
-    </div>
-
-    <div class="card">
-      <div class="card-title">Summary table</div>
-      ${summaryTableHtml(stages, trip)}
-      ${summaryTripLevelExpensesHtml(trip)}
-    </div>
+      <div class="summary-compact-stats">${tripStatsStripHtml(trip)}</div>
+    </section>
+    ${body}
   `;
 }
 
@@ -61,7 +72,7 @@ function summaryTableHtml(stages, trip) {
         <thead>
           <tr>
             <th>Date</th>
-            <th>From → To</th>
+            <th>From <em>to</em> To</th>
             <th>Distance</th>
             <th>Notes</th>
             <th>Journal / expenses</th>
@@ -196,8 +207,6 @@ function summaryTripLevelExpensesHtml(trip) {
     </div>
   `;
 }
-
-
 
 export function bindSummaryEvents(root, { loadEntriesForStage, renderAll }) {
   root.querySelectorAll('[data-summary-stage-id]').forEach((btn) => {

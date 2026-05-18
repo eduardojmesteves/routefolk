@@ -1,0 +1,120 @@
+/* ============================================================
+   routefolk — renderer integration
+   Final layout bridge for the single-source production renderer.
+   ============================================================ */
+
+.rf-auth-shell{
+  min-height:100dvh;
+  display:grid;
+  place-items:center;
+  padding:32px;
+  background:var(--rf-d2-bg,#e7e4d8);
+  background-image:var(--rf-d2-contour-bg,var(--contour));
+  background-size:420px 420px;
+  color:var(--rf-d2-ink,#171a26);
+}
+.rf-auth-card{
+  width:min(640px,100%);
+  border:1px solid var(--rf-d2-rule-2,rgba(23,26,38,.2));
+  background:rgba(243,240,228,.76);
+  background-image:var(--rf-d2-contour-bg,var(--contour));
+  background-size:420px 420px;
+  padding:42px;
+  box-shadow:0 24px 80px rgba(23,26,38,.10);
+}
+.rf-auth-card h1{
+  font:500 clamp(48px,8vw,86px)/.9 var(--rf-d2-font-serif,serif);
+  letter-spacing:-.055em;
+  margin:12px 0 18px;
+  color:var(--rf-d2-ink,#171a26);
+}
+.rf-auth-card p{
+  max-width:480px;
+  font:18px/1.45 var(--rf-d2-font-ui,sans-serif);
+  color:var(--rf-d2-muted,#787a8a);
+  margin:0 0 28px;
+}
+.rf-auth-card .rf-d2-btn{height:46px;padding:0 22px;}
+
+.rf-clean-summary-entry{
+  display:grid;
+  grid-template-columns:80px 1.5fr 150px 130px 1fr;
+  gap:12px;
+  align-items:center;
+  padding:10px 16px 10px;
+  border-bottom:1px dotted var(--rf-d2-rule,rgba(23,26,38,.1));
+  background:rgba(231,228,216,.34);
+  color:var(--rf-d2-muted,#787a8a);
+  font:13px var(--rf-d2-font-ui,sans-serif);
+}
+.rf-clean-summary-entry strong{
+  font:500 15px var(--rf-d2-font-serif,serif);
+  color:var(--rf-d2-ink-2,#3b405a);
+}
+.rf-clean-summary-entry span{
+  min-width:0;
+  overflow-wrap:anywhere;
+}
+.rf-d2-account-avatar img{
+  width:100%;
+  height:100%;
+  display:block;
+  object-fit:cover;
+}
+.rf-d2-account-card .rf-d2-btn.is-danger{
+  color:var(--rf-d2-danger,#7d3458);
+  border-color:rgba(125,52,88,.34);
+  background:rgba(125,52,88,.05);
+}
+
+@media(min-width:960px){
+  html,body,#app,.rf-screen,.rf-v2-root-host{height:100%;min-height:100vh;overflow:hidden;}
+  .rf-d2-app{height:100vh;min-height:0;overflow:hidden;}
+  .rf-d2-sidebar,.rf-d2-trips-col,.rf-d2-main,.rf-d2-aside{height:100vh;min-height:0;overflow-y:auto;}
+  .rf-d2-trips-col{width:340px;padding:28px 24px;}
+  .rf-d2-app.is-3-pane .rf-d2-trips-col{width:300px;}
+  .rf-d2-trips-head{display:grid;grid-template-columns:minmax(0,1fr) auto;align-items:start;gap:14px;margin-bottom:20px;}
+  .rf-d2-trips-head .rf-d2-btn.is-primary{width:auto;min-width:88px;height:38px;padding:0 18px;border-radius:999px;display:inline-flex;align-items:center;justify-content:center;white-space:nowrap;line-height:1;font-size:13px;}
+  .rf-d2-filter-row{display:flex!important;align-items:center!important;justify-content:space-between!important;gap:10px!important;flex-wrap:nowrap!important;margin:16px 0 18px!important;}
+  .rf-d2-filter-row .rf-d2-pills{flex:1 1 auto;min-width:0;gap:6px;}
+  .rf-d2-filter-row .rf-d2-pill{height:30px;padding:0 11px;white-space:nowrap;}
+  .rf-d2-filter-row .rf-d2-search-btn{flex:0 0 34px;}
+  .rf-d2-filter-row .rf-d2-search{grid-column:auto!important;flex:1 1 100%;min-width:0;max-width:none;height:36px;padding:0 10px;}
+  .rf-d2-filter-row:has(.rf-d2-search) .rf-d2-pills{display:none;}
+  .rf-d2-filter-row:has(.rf-d2-search) .rf-d2-search{width:100%;}
+  .rf-d2-filter-row .rf-d2-search input{height:34px;min-width:0;font-size:13px;padding:0 4px;border:0;background:transparent;}
+  .rf-d2-filter-row .rf-d2-search-close{width:28px;height:28px;flex:0 0 28px;border:0;background:transparent;}
+  .rf-d2-hero-top{display:grid!important;grid-template-columns:minmax(0,1fr) 230px;gap:28px;align-items:start!important;}
+  .rf-d2-hero-stamps{display:grid!important;grid-template-columns:1fr 1fr;gap:8px;justify-items:stretch;align-items:stretch;min-width:0;}
+  .rf-d2-hero-stamps>.rf-d2-state-pill,.rf-d2-hero-stamps>.rf-d2-stamp{width:100%;box-sizing:border-box;justify-content:center;min-height:30px;height:30px;padding:0 10px;}
+  .rf-v2-hero-actions{display:grid!important;grid-template-columns:1fr 1fr;grid-column:1/-1;gap:8px;width:100%;margin-top:0!important;}
+  .rf-v2-hero-actions .rf-d2-btn{width:100%;height:34px!important;padding:0 12px;white-space:nowrap;}
+  .rf-d2-main.is-account{height:100vh;overflow-y:auto;padding:36px 44px 72px;}
+  .rf-d2-main.is-account .rf-d2-account-card,
+  .rf-d2-main.is-account .rf-d2-riders-card,
+  .rf-d2-main.is-account .rf-d2-mileage,
+  .rf-d2-main.is-account .rf-clean-desktop-pref{width:min(920px,100%);max-width:920px;margin-left:auto;margin-right:auto;box-sizing:border-box;}
+  .rf-d2-main.is-account .rf-d2-account-card{grid-template-columns:84px minmax(0,1fr) 132px;padding:20px 24px;margin-top:28px;}
+  .rf-d2-main.is-account .rf-d2-account-avatar{width:64px;height:64px;overflow:hidden;}
+  .rf-d2-main.is-account .rf-d2-account-card h1{font-size:28px;line-height:1.05;}
+  .rf-clean-desktop-pref{margin-top:18px!important;}
+  .rf-clean-desktop-pref .rf-clean-pref{padding:22px 24px!important;}
+  .rf-clean-desktop-pref .rf-clean-pref h2{font:700 22px var(--rf-d2-font-ui,sans-serif);margin:0 0 14px;}
+  .rf-clean-desktop-pref .rf-clean-pref button{height:44px;grid-template-columns:minmax(0,1fr) auto;align-items:center;padding:0 16px!important;margin-top:8px!important;}
+}
+
+@media(max-width:959px){
+  .rf-auth-shell{
+    min-height:100dvh;
+    padding:24px;
+  }
+  .rf-auth-card{
+    padding:28px;
+  }
+  .rf-auth-card h1{
+    font-size:48px;
+  }
+  .rf-auth-card p{
+    font-size:16px;
+  }
+}

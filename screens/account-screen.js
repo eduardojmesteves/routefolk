@@ -1,6 +1,7 @@
 // ============================================================
 // routefolk — screens/account-screen.js
 // Account and PWA install helper rendering.
+// Screenshot fidelity pass.
 // ============================================================
 
 import { STATE } from '../state/app-state.js';
@@ -17,126 +18,132 @@ function detectedInstallPlatform() {
 }
 
 function installStepsForPlatform(platform) {
-  if (platform === 'ios') {
-    return {
-      title: 'iPhone / iPad',
-      note: 'Use Safari. Other iOS browsers usually cannot add the PWA properly.',
-      steps: ['Open routefolk in Safari.', 'Tap the Share button.', 'Choose Add to Home Screen.', 'Tap Add.'],
-    };
-  }
-  if (platform === 'android') {
-    return {
-      title: 'Android',
-      note: 'Chrome gives the most reliable install flow.',
-      steps: ['Open routefolk in Chrome.', 'Tap the three-dot menu.', 'Choose Install app or Add to Home screen.', 'Confirm the install.'],
-    };
-  }
-  return {
-    title: 'Desktop',
-    note: 'Chrome and Edge usually show an install icon in the address bar when the app is installable.',
-    steps: ['Open routefolk in Chrome or Edge.', 'Click the install icon in the address bar, when available.', 'Confirm the install.', 'Open routefolk from your app launcher or dock.'],
-  };
-}
-
-function installStepsHtml(config) {
-  return `
-    <div class="install-helper-block">
-      <div class="install-helper-title">${esc(config.title)}</div>
-      <ol class="install-steps">
-        ${config.steps.map((step) => `<li>${esc(step)}</li>`).join('')}
-      </ol>
-      <div class="form-help">${esc(config.note)}</div>
-    </div>
-  `;
+  if (platform === 'ios') return { title: 'iPhone / iPad', note: 'Use Safari.', steps: ['Open routefolk in Safari.', 'Tap Share.', 'Choose Add to Home Screen.', 'Tap Add.'] };
+  if (platform === 'android') return { title: 'Android', note: 'Chrome gives the most reliable install flow.', steps: ['Open routefolk in Chrome.', 'Tap the three-dot menu.', 'Choose Install app or Add to Home screen.', 'Confirm the install.'] };
+  return { title: 'Desktop', note: 'Chrome and Edge usually show an install icon in the address bar.', steps: ['Open routefolk in Chrome or Edge.', 'Click the install icon in the address bar.', 'Confirm the install.'] };
 }
 
 function pwaInstallHelperHtml() {
-  const platform = detectedInstallPlatform();
-  const primary = installStepsForPlatform(platform);
-  const others = ['ios', 'android', 'desktop'].filter((p) => p !== platform).map(installStepsForPlatform);
+  const primary = installStepsForPlatform(detectedInstallPlatform());
   return `
-    <div class="card">
-      <div class="card-title">Install routefolk</div>
-      <div style="font-size:14px;color:#c5d0e0;line-height:1.5;margin-bottom:12px;">
-        Add routefolk to your home screen so it opens like a normal app.
-      </div>
-      ${installStepsHtml(primary)}
-      <details class="form-details install-helper-details">
-        <summary>Instructions for other devices</summary>
-        <div class="install-helper-extra">
-          ${others.map(installStepsHtml).join('')}
+    <details class="rf-collapsible-section rf-install-card">
+      <summary class="rf-collapsible-summary">
+        <span class="rf-kicker">PWA field kit</span>
+        <span class="rf-collapsible-title">Install routefolk</span>
+      </summary>
+      <div class="rf-collapsible-body">
+        <div class="rf-account-copy">Add routefolk to your home screen so it opens like a normal app during the trip.</div>
+        <div class="install-helper-block rf-install-helper-block">
+          <div class="install-helper-title rf-install-helper-title">${esc(primary.title)}</div>
+          <ol class="install-steps rf-install-steps">${primary.steps.map((step) => `<li>${esc(step)}</li>`).join('')}</ol>
+          <div class="form-help rf-install-note">${esc(primary.note)}</div>
         </div>
-      </details>
-    </div>
+      </div>
+    </details>
   `;
 }
 
-function peopleListHtml() {
-  if (STATE.profilesLoading && !STATE.profiles.length) return `<div class="empty-sub">Loading people…</div>`;
-  if (STATE.profilesError) return `<div class="stage-warn">${esc(STATE.profilesError)}</div>`;
-  if (!STATE.profiles.length) return `<div class="empty-sub">No profiles yet. People appear here after their first sign-in.</div>`;
+function riderAvatarsHtml() {
+  const others = STATE.profiles.filter((profile) => profile.id !== STATE.user?.id).slice(0, 3);
+  if (!others.length) return '<span class="rf-rider-avatar">RF</span>';
+  return others.map((profile) => `<span class="rf-rider-avatar">${esc(initialsFromName(profile.full_name || profile.email))}</span>`).join('');
+}
 
+function daysBetween(start, end) {
+  if (!start || !end) return 0;
+  const a = new Date(`${start}T00:00:00Z`);
+  const b = new Date(`${end}T00:00:00Z`);
+  if (Number.isNaN(a.getTime()) || Number.isNaN(b.getTime())) return 0;
+  return Math.max(1, Math.round((b - a) / 86400000) + 1);
+}
+
+function lifetimeStats() {
+  const completed = STATE.trips.filter((trip) => trip.status === 'completed');
+  let totalKm = 0;
+  let totalDays = 0;
+  let spent = 0;
+
+  completed.forEach((trip) => {
+    const stages = STATE.stagesByTrip[trip.id];
+    const expenses = STATE.expensesByTrip[trip.id];
+    if (Array.isArray(stages)) {
+      totalKm += stages.reduce((sum, stage) => sum + (Number(stage.distance_km) || 0), 0);
+      totalDays += stages.length || daysBetween(trip.start_date, trip.end_date);
+    } else {
+      totalKm += Number(trip.distance_km) || 0;
+      totalDays += daysBetween(trip.start_date, trip.end_date);
+    }
+    if (Array.isArray(expenses)) spent += expenses.reduce((sum, expense) => sum + (Number(expense.amount) || 0), 0);
+  });
+
+  return { tripCount: completed.length || STATE.trips.length, totalKm, totalDays, spent };
+}
+
+function mileageHtml() {
+  const stats = lifetimeStats();
   return `
-    <div class="people-list">
-      ${STATE.profiles.map((profile) => {
-        const initials = initialsFromName(profile.full_name || profile.email);
-        const isYou = STATE.user?.id === profile.id;
-        return `
-          <div class="people-row">
-            <div class="account-avatar people-avatar">
-              ${profile.avatar_url ? `<img src="${esc(profile.avatar_url)}" alt="" referrerpolicy="no-referrer">` : esc(initials)}
-            </div>
-            <div class="account-info">
-              <div class="account-name">${esc(profile.full_name || profile.email || 'Unknown')}${isYou ? ' <span class="people-you">You</span>' : ''}</div>
-              <div class="account-email">${esc(profile.email || '')}</div>
-            </div>
-          </div>
-        `;
-      }).join('')}
-    </div>
+    <section class="rf-mileage-card">
+      <h2 class="rf-account-section-title">Mileage to date</h2>
+      <div class="rf-mileage-grid">
+        <div><div class="rf-mileage-v">${esc(stats.tripCount)}</div><div class="rf-mileage-i">Trips</div><div class="rf-mileage-l">Finished + planned</div></div>
+        <div><div class="rf-mileage-v">${esc(Math.round(stats.totalKm).toLocaleString())}</div><div class="rf-mileage-i">Distance</div><div class="rf-mileage-l">Kilometres</div></div>
+        <div><div class="rf-mileage-v">${esc(stats.totalDays)}</div><div class="rf-mileage-i">Days</div><div class="rf-mileage-l">On the road</div></div>
+        <div><div class="rf-mileage-v">€${esc(Math.round(stats.spent).toLocaleString())}</div><div class="rf-mileage-i">Spent</div><div class="rf-mileage-l">Across trips</div></div>
+      </div>
+    </section>
   `;
 }
 
 export function renderAccount() {
   if (!STATE.user) {
     return `
-      <div class="card">
-        <div class="card-title">Account</div>
-        <div style="font-size:14px;color:#c5d0e0;line-height:1.5;margin-bottom:14px;">
-          Sign in with Google to access shared trips.
-        </div>
-        <button class="btn-google" id="accountSignInBtn">
-          <svg viewBox="0 0 24 24" aria-hidden="true"><path fill="#4285F4" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"/><path fill="#34A853" d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z"/><path fill="#FBBC05" d="M5.84 14.1c-.22-.66-.35-1.36-.35-2.1s.13-1.44.35-2.1V7.06H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.94l3.66-2.84z"/><path fill="#EA4335" d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.06L5.84 9.9C6.71 7.3 9.14 5.38 12 5.38z"/></svg>
-          Sign in with Google
-        </button>
+      <div class="rf-account-shell">
+        <div class="rf-mobile-brand" aria-hidden="true"></div>
+        <header class="rf-header rf-account-header">
+          <div class="rf-header__kicker">The bearer</div>
+          <h1 class="rf-page-title">You</h1>
+        </header>
+        <section class="rf-passport rf-account-card rf-auth-card">
+          <div class="rf-account-copy">Sign in with Google to access shared trips and keep your route ledger synced.</div>
+          <button class="btn-google rf-google-btn" id="accountSignInBtn">Sign in with Google</button>
+        </section>
+        ${pwaInstallHelperHtml()}
       </div>
     `;
   }
 
   const avatar = userAvatarUrl(STATE.user);
   return `
-    <div class="card">
-      <div class="card-title">Account</div>
-      <div class="account-row">
-        <div class="account-avatar">
+    <div class="rf-account-shell rf-account-grid">
+      <div class="rf-mobile-brand" aria-hidden="true"></div>
+      <header class="rf-header rf-account-header">
+        <div class="rf-header__kicker">The bearer</div>
+        <h1 class="rf-page-title">You</h1>
+      </header>
+
+      <section class="rf-passport rf-account-card rf-account-passport">
+        <div class="rf-account-avatar-xl">
           ${avatar ? `<img src="${esc(avatar)}" alt="" referrerpolicy="no-referrer">` : esc(userInitials(STATE.user))}
         </div>
-        <div class="account-info">
-          <div class="account-name">${esc(userDisplayName(STATE.user))}</div>
-          <div class="account-email">${esc(STATE.user.email || '')}</div>
+        <div class="rf-account-name">${esc(userDisplayName(STATE.user))}</div>
+        <div class="rf-account-email">${esc(STATE.user.email || '')}</div>
+        <div class="rf-account-copy">Routefolk member since 2023</div>
+        <button class="btn btn-secondary btn-block rf-manage-account" type="button">Manage Google account</button>
+      </section>
+
+      <section class="rf-other-riders-card">
+        <div>
+          <div class="rf-other-title">Other riders</div>
+          <div class="rf-account-copy">${esc(Math.max(0, STATE.profiles.length - 1))} people you’ve ridden with</div>
         </div>
-      </div>
-      <button class="btn btn-secondary btn-block" id="signOutBtn" style="margin-top:12px;">Sign out</button>
-    </div>
+        <div class="rf-rider-stack">${riderAvatarsHtml()}<span class="rf-rider-chevron">›</span></div>
+      </section>
 
-    <div class="card">
-      <div class="card-title">People with access</div>
-      ${peopleListHtml()}
-      <div class="form-help" style="margin-top:10px;">
-        This list shows users who have signed in at least once. Add or remove access in the Google OAuth Test users list.
-      </div>
-    </div>
+      ${mileageHtml()}
 
-    ${pwaInstallHelperHtml()}
+      <button class="btn btn-secondary rf-signout-btn" id="signOutBtn">Sign out</button>
+      <div class="rf-account-version">routefolk · v0.6.2 · build 20260516</div>
+      ${pwaInstallHelperHtml()}
+    </div>
   `;
 }

@@ -1,63 +1,51 @@
 <!DOCTYPE html>
-<html lang="en-GB">
+<html lang="en-GB" data-palette="midnight">
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
-  <meta name="theme-color" content="#1a1f2e">
+  <meta name="theme-color" content="#171a26">
   <meta name="mobile-web-app-capable" content="yes">
   <meta name="apple-mobile-web-app-capable" content="yes">
-  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  <meta name="apple-mobile-web-app-status-bar-style" content="default">
   <meta name="apple-mobile-web-app-title" content="routefolk">
+  <meta name="description" content="Plan, journal, and archive motorcycle trips with friends.">
+  <meta name="color-scheme" content="light">
   <title>routefolk</title>
   <link rel="manifest" href="manifest.json">
   <link rel="icon" href="icons/icon-192.png">
   <link rel="apple-touch-icon" href="icons/icon-192.png">
-  <link rel="stylesheet" href="style.css?v=20260514-phase334-final-stability-closure">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500;600;700&family=Inter+Tight:wght@400;500;600;700;800&family=Newsreader:opsz,wght@6..72,400;6..72,500;6..72,600;6..72,700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="style.css?v=20260516-redesign-ink-rust-01">
+  <link rel="stylesheet" href="style-fidelity.css?v=20260516-fidelity-01">
+  <link rel="stylesheet" href="styles/shell.css?v=20260516-production-01">
+  <link rel="stylesheet" href="styles/app-ui.css?v=20260518-geo-map-01">
+  <link rel="stylesheet" href="styles/wizards.css?v=20260517-wizard-01">
+  <link rel="stylesheet" href="styles/interface-polish.css?v=20260518-production-01">
+  <link rel="stylesheet" href="styles/renderer-integration.css?v=20260518-production-01">
+  <link rel="stylesheet" href="styles/packing-list.css?v=20260518-production-01">
+  <link rel="stylesheet" href="styles/production-overrides.css?v=20260518-production-01">
 </head>
 <body>
-  <div id="app">
-    <header id="header">
-      <div class="hdr-left">
-        <div class="hdr-title">routefolk</div>
-        <div class="hdr-sub" id="hdrSub">—</div>
-      </div>
-      <div class="hdr-right" id="hdrRight">
-        <button class="btn btn-secondary btn-sm" id="signInBtn">Sign in</button>
-      </div>
-    </header>
-
-    <main id="content">
-      <!-- Screens render here -->
-    </main>
-
-    <nav id="nav">
-      <div id="nav-inner">
-        <button class="nav-btn active" data-tab="trips">
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" aria-hidden="true">
-            <path d="M3 6h18M3 12h18M3 18h12"/>
-          </svg>
-          <span>Trips</span>
-        </button>
-        <button class="nav-btn" data-tab="archive">
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" aria-hidden="true">
-            <circle cx="12" cy="12" r="9"/>
-            <path d="M3 12h18M12 3a14 14 0 010 18M12 3a14 14 0 000 18"/>
-          </svg>
-          <span>Archive</span>
-        </button>
-        <button class="nav-btn" data-tab="account">
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" aria-hidden="true">
-            <circle cx="12" cy="8" r="4"/>
-            <path d="M4 21v-1a6 6 0 016-6h4a6 6 0 016 6v1"/>
-          </svg>
-          <span>Account</span>
-        </button>
-      </div>
-    </nav>
+  <a class="skip-link" href="#content">Skip to main content</a>
+  <div class="rf-app" id="app">
+    <main class="rf-screen" id="content" tabindex="-1" aria-live="polite"></main>
   </div>
-
-  <div id="toast"></div>
-
-  <script src="app.js?v=20260514-phase334-final-stability-closure" type="module"></script>
+  <div id="toast" aria-live="polite" aria-atomic="true"></div>
+  <script>
+    try {
+      const palette = localStorage.getItem('rf.palette') || 'midnight';
+      document.documentElement.dataset.palette = palette;
+      if (!localStorage.getItem('rf.palette')) localStorage.setItem('rf.palette', palette);
+    } catch {}
+  </script>
+  <script src="screens/app-renderer.js?v=20260518-hide-route-preview-01" type="module"></script>
+  <script src="screens/wizards.js?v=20260517-desktop-fix-01" type="module"></script>
+  <script src="screens/extra-writes.js?v=20260516-production-01" type="module"></script>
+  <script src="screens/gpx-panel.js?v=20260516-production-01" type="module"></script>
+  <script src="screens/archive-geo-map.js?v=20260518-geo-map-01" type="module"></script>
+  <script src="screens/app-actions.js?v=20260518-items-01" type="module"></script>
+  <script src="app.js?v=20260517-state-01" type="module"></script>
 </body>
 </html>

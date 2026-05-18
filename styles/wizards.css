@@ -1,0 +1,43 @@
+/* routefolk wizard layer */
+.rf-v2-wizard-host,.rf-v2-extra-host{position:fixed;inset:0;z-index:1200;pointer-events:none;display:flex;background:rgba(23,26,38,.24);}
+.rf-v2-wizard-host.is-desktop,.rf-v2-extra-host.is-desktop{justify-content:flex-end;align-items:stretch;}
+.rf-v2-wizard-host.is-mobile,.rf-v2-extra-host.is-mobile{justify-content:center;align-items:flex-end;}
+.rf-v2-wizard-panel{pointer-events:auto;background:var(--rf-d2-surface);background-image:var(--rf-d2-contour-bg);background-size:var(--rf-d2-contour-size);border:1px solid var(--rf-d2-rule-2);box-shadow:0 24px 70px rgba(0,0,0,.22);color:var(--rf-d2-ink);font-family:var(--rf-d2-font-ui);box-sizing:border-box;overflow-y:auto;}
+.rf-v2-wizard-host.is-desktop .rf-v2-wizard-panel,.rf-v2-extra-host.is-desktop .rf-v2-wizard-panel{width:420px;min-height:100vh;padding:30px 28px 86px;border-top:0;border-right:0;border-bottom:0;}
+.rf-v2-wizard-host.is-mobile .rf-v2-wizard-panel,.rf-v2-extra-host.is-mobile .rf-v2-wizard-panel{width:100%;max-height:86dvh;padding:24px 22px calc(28px + env(safe-area-inset-bottom));border-radius:22px 22px 0 0;}
+.rf-v2-wizard-head{margin-bottom:22px;}
+.rf-v2-wizard-error{border:1px solid rgba(125,52,88,.35);background:rgba(125,52,88,.08);color:#7d3458;border-radius:4px;padding:10px 12px;margin:12px 0;font:700 12px var(--rf-d2-font-ui);}
+.rf-v2-cost-cta{margin-top:18px;text-align:right;}
+.rf-v2-add-expense-btn{min-width:140px;}
+.rf-v2-hero-actions,.rf-v2-stage-actions,.rf-v2-entry-actions,.rf-v2-expense-actions,.rf-v2-item-actions{display:flex;gap:8px;align-items:center;flex-wrap:wrap;margin-top:14px;}
+.rf-v2-hero-actions{justify-content:flex-end;}
+.rf-v2-stage-actions{margin-top:18px;}
+.rf-v2-entry-actions{grid-column:1/-1;margin:10px 0 0 38px;}
+.rf-v2-expense-actions{grid-column:1/-1;margin-top:8px;}
+.rf-v2-item-actions{grid-column:1/-1;margin:8px 0 0 34px;}
+.rf-v2-gpx-section{margin-top:22px;}
+.rf-v2-gpx-card{border:1px solid var(--rf-d2-rule);background:rgba(231,228,216,.45);padding:14px;border-radius:4px;color:var(--rf-d2-ink);font-family:var(--rf-d2-font-ui);}
+.rf-v2-gpx-row{display:grid;grid-template-columns:1fr auto;gap:12px;align-items:center;border-bottom:1px dotted var(--rf-d2-rule);padding:10px 0;}
+.rf-v2-gpx-row:first-child{padding-top:0;}
+.rf-v2-gpx-row strong{display:block;font:500 15px var(--rf-d2-font-serif);}
+.rf-v2-gpx-row small{display:block;font:10px var(--rf-d2-font-mono);letter-spacing:.08em;color:var(--rf-d2-muted);margin-top:3px;}
+.rf-v2-gpx-empty{font:italic 13px var(--rf-d2-font-serif);color:var(--rf-d2-muted);margin-bottom:12px;}
+.rf-v2-gpx-upload{display:flex;align-items:center;justify-content:center;border:1px dashed var(--rf-d2-rule-2);border-radius:4px;margin-top:12px;padding:12px;cursor:pointer;font:800 12px var(--rf-d2-font-ui);letter-spacing:.04em;text-transform:uppercase;color:var(--rf-d2-primary);background:rgba(243,240,228,.45);}
+.rf-v2-gpx-upload input{display:none;}
+.rf-v2-gpx-help{font:11px var(--rf-d2-font-ui);color:var(--rf-d2-muted);line-height:1.35;margin-top:10px;}
+.rf-v2-gpx-error{border:1px solid rgba(125,52,88,.35);background:rgba(125,52,88,.08);color:#7d3458;border-radius:4px;padding:8px 10px;margin-bottom:10px;font:700 12px var(--rf-d2-font-ui);}
+.rf-v2-archive-map{width:100%;height:360px;border:1px solid var(--rf-d2-rule-2);background:var(--rf-d2-surface-2);border-radius:4px;overflow:hidden;filter:saturate(.78) contrast(.96);}
+.rf-v2-archive-map-status{font:11px var(--rf-d2-font-mono);letter-spacing:.06em;color:var(--rf-d2-muted);margin-top:10px;text-transform:uppercase;}
+.rf-v2-archive-map .leaflet-control-attribution{font-size:10px;background:rgba(243,240,228,.78);}
+.rf-v2-archive-map .leaflet-control-zoom a{color:var(--rf-d2-ink);background:var(--rf-d2-surface);border-color:var(--rf-d2-rule-2);}
+.rf-d2-btn.is-danger,.rf-m2-btn.is-danger{border-color:rgba(125,52,88,.35);color:#7d3458;background:rgba(125,52,88,.06);}
+.rf-d2-btn.is-danger:hover,.rf-m2-btn.is-danger:hover{background:rgba(125,52,88,.12);}
+@media(max-width:959px){
+  .rf-v2-cost-cta{text-align:left;}
+  .rf-v2-add-expense-btn{width:100%;}
+  .rf-v2-wizard-panel .rf-d2-form-row-pair{grid-template-columns:1fr;}
+  .rf-v2-hero-actions{justify-content:flex-start;}
+  .rf-v2-entry-actions,.rf-v2-item-actions{margin-left:0;}
+  .rf-v2-gpx-row{grid-template-columns:1fr;}
+  .rf-v2-archive-map{height:300px;}
+}

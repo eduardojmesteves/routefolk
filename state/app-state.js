@@ -1,12 +1,22 @@
 // ============================================================
 // routefolk — state/app-state.js
-// Shared mutable app state. Imported by app.js during Phase 3.9H.
+// Shared mutable app state.
 // ============================================================
 
 export const STATE = {
   tab: 'trips',
-  view: 'list', // list | detail | summary
+  view: 'list', // list | detail | summary | costs | packing | journal
   viewTripId: null,
+  selectedTripId: null,
+  selectedArchiveTripId: null,
+  selectedStageId: null,
+  selectedEntryId: null,
+  selectedCategoryKey: null,
+  lastTripView: 'detail',
+  lastArchiveView: 'list',
+  wizard: null, // null | trip | trip-edit | stage | stage-edit | journal | journal-edit | expense | item
+  editTargetId: null,
+  journalType: 'note',
   user: null,
   appAccess: null,
   accessLoading: false,
@@ -21,31 +31,36 @@ export const STATE = {
   stagesLoading: false,
   stagesError: null,
   forecastsByStage: {},
-  entriesByStage: {},          // stageId -> array of entries OR 'loading'
-  expandedStages: new Set(),   // journal sections open in trip detail
-  expandedGpxStages: new Set(), // GPX sections open in trip detail
+  entriesByStage: {},
+  expandedStages: new Set(),
+  expandedGpxStages: new Set(),
   expandedSummaryStages: new Set(),
-  profiles: [],                // users who have signed in at least once
+  profiles: [],
   profilesById: {},
   profilesLoading: false,
   profilesError: null,
-  expensesByTrip: {},       // tripId -> array of expenses OR 'loading'
-  gpxByTrip: {},            // tripId -> array of GPX track records OR 'loading'
-  gpxGeometryByTrack: {},   // trackId -> parsed geometry OR 'loading'
+  expensesByTrip: {},
+  gpxByTrip: {},
+  gpxGeometryByTrack: {},
   gpxLoading: false,
   gpxError: null,
   archiveGpxLoading: false,
   archiveGpxError: null,
   expensesLoading: false,
   expensesError: null,
+  itemsByTrip: {},
+  itemCategoriesByTrip: {},
+  itemsLoading: false,
+  itemsError: null,
+  itemStatusFilter: 'all',
   tripSearch: '',
   tripStatusFilter: 'all',
   tripFiltersOpen: false,
   archiveSearch: '',
   archiveStatusFilter: 'all',
   archiveFiltersOpen: false,
-  archiveViewMode: 'list', // list | map
-  archiveMapLayer: 'heatmap', // heatmap | hybrid | routes
+  archiveViewMode: 'list',
+  archiveMapLayer: 'heatmap',
   archiveDataLoading: false,
   archiveDataError: null,
   isOnline: typeof navigator === 'undefined' ? true : navigator.onLine !== false,

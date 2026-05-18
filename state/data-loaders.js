@@ -1,4 +1,3 @@
-
 // ============================================================
 // routefolk — data-loaders.js
 // Data loading and archive hydration helpers.
@@ -10,6 +9,10 @@ import { listStages } from '../lib/stages.js';
 import { fetchStageForecasts } from '../lib/weather.js';
 import { listEntriesForStage } from '../lib/journal.js';
 import { listProfiles } from '../lib/profiles.js';
+import {
+  ensureDefaultItemCategories,
+  listItemsForTrip,
+} from '../lib/items.js';
 import {
   listGpxTracksForTrip,
   downloadAndParseGpxTrack,
@@ -128,6 +131,28 @@ export function createDataLoaders({ renderAll }) {
       if (!options.quiet) toast('Failed to load expenses.');
     } finally {
       STATE.expensesLoading = false;
+      renderAll();
+    }
+  }
+
+  async function loadItemsForTrip(tripId, options = {}) {
+    STATE.itemsLoading = true;
+    STATE.itemsError = null;
+    STATE.itemCategoriesByTrip[tripId] = STATE.itemCategoriesByTrip[tripId] || 'loading';
+    STATE.itemsByTrip[tripId] = STATE.itemsByTrip[tripId] || 'loading';
+    if (!options.quiet) renderAll();
+
+    try {
+      STATE.itemCategoriesByTrip[tripId] = await ensureDefaultItemCategories(tripId);
+      STATE.itemsByTrip[tripId] = await listItemsForTrip(tripId);
+    } catch (err) {
+      console.error(err);
+      STATE.itemCategoriesByTrip[tripId] = [];
+      STATE.itemsByTrip[tripId] = [];
+      STATE.itemsError = err.message || 'Failed to load packing items.';
+      if (!options.quiet) toast('Failed to load packing items.');
+    } finally {
+      STATE.itemsLoading = false;
       renderAll();
     }
   }
@@ -271,6 +296,7 @@ export function createDataLoaders({ renderAll }) {
     }
     if (!Array.isArray(STATE.expensesByTrip[tripId])) await loadExpensesForTrip(tripId, { quiet: true });
     if (!Array.isArray(STATE.gpxByTrip[tripId])) await loadGpxForTrip(tripId, { quiet: true });
+    if (!Array.isArray(STATE.itemsByTrip[tripId])) await loadItemsForTrip(tripId, { quiet: true });
   }
 
   return {
@@ -279,6 +305,7 @@ export function createDataLoaders({ renderAll }) {
     loadStagesForTrip,
     loadEntriesForStage,
     loadExpensesForTrip,
+    loadItemsForTrip,
     loadGpxForTrip,
     ensureArchiveGpxGeometries,
     ensureArchiveData,

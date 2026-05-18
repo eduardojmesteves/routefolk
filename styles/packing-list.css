@@ -1,0 +1,258 @@
+/* ============================================================
+   routefolk — packing list
+   Production styling for the trip Items screen on desktop and mobile.
+   ============================================================ */
+
+/* Desktop Items screen */
+.rf-v2-items-hero{
+  display:grid!important;
+  grid-template-columns:minmax(0,1fr) auto;
+  align-items:end;
+  gap:22px;
+  padding:26px 30px!important;
+}
+.rf-v2-items-hero .rf-d2-btn{
+  align-self:end;
+  height:42px;
+  min-width:132px;
+  padding:0 18px;
+  white-space:nowrap;
+}
+.rf-v2-item-cats{
+  display:block!important;
+  overflow:hidden;
+}
+.rf-v2-item-cat-block{
+  border-bottom:1px dotted var(--rf-d2-rule);
+}
+.rf-v2-item-cat-block:last-child{
+  border-bottom:0;
+}
+.rf-v2-item-cat-block>.rf-d2-item-cat-row{
+  border-bottom:0;
+}
+.rf-v2-cat-preview{
+  margin:0 18px 14px 72px;
+  padding:10px 0 0;
+  border-top:1px dotted var(--rf-d2-rule);
+  display:grid;
+  gap:7px;
+}
+.rf-v2-cat-preview-row{
+  display:grid;
+  grid-template-columns:22px minmax(0,1fr) auto;
+  gap:8px;
+  align-items:center;
+  min-height:25px;
+  color:var(--rf-d2-ink-2);
+}
+.rf-v2-cat-preview-row span{
+  width:18px;
+  height:18px;
+  display:grid;
+  place-items:center;
+  border:1px solid var(--rf-d2-rule-2);
+  border-radius:50%;
+  font:700 10px var(--rf-d2-font-ui);
+}
+.rf-v2-cat-preview-row strong{
+  font:500 13px var(--rf-d2-font-ui);
+  overflow:hidden;
+  text-overflow:ellipsis;
+  white-space:nowrap;
+}
+.rf-v2-cat-preview-row small{
+  font:700 10px var(--rf-d2-font-mono);
+  letter-spacing:.1em;
+  text-transform:uppercase;
+  color:var(--rf-d2-muted);
+}
+.rf-v2-cat-preview-row.is-done strong{
+  text-decoration:line-through;
+  color:var(--rf-d2-muted);
+}
+.rf-v2-cat-preview-more{
+  color:var(--rf-d2-muted);
+  font:700 10px var(--rf-d2-font-mono);
+  letter-spacing:.12em;
+  text-transform:uppercase;
+  padding-left:30px;
+}
+.rf-v2-items-aside .rf-d2-pills{
+  margin:12px 0 14px;
+}
+.rf-v2-item-form{
+  margin:0 0 16px;
+  padding:14px;
+  border:1px solid var(--rf-d2-rule-2);
+  background:rgba(243,240,228,.56);
+  background-image:var(--rf-d2-contour-bg);
+  background-size:360px;
+}
+.rf-v2-item-list{
+  display:grid;
+  gap:10px;
+  margin-top:12px;
+}
+.rf-v2-item-card{
+  display:grid;
+  grid-template-columns:28px minmax(0,1fr);
+  gap:12px;
+  padding:14px;
+  border:1px solid var(--rf-d2-rule-2);
+  background:rgba(243,240,228,.62);
+  background-image:var(--rf-d2-contour-bg);
+  background-size:360px;
+  border-radius:5px;
+}
+.rf-v2-item-card.is-done{
+  background-color:rgba(243,240,228,.42);
+}
+.rf-v2-item-check{
+  width:22px;
+  height:22px;
+  margin-top:2px;
+  border:1px solid var(--rf-d2-primary);
+  border-radius:4px;
+  background:transparent;
+  color:var(--rf-d2-primary);
+  font:800 12px var(--rf-d2-font-ui);
+  cursor:pointer;
+}
+.rf-v2-item-card-head{
+  display:flex;
+  justify-content:space-between;
+  gap:10px;
+  align-items:start;
+}
+.rf-v2-item-card-head strong{
+  font:500 17px/1.14 var(--rf-d2-font-serif);
+  color:var(--rf-d2-ink);
+}
+.rf-v2-item-card.is-done .rf-v2-item-card-head strong{
+  text-decoration:line-through;
+  color:var(--rf-d2-muted);
+}
+.rf-v2-completion-pill{
+  flex:0 0 auto;
+  border:1px solid var(--rf-d2-rule-2);
+  border-radius:999px;
+  padding:3px 8px;
+  font:700 10px var(--rf-d2-font-mono);
+  letter-spacing:.1em;
+  text-transform:uppercase;
+  color:var(--rf-d2-muted);
+}
+.rf-v2-completion-pill.is-done{
+  border-color:var(--rf-d2-primary);
+  background:var(--rf-d2-primary-soft);
+  color:var(--rf-d2-primary);
+}
+.rf-v2-item-body small,
+.rf-v2-item-body em{
+  display:block;
+  margin-top:5px;
+  color:var(--rf-d2-muted);
+}
+.rf-v2-item-body small{
+  font:12px var(--rf-d2-font-ui);
+}
+.rf-v2-item-body em{
+  font:italic 13px var(--rf-d2-font-serif);
+}
+.rf-v2-item-actions{
+  display:flex;
+  gap:8px;
+  margin-top:12px;
+}
+.rf-v2-item-actions .rf-d2-btn{
+  height:30px;
+  padding:0 12px;
+  font-size:12px;
+}
+
+/* Mobile Items screen */
+@media(max-width:959px){
+  .rf-clean-items-ledger{
+    align-items:end;
+  }
+  .rf-clean-items-ledger button{
+    height:36px;
+    padding:0 14px;
+  }
+  .rf-clean-category-preview{
+    margin:-5px 0 8px 0;
+    padding:9px 12px 11px 50px;
+    border:1px solid var(--rf-m2-rule);
+    border-top:0;
+    background:rgba(243,240,228,.42);
+    display:grid;
+    gap:5px;
+  }
+  .rf-clean-category-preview span{
+    font:13px var(--rf-m2-font-ui);
+    color:var(--rf-m2-muted);
+    overflow:hidden;
+    text-overflow:ellipsis;
+    white-space:nowrap;
+  }
+  .rf-clean-mini-pills{
+    display:flex;
+    gap:7px;
+    flex:0 0 auto;
+  }
+  .rf-clean-mini-pills button{
+    height:32px;
+    padding:0 12px;
+    border:1px solid var(--rf-m2-rule-2);
+    border-radius:999px;
+    background:transparent;
+    color:var(--rf-m2-muted);
+    font:800 12px var(--rf-m2-font-ui);
+  }
+  .rf-clean-mini-pills button.is-active{
+    background:var(--rf-m2-ink);
+    border-color:var(--rf-m2-ink);
+    color:var(--rf-m2-surface);
+  }
+  .rf-clean-item-card{
+    display:grid;
+    grid-template-columns:28px minmax(0,1fr);
+    gap:10px;
+    border:1px solid var(--rf-m2-rule-2);
+    background:rgba(243,240,228,.62);
+    background-image:var(--rf-m2-contour-bg);
+    background-size:330px;
+    border-radius:6px;
+    padding:13px;
+  }
+  .rf-clean-item-card.is-done strong{
+    text-decoration:line-through;
+    color:var(--rf-m2-muted);
+  }
+  .rf-clean-item-check{
+    width:23px;
+    height:23px;
+    border:1px solid var(--rf-m2-primary);
+    border-radius:5px;
+    background:transparent;
+    color:var(--rf-m2-primary);
+    font:800 12px var(--rf-m2-font-ui);
+  }
+  .rf-clean-item-card strong{
+    display:block;
+    font:500 17px/1.15 var(--rf-m2-font-serif);
+  }
+  .rf-clean-item-card small{
+    display:block;
+    margin-top:4px;
+    color:var(--rf-m2-muted);
+    font:700 10px var(--rf-m2-font-mono);
+    letter-spacing:.1em;
+    text-transform:uppercase;
+  }
+  .rf-clean-item-card .rf-clean-actions{
+    grid-column:2;
+    margin-top:10px;
+  }
+}

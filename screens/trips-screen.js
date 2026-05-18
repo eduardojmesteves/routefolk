@@ -1,6 +1,7 @@
 // ============================================================
 // routefolk — screens/trips-screen.js
 // Trips list screen rendering and filtering helpers.
+// Screenshot fidelity pass: visible status pills + hidden search.
 // ============================================================
 
 import { STATE } from '../state/app-state.js';
@@ -17,56 +18,74 @@ function activeTripsBase() {
   return STATE.trips.filter((trip) => TRIPS_SCREEN_STATUSES.includes(trip.status));
 }
 
-function filteredTripsForTripsScreen() {
+function archiveCount() {
+  return STATE.trips.filter((trip) => trip.status === 'completed' || trip.status === 'cancelled').length;
+}
+
+export function filteredTripsForTripsScreen() {
   const query = STATE.tripSearch.trim().toLowerCase();
   const statusFilter = TRIPS_SCREEN_STATUSES.includes(STATE.tripStatusFilter) ? STATE.tripStatusFilter : 'all';
   return activeTripsBase().filter((trip) => {
     const matchesStatus = statusFilter === 'all' || trip.status === statusFilter;
-    const matchesSearch = !query || String(trip.title || '').toLowerCase().includes(query);
+    const matchesSearch = !query || String(trip.title || '').toLowerCase().includes(query) || String(trip.description || '').toLowerCase().includes(query);
     return matchesStatus && matchesSearch;
   });
 }
 
-function tripFiltersHtml() {
-  const activeFilters = Number(Boolean(STATE.tripSearch.trim())) + Number(STATE.tripStatusFilter !== 'all');
-  const toggleText = STATE.tripFiltersOpen ? 'Hide filters' : `Filters${activeFilters ? ` (${activeFilters})` : ''}`;
+function tripsScreenStatsHtml() {
+  const activeTrips = activeTripsBase();
+  const planning = activeTrips.filter((trip) => trip.status === 'planning').length;
+  const active = activeTrips.filter((trip) => trip.status === 'active').length;
+  const archived = archiveCount();
 
   return `
-    <div class="trip-filter-toggle-row">
-      <button class="btn btn-secondary btn-sm trip-filter-toggle" id="tripFiltersToggle" aria-expanded="${STATE.tripFiltersOpen ? 'true' : 'false'}">
-        ${esc(toggleText)}
-      </button>
+    <div class="rf-stats__grid" aria-label="Trip counts">
+      <div class="rf-stat"><div class="rf-stat__v">${esc(activeTrips.length)}</div><div class="rf-stat__l">On road</div></div>
+      <div class="rf-stat"><div class="rf-stat__v">${esc(planning)}</div><div class="rf-stat__l">Planning</div></div>
+      <div class="rf-stat"><div class="rf-stat__v">${esc(active)}</div><div class="rf-stat__l">Active</div></div>
+      <div class="rf-stat"><div class="rf-stat__v">${esc(archived)}</div><div class="rf-stat__l">Archive</div></div>
     </div>
-    <div class="trip-controls ${STATE.tripFiltersOpen ? 'open' : ''}" id="tripFiltersPanel">
-      <div class="trip-search-wrap">
-        <label class="form-label" for="tripSearchInput">Search trips</label>
-        <input class="inp" id="tripSearchInput" type="search" value="${esc(STATE.tripSearch)}" placeholder="Search by trip title">
+  `;
+}
+
+export function tripFiltersHtml() {
+  const chips = [
+    { key: 'all', label: 'All' },
+    { key: 'planning', label: 'Planning' },
+    { key: 'active', label: 'Active' },
+  ];
+  const hasQuery = Boolean(STATE.tripSearch.trim());
+
+  return `
+    <div class="rf-trip-filters">
+      <div class="rf-filter-row">
+        <div class="rf-chips" role="group" aria-label="Trip status filter">
+          ${chips.map((chip) => `
+            <button class="rf-chip ${STATE.tripStatusFilter === chip.key ? 'is-active' : ''}" data-status-chip="${esc(chip.key)}" type="button">
+              ${esc(chip.label)}
+            </button>
+          `).join('')}
+        </div>
+        <button class="rf-search-pill ${hasQuery ? 'is-open' : ''}" id="searchPillBtn" data-search-pill="trips" type="button" aria-expanded="${hasQuery ? 'true' : 'false'}" aria-label="Search trips">
+          <span class="rf-search-pill__icon" aria-hidden="true">⌕</span>
+          <span class="rf-search-pill__label">Search</span>
+        </button>
       </div>
-      <div class="trip-status-wrap">
-        <label class="form-label" for="tripStatusFilter">Status</label>
-        <select class="sel" id="tripStatusFilter">
-          <option value="all" ${STATE.tripStatusFilter === 'all' ? 'selected' : ''}>All active</option>
-          ${TRIPS_SCREEN_STATUSES.map((key) => {
-            const meta = STATUS_META[key];
-            return `<option value="${esc(key)}" ${STATE.tripStatusFilter === key ? 'selected' : ''}>${esc(meta.label)}</option>`;
-          }).join('')}
-        </select>
+      <div class="rf-search-drawer" id="searchDrawer" ${hasQuery ? '' : 'hidden'}>
+        <input class="rf-search-input" id="tripSearchInput" type="search" placeholder="Search by name" value="${esc(STATE.tripSearch)}">
       </div>
     </div>
   `;
 }
 
-export function tripResultsHtml() {
+export function tripResultsHtml(options = {}) {
   const baseTrips = activeTripsBase();
   const trips = filteredTripsForTripsScreen();
   const hasFilters = STATE.tripSearch.trim() || STATE.tripStatusFilter !== 'all';
 
   if (!baseTrips.length) {
     return `
-      <div class="empty-state">
-        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
-          <path d="M3 6h18M3 12h18M3 18h12"/>
-        </svg>
+      <div class="empty-state rf-empty-state">
         <div class="empty-title">No active trips</div>
         <div class="empty-sub">Planning and active trips appear here. Completed and cancelled trips live in the Archive.</div>
       </div>
@@ -75,31 +94,52 @@ export function tripResultsHtml() {
 
   if (!trips.length) {
     return `
-      <div class="empty-state">
+      <div class="empty-state rf-empty-state">
         <div class="empty-title">No matching trips</div>
         <div class="empty-sub">${hasFilters ? 'Adjust the search or active-trip status filter.' : 'No planning or active trips to show.'}</div>
       </div>
     `;
   }
 
-  return `<div class="trip-list">${trips.map(tripCardHtml).join('')}</div>`;
+  return `<div class="rf-tripList rf-trip-list trip-list">${trips.map((trip, index) => tripCardHtml(trip, index, options)).join('')}</div>`;
+}
+
+export function renderTripsPane() {
+  if (!STATE.user) return '';
+  return `
+    <section class="rf-pane">
+      <div class="rf-header">
+        <div class="rf-header__kicker">The road map</div>
+        <h2 class="rf-title">Trips</h2>
+        <p class="rf-sub">${activeTripsBase().length} on the road map · ${archiveCount()} in archive</p>
+      </div>
+      ${tripFiltersHtml()}
+      <div id="tripResults" class="rf-trip-results">${tripResultsHtml({ compact: true })}</div>
+    </section>
+  `;
 }
 
 export function renderTrips() {
   if (!STATE.user) return signedOutState('Sign in to see trips', 'Trips are shared with everyone signed in.');
 
   if (STATE.tripsLoading && !STATE.trips.length) {
-    return `<div class="empty-state"><div class="empty-sub">Loading trips…</div></div>`;
+    return `<div class="empty-state rf-empty-state"><div class="empty-sub">Loading trips…</div></div>`;
   }
 
   if (STATE.tripsError) return errorCard(STATE.tripsError, 'retryTripsBtn');
 
   return `
-    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px;gap:8px;">
-      <div class="section-label" style="margin-bottom:0;">Trips</div>
-      <button class="btn btn-primary btn-sm" id="newTripBtn"${writeDisabledAttr()}>+ New trip</button>
-    </div>
-    ${tripFiltersHtml()}
-    <div id="tripResults">${tripResultsHtml()}</div>
+    <section class="rf-trips-layout">
+      <div class="rf-mobile-brand" aria-hidden="true"></div>
+      <div class="rf-header">
+        <div class="rf-header__kicker">Routefolk</div>
+        <h1 class="rf-page-title">Trips</h1>
+        <p class="rf-page-subtitle">${activeTripsBase().length} on the road map · ${archiveCount()} in archive</p>
+        <button class="btn btn-primary btn-sm rf-new-trip-btn" id="newTripBtn"${writeDisabledAttr()}>+ New</button>
+      </div>
+      ${tripsScreenStatsHtml()}
+      ${tripFiltersHtml()}
+      <div id="tripResults" class="rf-trip-results">${tripResultsHtml()}</div>
+    </section>
   `;
 }
