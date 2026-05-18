@@ -8,7 +8,7 @@
 import { createTrip } from '../lib/trips.js';
 import { createStage } from '../lib/stages.js';
 import { createEntry } from '../lib/journal.js';
-import { createTripItem, toggleTripItemPacked } from '../lib/items.js';
+import { createTripItem, deleteTripItem, toggleTripItemPacked, updateTripItem } from '../lib/items.js';
 import { STATE } from '../state/app-state.js';
 import { rememberArchiveContext, rememberTripContext, saveUiState, switchPrimaryTab } from '../state/ui-state.js';
 import { setPalette } from './render/shared.js';
@@ -118,6 +118,33 @@ async function toggleItem(event, btn) {
   renderSoon();
 }
 
+async function editItem(event, btn) {
+  claim(event);
+  const trip = activeTrip();
+  if (!trip) return;
+  const item = tripItems(trip.id).find((candidate) => candidate.id === btn.dataset.itemId);
+  if (!item) return;
+  const name = window.prompt('Item name', item.name || '');
+  if (name === null) return;
+  if (!name.trim()) return;
+  const updated = await updateTripItem(item.id, { name: name.trim() });
+  STATE.itemsByTrip[trip.id] = tripItems(trip.id).map((candidate) => candidate.id === updated.id ? updated : candidate);
+  renderSoon();
+}
+
+async function removeItem(event, btn) {
+  claim(event);
+  const trip = activeTrip();
+  if (!trip) return;
+  const item = tripItems(trip.id).find((candidate) => candidate.id === btn.dataset.itemId);
+  if (!item) return;
+  const ok = window.confirm(`Delete "${item.name || 'this item'}" from the packing list?`);
+  if (!ok) return;
+  await deleteTripItem(item.id);
+  STATE.itemsByTrip[trip.id] = tripItems(trip.id).filter((candidate) => candidate.id !== item.id);
+  renderSoon();
+}
+
 async function addItem(event, form) {
   claim(event);
   const trip = activeTrip();
@@ -220,9 +247,12 @@ document.addEventListener('click', async (event) => {
   if (action.endsWith('save-journal')) { await saveJournal(event); return; }
   if (action.endsWith('journal-type')) { claim(event); STATE.journalType = btn.dataset.value || 'note'; renderSoon(); return; }
   if (action.endsWith('status-filter')) { claim(event); if (STATE.tab === 'archive') STATE.archiveStatusFilter = btn.dataset.value; else STATE.tripStatusFilter = btn.dataset.value; renderSoon(); return; }
+  if (action.endsWith('item-filter')) { claim(event); STATE.itemStatusFilter = btn.dataset.value === 'done' ? 'done' : 'todo'; renderSoon(); return; }
   if (action.endsWith('search-toggle')) { claim(event); if (STATE.tab === 'archive') STATE.archiveFiltersOpen = !STATE.archiveFiltersOpen; else STATE.tripFiltersOpen = !STATE.tripFiltersOpen; renderSoon(); return; }
-  if (action.endsWith('select-category')) { claim(event); STATE.selectedCategoryKey = btn.dataset.category; renderSoon(); return; }
-  if (action.endsWith('toggle-item')) { await toggleItem(event, btn); }
+  if (action.endsWith('select-category')) { claim(event); STATE.selectedCategoryKey = btn.dataset.category; STATE.wizard = null; renderSoon(); return; }
+  if (action.endsWith('toggle-item')) { await toggleItem(event, btn); return; }
+  if (action.endsWith('edit-item')) { await editItem(event, btn); return; }
+  if (action.endsWith('delete-item')) { await removeItem(event, btn); return; }
 }, true);
 
 document.addEventListener('input', (event) => {
