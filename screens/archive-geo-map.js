@@ -7,8 +7,16 @@
 
 import { STATE } from '../state/app-state.js';
 
-const LEAFLET_CSS = 'https://unpkg.com/leaflet@1.9.4/dist/leaflet.css';
-const LEAFLET_JS = 'https://unpkg.com/leaflet@1.9.4/dist/leaflet.js';
+const LEAFLET_SOURCES = [
+  {
+    css: 'https://unpkg.com/leaflet@1.9.4/dist/leaflet.css',
+    js: 'https://unpkg.com/leaflet@1.9.4/dist/leaflet.js',
+  },
+  {
+    css: 'https://cdn.jsdelivr.net/npm/leaflet@1.9.4/dist/leaflet.css',
+    js: 'https://cdn.jsdelivr.net/npm/leaflet@1.9.4/dist/leaflet.js',
+  },
+];
 const TILE_URL = 'https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png';
 const TILE_ATTRIBUTION = '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors';
 
@@ -46,14 +54,18 @@ function destroyMap() {
   lastRouteKey = '';
 }
 
+function removeLeafletTags() {
+  document.querySelectorAll('script[data-geo-leaflet],link[data-geo-leaflet-css]').forEach((node) => node.remove());
+}
+
 function waitForLeafletFromExistingScript() {
   return new Promise((resolve, reject) => {
     let attempts = 0;
     const timer = window.setInterval(() => {
-      if (window.L?.map) {
+      if (window.L?.map && window.L?.tileLayer && window.L?.polyline) {
         window.clearInterval(timer);
         resolve(window.L);
-      } else if (attempts > 200) {
+      } else if (attempts > 120) {
         window.clearInterval(timer);
         reject(new Error('Leaflet script was present but did not initialise.'));
       }
@@ -62,34 +74,55 @@ function waitForLeafletFromExistingScript() {
   });
 }
 
+function loadLeafletSource(source) {
+  return new Promise((resolve, reject) => {
+    removeLeafletTags();
+    const link = document.createElement('link');
+    link.rel = 'stylesheet';
+    link.href = source.css;
+    link.dataset.geoLeafletCss = 'true';
+    document.head.appendChild(link);
+
+    const script = document.createElement('script');
+    script.src = source.js;
+    script.async = true;
+    script.dataset.geoLeaflet = 'true';
+    script.onload = () => window.L?.map && window.L?.tileLayer && window.L?.polyline ? resolve(window.L) : reject(new Error(`Leaflet loaded from ${source.js} but L.map is unavailable.`));
+    script.onerror = () => reject(new Error(`Leaflet failed to load from ${source.js}.`));
+    document.head.appendChild(script);
+  });
+}
+
+async function tryLeafletSources() {
+  const errors = [];
+  for (const source of LEAFLET_SOURCES) {
+    try {
+      return await loadLeafletSource(source);
+    } catch (error) {
+      errors.push(error?.message || String(error));
+      window.L = undefined;
+    }
+  }
+  throw new Error(errors.join(' | ') || 'Leaflet failed to load.');
+}
+
 function ensureLeaflet() {
   if (window.L?.map && window.L?.tileLayer && window.L?.polyline) return Promise.resolve(window.L);
   if (leafletReady) return leafletReady;
 
-  const oldScript = document.querySelector('script[data-rf-leaflet],script[data-rf-leaflet="real"],script[data-geo-leaflet]');
+  const oldScript = document.querySelector('script[data-rf-leaflet],script[data-rf-leaflet="real"]');
   if (oldScript) {
-    leafletReady = waitForLeafletFromExistingScript();
+    leafletReady = waitForLeafletFromExistingScript().catch((error) => {
+      leafletReady = null;
+      throw error;
+    });
     return leafletReady;
   }
 
-  leafletReady = new Promise((resolve, reject) => {
-    if (!document.querySelector('link[data-geo-leaflet-css],link[data-rf-leaflet]')) {
-      const link = document.createElement('link');
-      link.rel = 'stylesheet';
-      link.href = LEAFLET_CSS;
-      link.dataset.geoLeafletCss = 'true';
-      document.head.appendChild(link);
-    }
-
-    const script = document.createElement('script');
-    script.src = LEAFLET_JS;
-    script.async = true;
-    script.dataset.geoLeaflet = 'true';
-    script.onload = () => window.L?.map ? resolve(window.L) : reject(new Error('Leaflet loaded but L.map is unavailable.'));
-    script.onerror = () => reject(new Error('Leaflet failed to load.'));
-    document.head.appendChild(script);
+  leafletReady = tryLeafletSources().catch((error) => {
+    leafletReady = null;
+    throw error;
   });
-
   return leafletReady;
 }
 
