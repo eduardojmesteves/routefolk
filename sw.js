@@ -4,7 +4,7 @@
 // Bump CACHE whenever shell assets change.
 // ============================================================
 
-const CACHE = 'routefolk-shell-v107-production-hotfix-01';
+const CACHE = 'routefolk-shell-v108-mobile-map-hotfix-01';
 
 const SHELL_ASSETS = [
   './',
@@ -17,17 +17,17 @@ const SHELL_ASSETS = [
   './styles/interface-polish.css?v=20260518-production-01',
   './styles/renderer-integration.css?v=20260518-production-01',
   './styles/packing-list.css?v=20260518-production-01',
-  './styles/production-overrides.css?v=20260518-production-01',
+  './styles/production-overrides.css?v=20260518-mobile-hotfix-01',
   './app.js?v=20260517-state-01',
   './screens/app-renderer.js?v=20260518-hotfix-01',
-  './screens/wizards.js?v=20260517-desktop-fix-01',
+  './screens/wizards.js?v=20260518-mobile-hotfix-01',
   './screens/extra-writes.js?v=20260516-production-01',
   './screens/gpx-panel.js?v=20260516-production-01',
-  './screens/archive-geo-map.js?v=20260518-hotfix-01',
+  './screens/archive-geo-map.js?v=20260518-map-hotfix-02',
   './screens/render/shared.js',
   './screens/render/mobile.js',
   './screens/render/desktop.js',
-  './screens/app-actions.js?v=20260518-items-01',
+  './screens/app-actions.js?v=20260518-mobile-hotfix-01',
   './manifest.json',
   './icons/icon-192.png',
   './icons/icon-512.png',
