@@ -4,7 +4,7 @@
 // Bump CACHE whenever shell assets change.
 // ============================================================
 
-const CACHE = 'routefolk-shell-v106-packing-list-01';
+const CACHE = 'routefolk-shell-v107-production-hotfix-01';
 
 const SHELL_ASSETS = [
   './',
@@ -19,11 +19,11 @@ const SHELL_ASSETS = [
   './styles/packing-list.css?v=20260518-production-01',
   './styles/production-overrides.css?v=20260518-production-01',
   './app.js?v=20260517-state-01',
-  './screens/app-renderer.js?v=20260518-hide-route-preview-01',
+  './screens/app-renderer.js?v=20260518-hotfix-01',
   './screens/wizards.js?v=20260517-desktop-fix-01',
   './screens/extra-writes.js?v=20260516-production-01',
   './screens/gpx-panel.js?v=20260516-production-01',
-  './screens/archive-geo-map.js?v=20260518-geo-map-01',
+  './screens/archive-geo-map.js?v=20260518-hotfix-01',
   './screens/render/shared.js',
   './screens/render/mobile.js',
   './screens/render/desktop.js',
