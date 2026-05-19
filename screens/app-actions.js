@@ -142,7 +142,7 @@ async function saveJournal(event) {
   const time = byId('v2-entry-time')?.value || '';
   const date = stage.planned_date || new Date().toISOString().slice(0, 10);
   const entry = await createEntry(stage.id, {
-    entry_type: STATE.journalType || 'note',
+    entry_type: byId('v2-entry-type')?.value || STATE.journalType || 'note',
     title: byId('v2-entry-title')?.value?.trim() || '',
     location: byId('v2-entry-place')?.value?.trim() || '',
     description: byId('v2-entry-note')?.value?.trim() || '',
