@@ -426,6 +426,36 @@
     margin-top:18px!important;
   }
 
+  .rf-clean-sky p{
+    margin:8px 0 0!important;
+    color:var(--rf-m2-muted)!important;
+    font:italic 13px/1.45 var(--rf-m2-font-serif)!important;
+  }
+
+  .rf-clean-sky span strong{
+    display:block!important;
+    font:italic 12px/1.2 var(--rf-m2-font-serif)!important;
+    color:var(--rf-m2-muted)!important;
+    margin-bottom:2px!important;
+  }
+
+  .rf-clean-sky span small{
+    display:block!important;
+    margin-top:3px!important;
+    color:var(--rf-m2-muted)!important;
+    font:600 9px/1.25 var(--rf-m2-font-mono)!important;
+    letter-spacing:.04em!important;
+  }
+
+  .rf-clean-sky em{
+    display:block!important;
+    margin-top:10px!important;
+    color:var(--rf-m2-muted)!important;
+    font:700 9px/1 var(--rf-m2-font-mono)!important;
+    letter-spacing:.12em!important;
+    text-transform:uppercase!important;
+  }
+
   .rf-v2-wizard-host.is-mobile{
     position:fixed!important;
     inset:0!important;
