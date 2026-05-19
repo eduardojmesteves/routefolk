@@ -14,56 +14,289 @@
 }
 
 @media(max-width:959px){
+  .rf-clean-trips-hero{
+    position:relative!important;
+    padding:50px 24px 30px!important;
+    border-bottom:1px solid var(--rf-m2-rule)!important;
+    background:var(--rf-m2-paper)!important;
+    background-image:var(--rf-m2-contour-bg)!important;
+    background-size:560px!important;
+    overflow:hidden!important;
+  }
+
+  .rf-clean-topbar{
+    display:flex!important;
+    align-items:flex-start!important;
+    justify-content:space-between!important;
+    gap:18px!important;
+  }
+
+  .rf-clean-trips-hero .rf-clean-kicker{
+    margin:0 0 4px!important;
+    font:800 12px/1 var(--rf-m2-font-mono)!important;
+    letter-spacing:.26em!important;
+    color:#34415d!important;
+    text-transform:uppercase!important;
+  }
+
+  .rf-clean-trips-hero h1{
+    margin:0!important;
+    font:700 54px/.86 var(--rf-m2-font-serif)!important;
+    color:var(--rf-m2-ink)!important;
+    letter-spacing:-.04em!important;
+  }
+
+  .rf-clean-trips-hero p{
+    margin:18px 0 0!important;
+    font:500 21px/1.25 var(--rf-m2-font-ui)!important;
+    color:var(--rf-m2-muted)!important;
+  }
+
+  .rf-clean-new-trip{
+    flex:0 0 auto!important;
+    margin-top:130px!important;
+    min-height:50px!important;
+    padding:0 26px!important;
+    border:0!important;
+    border-radius:999px!important;
+    background:var(--rf-m2-ink)!important;
+    color:var(--rf-m2-paper)!important;
+    font:800 20px/1 var(--rf-m2-font-ui)!important;
+    box-shadow:none!important;
+  }
+
+  .rf-clean-toolbar{
+    align-items:center!important;
+    margin:22px 0 26px!important;
+  }
+
+  .rf-clean-toolbar button,
+  .rf-clean-mini-pills button,
+  .rf-clean-view-toggle button{
+    color:var(--rf-m2-muted)!important;
+  }
+
+  .rf-clean-toolbar button.is-active,
+  .rf-clean-mini-pills button.is-active,
+  .rf-clean-view-toggle button.is-active{
+    background:var(--rf-m2-ink)!important;
+    border-color:var(--rf-m2-ink)!important;
+    color:var(--rf-m2-paper)!important;
+  }
+
+  .rf-clean-search{
+    width:56px!important;
+    min-width:56px!important;
+    height:56px!important;
+    border-radius:999px!important;
+    font-size:26px!important;
+  }
+
   .rf-clean-trip-list{
-    gap:14px!important;
+    gap:22px!important;
   }
 
   .rf-clean-trip-card{
-    display:grid!important;
-    grid-template-columns:minmax(0,1fr) auto!important;
-    grid-template-areas:
-      "meta meta"
-      "title distance"
-      "desc desc"!important;
-    align-items:start!important;
-    gap:6px 14px!important;
-    text-align:left!important;
-    padding:18px!important;
+    position:relative!important;
+    display:block!important;
+    width:100%!important;
     min-height:0!important;
+    padding:28px 30px 24px!important;
+    border:1px solid var(--rf-m2-rule-2)!important;
+    border-radius:4px!important;
+    background:rgba(250,248,239,.72)!important;
+    background-image:var(--rf-m2-contour-bg)!important;
+    background-size:420px!important;
+    color:var(--rf-m2-ink)!important;
+    text-align:left!important;
     white-space:normal!important;
+    box-shadow:none!important;
+    overflow:hidden!important;
   }
 
-  .rf-clean-trip-card small{
-    grid-area:meta!important;
+  .rf-trip-card-top{
+    display:grid!important;
+    grid-template-columns:minmax(0,1fr) auto!important;
+    gap:16px!important;
+    align-items:start!important;
+  }
+
+  .rf-trip-card-title{
     display:block!important;
-    font:700 13px/1.1 var(--rf-m2-font-mono)!important;
-    letter-spacing:.12em!important;
+    margin:0!important;
+    font:700 33px/.98 var(--rf-m2-font-serif)!important;
+    color:var(--rf-m2-ink)!important;
+    letter-spacing:-.025em!important;
+    overflow-wrap:anywhere!important;
+  }
+
+  .rf-trip-card-subtitle{
+    display:block!important;
+    margin-top:4px!important;
+    font:600 19px/1.15 var(--rf-m2-font-serif)!important;
+    font-style:italic!important;
+    color:var(--rf-m2-muted)!important;
+  }
+
+  .rf-trip-card-top em{
+    font:700 15px/1 var(--rf-m2-font-serif)!important;
+    font-style:italic!important;
+    color:var(--rf-m2-muted)!important;
+    letter-spacing:.08em!important;
+    white-space:nowrap!important;
+  }
+
+  .rf-trip-card-date{
+    margin-top:28px!important;
+    font:700 17px/1 var(--rf-m2-font-mono)!important;
+    letter-spacing:.08em!important;
+    color:#566074!important;
+  }
+
+  .rf-trip-card-rule{
+    position:relative!important;
+    margin:30px 0 20px!important;
+    height:1px!important;
+    background:var(--rf-m2-rule)!important;
+  }
+
+  .rf-trip-card-rule::after{
+    content:""!important;
+    position:absolute!important;
+    left:48%!important;
+    top:-1px!important;
+    width:28px!important;
+    height:3px!important;
+    background:rgba(250,248,239,.95)!important;
+  }
+
+  .rf-trip-card-bottom{
+    display:flex!important;
+    align-items:flex-end!important;
+    justify-content:space-between!important;
+    gap:18px!important;
+  }
+
+  .rf-trip-card-metrics{
+    display:flex!important;
+    gap:34px!important;
+    align-items:flex-end!important;
+  }
+
+  .rf-trip-card-metrics span{
+    display:block!important;
+  }
+
+  .rf-trip-card-metrics b{
+    display:block!important;
+    font:500 33px/.9 var(--rf-m2-font-mono)!important;
+    color:var(--rf-m2-ink)!important;
+    letter-spacing:.03em!important;
+    white-space:nowrap!important;
+  }
+
+  .rf-trip-card-metrics small{
+    display:block!important;
+    margin-top:8px!important;
+    font:800 11px/1 var(--rf-m2-font-mono)!important;
+    letter-spacing:.22em!important;
     color:var(--rf-m2-muted)!important;
     text-transform:uppercase!important;
   }
 
-  .rf-clean-trip-card strong{
-    grid-area:title!important;
-    display:block!important;
-    font:700 25px/1.02 var(--rf-m2-font-serif)!important;
-    color:var(--rf-m2-ink)!important;
-    overflow-wrap:anywhere!important;
+  .rf-trip-card-side{
+    display:flex!important;
+    flex-direction:column!important;
+    align-items:flex-end!important;
+    gap:72px!important;
+    min-width:0!important;
   }
 
-  .rf-clean-trip-card span{
-    grid-area:desc!important;
-    display:block!important;
-    font:500 16px/1.32 var(--rf-m2-font-ui)!important;
-    color:var(--rf-m2-muted)!important;
-    max-width:100%!important;
-  }
-
-  .rf-clean-trip-card b{
-    grid-area:distance!important;
-    justify-self:end!important;
-    align-self:center!important;
-    font:800 15px/1 var(--rf-m2-font-ui)!important;
+  .rf-trip-status{
+    display:inline-flex!important;
+    align-items:center!important;
+    min-height:34px!important;
+    padding:0 18px!important;
+    border:2px solid rgba(95,111,151,.28)!important;
+    border-radius:999px!important;
+    background:rgba(95,111,151,.14)!important;
+    color:#34415d!important;
+    font:800 16px/1 var(--rf-m2-font-ui)!important;
     white-space:nowrap!important;
+  }
+
+  .rf-trip-status.is-planning{
+    border-color:rgba(198,96,54,.26)!important;
+    background:rgba(198,96,54,.10)!important;
+    color:#b65e38!important;
+  }
+
+  .rf-trip-status.is-completed{
+    border-color:rgba(112,115,109,.28)!important;
+    background:rgba(112,115,109,.10)!important;
+    color:#5f635d!important;
+  }
+
+  .rf-trip-day{
+    display:inline-flex!important;
+    min-height:30px!important;
+    padding:0 14px!important;
+    align-items:center!important;
+    border:2px solid #4a526f!important;
+    color:#34415d!important;
+    background:rgba(250,248,239,.75)!important;
+    font:900 13px/1 var(--rf-m2-font-mono)!important;
+    letter-spacing:.16em!important;
+    text-transform:uppercase!important;
+    transform:rotate(-2deg)!important;
+    white-space:nowrap!important;
+  }
+
+  .rf-clean-trip-detail-card{
+    margin-bottom:20px!important;
+  }
+
+  .rf-clean-trip-detail-card .rf-clean-stamps{
+    display:flex!important;
+    gap:10px!important;
+    margin:0 0 24px!important;
+  }
+
+  .rf-clean-trip-detail-card .rf-clean-actions{
+    display:flex!important;
+    gap:10px!important;
+    align-items:center!important;
+  }
+
+  .rf-clean-trip-detail-card .rf-clean-actions button{
+    min-height:42px!important;
+    padding:0 24px!important;
+    border:1px solid var(--rf-m2-rule-2)!important;
+    border-radius:999px!important;
+    background:rgba(250,248,239,.72)!important;
+    color:var(--rf-m2-muted)!important;
+    font:800 16px/1 var(--rf-m2-font-ui)!important;
+  }
+
+  .rf-clean-view-toggle{
+    display:flex!important;
+    justify-content:flex-end!important;
+    gap:10px!important;
+    margin:20px 0 18px!important;
+  }
+
+  .rf-clean-view-toggle button,
+  .rf-clean-mini-pills button{
+    min-height:44px!important;
+    padding:0 18px!important;
+    border:1px solid var(--rf-m2-rule-2)!important;
+    border-radius:999px!important;
+    background:transparent!important;
+    font:800 15px/1 var(--rf-m2-font-ui)!important;
+  }
+
+  .rf-clean-item-list-head{
+    margin-top:18px!important;
   }
 
   .rf-v2-wizard-host.is-mobile{
@@ -81,7 +314,7 @@
   .rf-v2-wizard-host.is-mobile .rf-v2-wizard-panel{
     width:min(100%, 720px)!important;
     max-height:min(82vh, 760px)!important;
-    overflow:auto!important;
+    overflow:visible!important;
     border-radius:24px 24px 18px 18px!important;
     border:1px solid var(--rf-m2-rule-2)!important;
     background:var(--rf-m2-surface)!important;
@@ -112,7 +345,9 @@
   }
 
   .rf-v2-wizard-host.is-mobile .rf-d2-input,
-  .rf-v2-wizard-host.is-mobile .rf-d2-textarea{
+  .rf-v2-wizard-host.is-mobile .rf-d2-textarea,
+  .rf-v2-wizard-host.is-mobile select.rf-d2-input,
+  .rf-v2-wizard-host.is-mobile .rf-d2-select{
     width:100%!important;
     min-height:48px!important;
     border:1px solid var(--rf-m2-rule-2)!important;
@@ -122,6 +357,13 @@
     border-radius:10px!important;
     font:600 16px/1.2 var(--rf-m2-font-ui)!important;
     box-sizing:border-box!important;
+    pointer-events:auto!important;
+  }
+
+  .rf-v2-wizard-host.is-mobile select.rf-d2-input,
+  .rf-v2-wizard-host.is-mobile .rf-d2-select{
+    appearance:auto!important;
+    -webkit-appearance:menulist!important;
   }
 
   .rf-v2-wizard-host.is-mobile .rf-d2-textarea{
