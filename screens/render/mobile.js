@@ -38,6 +38,7 @@ import {
 } from './shared.js';
 
 const TRIP_FILTERS = [['all', 'All'], ['planning', 'Planning'], ['active', 'Active']];
+const ITEM_VIEWS = [['categories', 'Categories'], ['list', 'List']];
 
 function bottomNav(active) {
   return `<nav class="rf-clean-bottom"><button class="${active === 'trips' ? 'is-active' : ''}" data-action="rf-m2-nav" data-tab="trips">Trips</button><button class="${active === 'archive' ? 'is-active' : ''}" data-action="rf-m2-nav" data-tab="archive">Archive</button><button class="${active === 'account' ? 'is-active' : ''}" data-action="rf-m2-nav" data-tab="account">You</button></nav>`;
@@ -48,7 +49,12 @@ function screen(inner, active = 'trips') {
 }
 
 function tripHeader(trip, active) {
-  return `<header class="rf-clean-trip-head"><button class="rf-clean-back" data-action="rf-m2-back-to-trips">← Trips</button><div class="rf-clean-kicker">${esc(tripNo(trip))} · ${esc(season(trip))}</div><h1>${esc(trip.title || 'Untitled trip')}</h1><p>${esc(subtitle(trip))}</p><div class="rf-clean-stamps"><span>${esc(trip.status || 'planning')}</span><span>${esc(trip.visibility || 'group')}</span></div></header><nav class="rf-clean-tabs">${DETAIL_TABS.map(([key, label]) => `<button class="${active === key ? 'is-active' : ''}" data-action="rf-m2-tab" data-value="${key}">${label}</button>`).join('')}</nav>`;
+  return `<header class="rf-clean-trip-head"><button class="rf-clean-back" data-action="rf-m2-back-to-trips">← Trips</button><div class="rf-clean-kicker">${esc(tripNo(trip))} · ${esc(season(trip))}</div><h1>${esc(trip.title || 'Untitled trip')}</h1><p>${esc(subtitle(trip))}</p></header><nav class="rf-clean-tabs">${DETAIL_TABS.map(([key, label]) => `<button class="${active === key ? 'is-active' : ''}" data-action="rf-m2-tab" data-value="${key}">${label}</button>`).join('')}</nav>`;
+}
+
+function tripDetailCard(trip) {
+  const s = stats(trip);
+  return `<section class="rf-clean-trip-card rf-clean-trip-detail-card"><div class="rf-clean-stamps"><span>${esc(statusLabel(trip.status))}</span><span>${esc(trip.visibility || 'group')}</span></div><div class="rf-trip-card-bottom"><div class="rf-trip-card-metrics"><span><b>${Math.round(s.distance).toLocaleString()}</b><small>Kilometres</small></span><span><b>${s.stages}</b><small>Stages</small></span></div><div class="rf-clean-actions"><button data-action="rf-v2-edit-trip" data-trip-id="${esc(trip.id)}">Edit</button><button data-action="rf-v2-delete-trip" data-trip-id="${esc(trip.id)}">Delete</button></div></div></section>`;
 }
 
 function selectedStage(trip) {
@@ -67,46 +73,83 @@ function activeTrips() {
 function itemDone(item) { return item?.status === 'packed'; }
 function itemTodo(item) { return !itemDone(item); }
 function itemFilter() { return STATE.itemStatusFilter === 'done' ? 'done' : 'todo'; }
+function itemView() { return STATE.itemViewMode === 'list' ? 'list' : 'categories'; }
 function itemCompletionLabel(item) { return itemDone(item) ? 'Done' : 'To-do'; }
 function itemGroupForCategory(all, categoryKey) { return all.filter((item) => slug(item.category?.name || item.category_name || 'Other') === categoryKey); }
 
+function statusLabel(status) {
+  if (status === 'active') return 'In progress';
+  if (status === 'completed') return 'Completed';
+  if (status === 'cancelled') return 'Cancelled';
+  return 'Planning';
+}
+
+function statusClass(status) {
+  return status === 'active' ? 'is-active' : status === 'completed' ? 'is-completed' : status === 'cancelled' ? 'is-cancelled' : 'is-planning';
+}
+
+function tripDateRange(trip) {
+  const start = fmtDate(trip.start_date);
+  const end = fmtDate(trip.end_date);
+  if (start && end && start !== end) return `${start} – ${end}`;
+  return start || end || season(trip);
+}
+
+function stageProgress(trip) {
+  const st = stages(trip.id);
+  const total = st.length || stats(trip).stages || 0;
+  if (!total || trip.status !== 'active') return '';
+  const index = Math.max(1, st.findIndex((stage) => stage.id === STATE.selectedStageId) + 1 || 1);
+  return `<span class="rf-trip-day">Day ${index} / ${total}</span>`;
+}
+
+function tripTicket(trip) {
+  const s = stats(trip);
+  return `<button class="rf-clean-trip-card" data-action="rf-m2-select-trip" data-trip-id="${esc(trip.id)}"><div class="rf-trip-card-top"><div><strong class="rf-trip-card-title">${esc(trip.title || 'Untitled trip')}</strong><span class="rf-trip-card-subtitle">${esc(subtitle(trip))}</span></div><em>${esc(tripNo(trip))}</em></div><div class="rf-trip-card-date">${esc(tripDateRange(trip))}</div><div class="rf-trip-card-rule"></div><div class="rf-trip-card-bottom"><div class="rf-trip-card-metrics"><span><b>${Math.round(s.distance).toLocaleString()}</b><small>Kilometres</small></span><span><b>${s.stages}</b><small>Stages</small></span></div><div class="rf-trip-card-side"><span class="rf-trip-status ${statusClass(trip.status)}">• ${esc(statusLabel(trip.status))}</span>${stageProgress(trip)}</div></div></button>`;
+}
+
 function mobileTrips() {
   const rows = activeTrips();
+  const activeCount = STATE.trips.filter((trip) => trip.status === 'active').length;
+  const completedCount = STATE.trips.filter((trip) => trip.status === 'completed').length;
   if (STATE.tripsLoading && !STATE.trips.length) {
     return screen('<main class="rf-clean-page"><div class="rf-clean-empty">Loading trips…</div></main>', 'trips');
   }
   if (STATE.tripsError) {
     return screen(`<main class="rf-clean-page"><div class="rf-clean-empty">${esc(STATE.tripsError)}</div></main>`, 'trips');
   }
-  return screen(`<header class="rf-clean-trip-head"><div class="rf-clean-kicker">Routefolk</div><h1>Trips</h1><p>${rows.length} on the road map · ${archiveTrips().length} in archive</p></header><main class="rf-clean-page"><div class="rf-clean-section-head"><h2>The road map</h2><button data-action="rf-m2-new-trip">+ New</button></div><div class="rf-clean-toolbar"><div>${TRIP_FILTERS.map(([key, label]) => `<button class="${(STATE.tripStatusFilter || 'all') === key ? 'is-active' : ''}" data-action="rf-m2-status-filter" data-value="${key}">${label}</button>`).join('')}</div>${STATE.tripFiltersOpen || STATE.tripSearch ? `<input data-action="rf-m2-search-input" value="${esc(STATE.tripSearch || '')}" placeholder="Search by name"><button data-action="rf-m2-search-toggle">×</button>` : `<button data-action="rf-m2-search-toggle">⌕</button>`}</div><div class="rf-clean-card-list rf-clean-trip-list">${rows.map((trip) => { const s = stats(trip); return `<button class="rf-clean-trip-card" data-action="rf-m2-select-trip" data-trip-id="${esc(trip.id)}"><small>${esc(tripNo(trip))} · ${esc(season(trip))}</small><strong>${esc(trip.title || 'Untitled trip')}</strong><span>${esc(subtitle(trip))}</span><b>${Math.round(s.distance).toLocaleString()} km</b></button>`; }).join('') || '<div class="rf-clean-empty">No matching trips.</div>'}</div></main>`, 'trips');
+  return screen(`<header class="rf-clean-trips-hero"><div class="rf-clean-topbar"><div><div class="rf-clean-kicker">ROUTEFOLK</div><h1>Trips</h1><p>${activeCount} on the road map · ${completedCount} in archive</p></div><button class="rf-clean-new-trip" data-action="rf-m2-new-trip">+ New</button></div></header><main class="rf-clean-page"><div class="rf-clean-toolbar"><div>${TRIP_FILTERS.map(([key, label]) => `<button class="${(STATE.tripStatusFilter || 'all') === key ? 'is-active' : ''}" data-action="rf-m2-status-filter" data-value="${key}">${label}</button>`).join('')}</div>${STATE.tripFiltersOpen || STATE.tripSearch ? `<input data-action="rf-m2-search-input" value="${esc(STATE.tripSearch || '')}" placeholder="Search by name"><button data-action="rf-m2-search-toggle">×</button>` : `<button class="rf-clean-search" data-action="rf-m2-search-toggle">⌕</button>`}</div><div class="rf-clean-card-list rf-clean-trip-list">${rows.map(tripTicket).join('') || '<div class="rf-clean-empty">No matching trips.</div>'}</div></main>`, 'trips');
 }
 
 function mobileStages(trip) {
   const st = stages(trip.id);
-  return screen(`${tripHeader(trip, 'stages')}<main class="rf-clean-page"><div class="rf-clean-section-head"><h2>${st.length} stages</h2><button data-action="rf-m2-add-stage">+ Add stage</button></div>${st.map((stage, index) => `<button class="rf-clean-stage" data-action="rf-m2-open-stage" data-stage-id="${esc(stage.id)}"><span>${index + 1}</span><div><strong>${esc(stage.start_location || 'Start')} <em>to</em> ${esc(stage.end_location || 'End')}</strong><small>${esc(day(stage.planned_date))} · ${Math.round(Number(stage.distance_km) || 0)} km · ${esc(fmtDate(stage.planned_date) || '')}</small>${stage.notes ? `<p>${esc(stage.notes)}</p>` : ''}</div></button>`).join('') || '<div class="rf-clean-empty">No stages yet.</div>'}</main>`);
+  return screen(`${tripHeader(trip, 'stages')}<main class="rf-clean-page">${tripDetailCard(trip)}<div class="rf-clean-section-head"><h2>${st.length} stages</h2><button data-action="rf-m2-add-stage">+ Add stage</button></div>${st.map((stage, index) => `<button class="rf-clean-stage" data-action="rf-m2-open-stage" data-stage-id="${esc(stage.id)}"><span>${index + 1}</span><div><strong>${esc(stage.start_location || 'Start')} <em>to</em> ${esc(stage.end_location || 'End')}</strong><small>${esc(day(stage.planned_date))} · ${Math.round(Number(stage.distance_km) || 0)} km · ${esc(fmtDate(stage.planned_date) || '')}</small>${stage.notes ? `<p>${esc(stage.notes)}</p>` : ''}</div></button>`).join('') || '<div class="rf-clean-empty">No stages yet.</div>'}</main>`);
 }
 
 function mobileSummary(trip) {
   const s = stats(trip);
-  return screen(`${tripHeader(trip, 'summary')}<main class="rf-clean-page"><h2>By stage</h2><div class="rf-clean-card-list">${stages(trip.id).map((stage, index) => `<article class="rf-clean-stage-card"><div class="rf-clean-row"><span>${index + 1}</span><strong>${esc(stage.start_location || 'Start')} <em>to</em> ${esc(stage.end_location || 'End')}</strong></div><div class="rf-clean-stage-meta"><span>${esc(fmtDate(stage.planned_date) || '—')}</span><span>${Math.round(Number(stage.distance_km) || 0)} km</span><span>${esc(stage.notes || '—')}</span></div>${arr(STATE.entriesByStage[stage.id]).map((entry, i) => `<div class="rf-clean-subrow"><small>${i + 1}. ${esc(entry.entry_type || 'note')}</small><b>${esc(entry.title || 'Untitled')}</b></div>`).join('')}</article>`).join('') || '<div class="rf-clean-empty">No stages yet.</div>'}</div><h2>Totals</h2>${metricGrid([['Distance', Math.round(s.distance).toLocaleString(), 'km'], ['Spent', fmtEuro(s.spent), 'total'], ['Stages', String(s.stages), 'days'], ['Entries', String(s.entries), 'journal']])}</main>`);
+  return screen(`${tripHeader(trip, 'summary')}<main class="rf-clean-page">${tripDetailCard(trip)}<h2>By stage</h2><div class="rf-clean-card-list">${stages(trip.id).map((stage, index) => `<article class="rf-clean-stage-card"><div class="rf-clean-row"><span>${index + 1}</span><strong>${esc(stage.start_location || 'Start')} <em>to</em> ${esc(stage.end_location || 'End')}</strong></div><div class="rf-clean-stage-meta"><span>${esc(fmtDate(stage.planned_date) || '—')}</span><span>${Math.round(Number(stage.distance_km) || 0)} km</span><span>${esc(stage.notes || '—')}</span></div>${arr(STATE.entriesByStage[stage.id]).map((entry, i) => `<div class="rf-clean-subrow"><small>${i + 1}. ${esc(entry.entry_type || 'note')}</small><b>${esc(entry.title || 'Untitled')}</b></div>`).join('')}</article>`).join('') || '<div class="rf-clean-empty">No stages yet.</div>'}</div><h2>Totals</h2>${metricGrid([['Distance', Math.round(s.distance).toLocaleString(), 'km'], ['Spent', fmtEuro(s.spent), 'total'], ['Stages', String(s.stages), 'days'], ['Entries', String(s.entries), 'journal']])}</main>`);
 }
 
 function mobileCosts(trip) {
   const rows = expenses(trip.id);
   const agg = aggregateExpense(rows);
-  return screen(`${tripHeader(trip, 'costs')}<main class="rf-clean-page"><section class="rf-clean-ledger"><div><small>The trip ledger</small><strong>${fmtEuro(agg.total)}</strong><span>${rows.length} entries</span></div><button data-action="rf-v2-add-expense">+ Log expense</button></section><h2>All entries</h2>${rows.map((expense) => `<article class="rf-clean-expense"><div><strong>${esc(categoryLabel(expense.category))}</strong><small>${esc(payerName(expense.user_id))} · ${esc(fmtDate(expense.date) || '—')}</small></div><b>${fmtEuro(expense.amount || 0)}</b><div class="rf-clean-actions"><button data-action="rf-v2-edit-expense" data-expense-id="${esc(expense.id)}">Edit</button><button data-action="rf-v2-delete-expense" data-expense-id="${esc(expense.id)}">Delete</button></div></article>`).join('') || '<div class="rf-clean-empty">No costs yet.</div>'}</main>`);
+  return screen(`${tripHeader(trip, 'costs')}<main class="rf-clean-page">${tripDetailCard(trip)}<section class="rf-clean-ledger"><div><small>The trip ledger</small><strong>${fmtEuro(agg.total)}</strong><span>${rows.length} entries</span></div><button data-action="rf-v2-add-expense">+ Log expense</button></section><h2>All entries</h2>${rows.map((expense) => `<article class="rf-clean-expense"><div><strong>${esc(categoryLabel(expense.category))}</strong><small>${esc(payerName(expense.user_id))} · ${esc(fmtDate(expense.date) || '—')}</small></div><b>${fmtEuro(expense.amount || 0)}</b><div class="rf-clean-actions"><button data-action="rf-v2-edit-expense" data-expense-id="${esc(expense.id)}">Edit</button><button data-action="rf-v2-delete-expense" data-expense-id="${esc(expense.id)}">Delete</button></div></article>`).join('') || '<div class="rf-clean-empty">No costs yet.</div>'}</main>`);
 }
 
 function mobileItems(trip) {
   const all = items(trip.id);
   const cats = categories(trip.id);
   const selected = STATE.selectedCategoryKey || slug(cats[0]?.name);
-  const selectedCat = cats.find((cat) => slug(cat.name) === selected);
   const filter = itemFilter();
+  const view = itemView();
   const done = all.filter(itemDone).length;
   const todo = all.length - done;
-  const group = itemGroupForCategory(all, selected).filter((item) => filter === 'done' ? itemDone(item) : itemTodo(item));
-  return screen(`${tripHeader(trip, 'items')}<main class="rf-clean-page"><section class="rf-clean-ledger rf-clean-items-ledger"><div><small>The packing list</small><strong>${done}<span> / ${all.length}</span></strong><span>${todo} left · ${done} done</span></div><button data-action="rf-m2-add-item">+ Add item</button></section><h2>Categories</h2><div class="rf-clean-card-list">${cats.map((cat, index) => { const key = slug(cat.name); const rows = itemGroupForCategory(all, key); const catDone = rows.filter(itemDone).length; const catTodo = rows.length - catDone; return `<button class="rf-clean-category ${selected === key ? 'is-active' : ''}" data-action="rf-m2-select-category" data-category="${esc(key)}"><span>${index + 1}</span><strong>${esc(cat.name)}</strong><b>${catTodo} left · ${catDone} done</b></button>${selected === key && rows.length ? `<div class="rf-clean-category-preview">${rows.slice(0,4).map((item) => `<span>${itemDone(item) ? '✓' : '○'} ${esc(item.name)}</span>`).join('')}</div>` : ''}`; }).join('')}</div><div class="rf-clean-section-head"><h2>${esc(selectedCat?.name || 'Items')}</h2><div class="rf-clean-mini-pills"><button class="${filter === 'todo' ? 'is-active' : ''}" data-action="rf-m2-item-filter" data-value="todo">To-do</button><button class="${filter === 'done' ? 'is-active' : ''}" data-action="rf-m2-item-filter" data-value="done">Done</button></div></div><div class="rf-clean-card-list">${group.map((item) => `<article class="rf-clean-item-card ${itemDone(item) ? 'is-done' : 'is-todo'}"><button class="rf-clean-item-check" data-action="rf-m2-toggle-item" data-item-id="${esc(item.id)}">${itemDone(item) ? '✓' : ''}</button><div><strong>${esc(item.name)}</strong><small>${itemCompletionLabel(item)}${item.status === 'optional' ? ' · optional' : ''}</small></div><div class="rf-clean-actions"><button data-action="rf-m2-edit-item" data-item-id="${esc(item.id)}">Edit</button><button data-action="rf-m2-delete-item" data-item-id="${esc(item.id)}">Delete</button></div></article>`).join('') || `<div class="rf-clean-empty">No ${filter === 'done' ? 'done' : 'to-do'} items in this category yet.</div>`}</div></main>`);
+  const filteredItems = (view === 'list' ? itemGroupForCategory(all, selected) : []).filter((item) => filter === 'done' ? itemDone(item) : itemTodo(item));
+  const viewToggle = `<div class="rf-clean-view-toggle">${ITEM_VIEWS.map(([key, label]) => `<button class="${view === key ? 'is-active' : ''}" data-action="rf-m2-item-view" data-value="${key}">${label}</button>`).join('')}</div>`;
+  const categoryList = `<h2>Categories</h2><div class="rf-clean-card-list">${cats.map((cat, index) => { const key = slug(cat.name); const rows = itemGroupForCategory(all, key); const catDone = rows.filter(itemDone).length; const catTodo = rows.length - catDone; return `<button class="rf-clean-category ${selected === key ? 'is-active' : ''}" data-action="rf-m2-select-category" data-category="${esc(key)}"><span>${index + 1}</span><strong>${esc(cat.name)}</strong><b>${catTodo} left · ${catDone} done</b></button>`; }).join('')}</div>`;
+  const itemList = `<div class="rf-clean-section-head rf-clean-item-list-head"><h2>${esc(cats.find((cat) => slug(cat.name) === selected)?.name || 'Items')}</h2><div class="rf-clean-mini-pills"><button class="${filter === 'todo' ? 'is-active' : ''}" data-action="rf-m2-item-filter" data-value="todo">To-do</button><button class="${filter === 'done' ? 'is-active' : ''}" data-action="rf-m2-item-filter" data-value="done">Done</button></div></div><div class="rf-clean-card-list">${filteredItems.map((item) => `<article class="rf-clean-item-card ${itemDone(item) ? 'is-done' : 'is-todo'}"><button class="rf-clean-item-check" data-action="rf-m2-toggle-item" data-item-id="${esc(item.id)}">${itemDone(item) ? '✓' : ''}</button><div><strong>${esc(item.name)}</strong><small>${itemCompletionLabel(item)}${item.status === 'optional' ? ' · optional' : ''}</small></div><div class="rf-clean-actions"><button data-action="rf-m2-edit-item" data-item-id="${esc(item.id)}">Edit</button><button data-action="rf-m2-delete-item" data-item-id="${esc(item.id)}">Delete</button></div></article>`).join('') || `<div class="rf-clean-empty">No ${filter === 'done' ? 'done' : 'to-do'} items in this category yet.</div>`}</div>`;
+  return screen(`${tripHeader(trip, 'items')}<main class="rf-clean-page">${tripDetailCard(trip)}<section class="rf-clean-ledger rf-clean-items-ledger"><div><small>The packing list</small><strong>${done}<span> / ${all.length}</span></strong><span>${todo} left · ${done} done</span></div><button data-action="rf-m2-add-item">+ Add item</button></section>${viewToggle}${view === 'categories' ? categoryList : itemList}</main>`);
 }
 
 function mobileJournal(trip) {
@@ -144,5 +187,5 @@ export function renderMobileMarkup() {
 
 export function mobileSignature() {
   const trip = currentTrip();
-  return `${STATE.tab}:${STATE.view}:${trip?.id || ''}:${STATE.wizard || ''}:${STATE.tripSearch || ''}:${STATE.tripStatusFilter || ''}:${STATE.selectedCategoryKey || ''}:${STATE.itemStatusFilter || ''}:${STATE.archiveSearch || ''}:${STATE.archiveStatusFilter || ''}:${currentPalette()}:${JSON.stringify([STATE.trips.length, stages(trip?.id || '').length, expenses(trip?.id || '').length, items(trip?.id || '').length])}`;
+  return `${STATE.tab}:${STATE.view}:${trip?.id || ''}:${STATE.wizard || ''}:${STATE.tripSearch || ''}:${STATE.tripStatusFilter || ''}:${STATE.selectedCategoryKey || ''}:${STATE.itemStatusFilter || ''}:${STATE.itemViewMode || ''}:${STATE.archiveSearch || ''}:${STATE.archiveStatusFilter || ''}:${currentPalette()}:${JSON.stringify([STATE.trips.length, stages(trip?.id || '').length, expenses(trip?.id || '').length, items(trip?.id || '').length])}`;
 }
