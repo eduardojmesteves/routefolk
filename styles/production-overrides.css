@@ -19,7 +19,7 @@
     min-height:264px!important;
     padding:54px 32px 34px!important;
     border-bottom:1px solid var(--rf-m2-rule)!important;
-    background:var(--rf-m2-paper)!important;
+    background:var(--rf-m2-bg)!important;
     background-image:var(--rf-m2-contour-bg)!important;
     background-size:560px!important;
     overflow:hidden!important;
@@ -43,7 +43,7 @@
   .rf-clean-trips-hero p{
     max-width:360px!important;
     margin:28px 0 0!important;
-    font:500 24px/1.12 var(--rf-m2-font-ui)!important;
+    font:500 16px/1.28 var(--rf-m2-font-ui)!important;
     color:var(--rf-m2-muted)!important;
   }
 
@@ -57,7 +57,7 @@
     border:0!important;
     border-radius:999px!important;
     background:var(--rf-m2-ink)!important;
-    color:var(--rf-m2-paper)!important;
+    color:var(--rf-m2-surface)!important;
     font:800 20px/1 var(--rf-m2-font-ui)!important;
     box-shadow:none!important;
   }
@@ -96,7 +96,7 @@
   .rf-clean-view-toggle button.is-active{
     background:var(--rf-m2-ink)!important;
     border-color:var(--rf-m2-ink)!important;
-    color:var(--rf-m2-paper)!important;
+    color:var(--rf-m2-surface)!important;
   }
 
   .rf-clean-search,
@@ -113,7 +113,8 @@
     gap:22px!important;
   }
 
-  .rf-clean-trip-card{
+  .rf-clean-trip-card,
+  .rf-clean-archive-card{
     position:relative!important;
     display:block!important;
     width:100%!important;
@@ -129,6 +130,36 @@
     white-space:normal!important;
     box-shadow:none!important;
     overflow:hidden!important;
+  }
+
+  .rf-clean-trip-card-tap{
+    display:block!important;
+    width:100%!important;
+    padding:0!important;
+    border:0!important;
+    background:transparent!important;
+    color:inherit!important;
+    text-align:left!important;
+    cursor:pointer!important;
+  }
+
+  .rf-clean-trip-card-footer{
+    display:flex!important;
+    gap:8px!important;
+    margin-top:14px!important;
+    padding-top:14px!important;
+    border-top:1px solid var(--rf-m2-rule)!important;
+  }
+
+  .rf-clean-trip-card-footer button{
+    min-height:36px!important;
+    padding:0 16px!important;
+    border:1px solid var(--rf-m2-rule-2)!important;
+    border-radius:999px!important;
+    background:transparent!important;
+    color:var(--rf-m2-muted)!important;
+    font:800 14px/1 var(--rf-m2-font-ui)!important;
+    cursor:pointer!important;
   }
 
   .rf-trip-card-top{
@@ -274,39 +305,49 @@
     white-space:nowrap!important;
   }
 
-  .rf-clean-trip-detail-card{
-    display:flex!important;
-    justify-content:space-between!important;
-    align-items:center!important;
-    gap:12px!important;
-    margin:0 0 20px!important;
-    padding:16px!important;
-    border:1px solid var(--rf-m2-rule-2)!important;
-    border-radius:18px!important;
-    background:rgba(250,248,239,.54)!important;
+  .rf-clean-head-stamps{
+    margin-top:16px!important;
   }
 
-  .rf-clean-trip-detail-card .rf-clean-stamps,
-  .rf-clean-trip-detail-card .rf-clean-actions{
-    display:flex!important;
-    gap:10px!important;
-    align-items:center!important;
+  .rf-clean-add-stage-card{
+    display:block!important;
+    width:100%!important;
+    margin-top:10px!important;
+    padding:18px!important;
+    border:1px dashed var(--rf-m2-rule-2)!important;
+    border-radius:6px!important;
+    background:transparent!important;
+    color:var(--rf-m2-muted)!important;
+    text-align:center!important;
+    font:800 16px/1 var(--rf-m2-font-ui)!important;
+    cursor:pointer!important;
+  }
+
+  .rf-clean-stage-card{
     margin:0!important;
   }
 
-  .rf-clean-trip-detail-card .rf-clean-actions button{
-    min-height:40px!important;
-    padding:0 18px!important;
-    border:1px solid var(--rf-m2-rule-2)!important;
-    border-radius:999px!important;
+  .rf-clean-archive-card{
+    margin:9px 0!important;
+    padding:13px!important;
+    border-radius:6px!important;
+  }
+
+  .rf-clean-archive-card .rf-clean-archive-row{
+    margin:0!important;
+    padding:0!important;
+    border:0!important;
     background:transparent!important;
-    color:var(--rf-m2-muted)!important;
-    font:800 15px/1 var(--rf-m2-font-ui)!important;
+    background-image:none!important;
   }
 
   .rf-clean-view-toggle{
-    justify-content:flex-end!important;
-    margin:20px 0 18px!important;
+    justify-content:center!important;
+    margin:24px 0 8px!important;
+    padding:14px!important;
+    border:1px solid var(--rf-m2-rule-2)!important;
+    border-radius:10px!important;
+    background:transparent!important;
   }
 
   .rf-clean-item-list-head{
