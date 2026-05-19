@@ -8,12 +8,13 @@ import { STATE } from '../state/app-state.js';
 import { esc } from '../utils/dom.js';
 import { createTrip, updateTrip, deleteTrip } from '../lib/trips.js';
 import { createStage, updateStage, deleteStage } from '../lib/stages.js';
-import { createEntry, updateEntry, deleteEntry } from '../lib/journal.js';
+import { updateEntry, deleteEntry } from '../lib/journal.js';
 import { createExpense } from '../lib/expenses.js';
 import { createTripItem, updateTripItem } from '../lib/items.js';
 import { EXPENSE_CATEGORY_META } from '../constants/app-constants.js';
 import { rememberArchiveContext, rememberTripContext } from '../state/ui-state.js';
 
+const WIZARDS = new Set(['trip', 'trip-edit', 'stage', 'stage-edit', 'journal', 'journal-edit', 'expense', 'item', 'item-edit']);
 const isDesktop = () => window.matchMedia('(min-width:960px)').matches;
 const byId = (id) => document.getElementById(id);
 const activeTrip = () => STATE.trips.find((trip) => trip.id === (STATE.viewTripId || (STATE.tab === 'archive' ? STATE.selectedArchiveTripId : STATE.selectedTripId))) || null;
@@ -21,6 +22,7 @@ const stagesForTrip = (tripId) => Array.isArray(STATE.stagesByTrip[tripId]) ? ST
 const expensesForTrip = (tripId) => Array.isArray(STATE.expensesByTrip[tripId]) ? STATE.expensesByTrip[tripId] : [];
 const categoriesForTrip = (tripId) => Array.isArray(STATE.itemCategoriesByTrip[tripId]) ? STATE.itemCategoriesByTrip[tripId] : [];
 const itemsForTrip = (tripId) => Array.isArray(STATE.itemsByTrip[tripId]) ? STATE.itemsByTrip[tripId] : [];
+
 const selectedStage = () => {
   const trip = activeTrip();
   if (!trip) return null;
@@ -38,9 +40,7 @@ const selectedItem = () => {
   return itemsForTrip(trip.id).find((item) => item.id === STATE.editTargetId) || null;
 };
 
-function api() {
-  return window.routefolkData || {};
-}
+function api() { return window.routefolkData || {}; }
 
 function renderAll() {
   api().renderAll?.();
@@ -65,10 +65,7 @@ function injectTripActions() {
   if (!target || target.querySelector('.rf-v2-hero-actions')) return;
   const wrap = document.createElement('div');
   wrap.className = 'rf-v2-hero-actions';
-  wrap.innerHTML = `
-    <button class="rf-d2-btn" data-action="rf-v2-edit-trip" type="button">Edit trip</button>
-    <button class="rf-d2-btn is-danger" data-action="rf-v2-delete-trip" type="button">Delete</button>
-  `;
+  wrap.innerHTML = `<button class="rf-d2-btn" data-action="rf-v2-edit-trip" type="button">Edit trip</button><button class="rf-d2-btn is-danger" data-action="rf-v2-delete-trip" type="button">Delete</button>`;
   target.appendChild(wrap);
 }
 
@@ -79,10 +76,7 @@ function injectStageActions() {
   if (!target || target.querySelector('.rf-v2-stage-actions')) return;
   const wrap = document.createElement('div');
   wrap.className = 'rf-v2-stage-actions';
-  wrap.innerHTML = `
-    <button class="rf-d2-btn" data-action="rf-v2-edit-stage" data-stage-id="${esc(stage.id)}" type="button">Edit stage</button>
-    <button class="rf-d2-btn is-danger" data-action="rf-v2-delete-stage" data-stage-id="${esc(stage.id)}" type="button">Delete</button>
-  `;
+  wrap.innerHTML = `<button class="rf-d2-btn" data-action="rf-v2-edit-stage" data-stage-id="${esc(stage.id)}" type="button">Edit stage</button><button class="rf-d2-btn is-danger" data-action="rf-v2-delete-stage" data-stage-id="${esc(stage.id)}" type="button">Delete</button>`;
   target.appendChild(wrap);
 }
 
@@ -96,10 +90,7 @@ function injectEntryActions() {
     if (!entry) return;
     const wrap = document.createElement('div');
     wrap.className = 'rf-v2-entry-actions';
-    wrap.innerHTML = `
-      <button class="rf-d2-btn" data-action="rf-v2-edit-entry" data-entry-id="${esc(entry.id)}" type="button">Edit</button>
-      <button class="rf-d2-btn is-danger" data-action="rf-v2-delete-entry" data-entry-id="${esc(entry.id)}" type="button">Delete</button>
-    `;
+    wrap.innerHTML = `<button class="rf-d2-btn" data-action="rf-v2-edit-entry" data-entry-id="${esc(entry.id)}" type="button">Edit</button><button class="rf-d2-btn is-danger" data-action="rf-v2-delete-entry" data-entry-id="${esc(entry.id)}" type="button">Delete</button>`;
     entryNode.appendChild(wrap);
   });
 }
@@ -121,77 +112,122 @@ function renderWizardLayer() {
   injectStageActions();
   injectEntryActions();
   injectCostCta();
-  if (!STATE.user || !STATE.wizard) return;
-  if (!['trip', 'trip-edit', 'stage', 'stage-edit', 'journal-edit', 'expense', 'item', 'item-edit'].includes(STATE.wizard)) return;
+  if (!STATE.user || !STATE.wizard || !WIZARDS.has(STATE.wizard)) return;
 
   const host = document.createElement('div');
   host.className = `rf-v2-wizard-host ${isDesktop() ? 'is-desktop' : 'is-mobile'}`;
+  host.dataset.wizard = STATE.wizard;
   host.innerHTML = wizardHtml();
   document.body.appendChild(host);
-  const first = host.querySelector('input, select, textarea, button');
-  if (first instanceof HTMLElement) first.focus({ preventScroll: true });
+
+  if (isDesktop()) {
+    const first = host.querySelector('input, select, textarea, button');
+    if (first instanceof HTMLElement) first.focus({ preventScroll: true });
+  }
 }
 
 function wizardHtml() {
   if (STATE.wizard === 'trip' || STATE.wizard === 'trip-edit') return tripWizardHtml(STATE.wizard === 'trip-edit');
   if (STATE.wizard === 'stage') return stageCreateWizardHtml();
   if (STATE.wizard === 'stage-edit') return stageEditWizardHtml();
+  if (STATE.wizard === 'journal') return journalCreateWizardHtml();
   if (STATE.wizard === 'journal-edit') return journalEditWizardHtml();
   if (STATE.wizard === 'item' || STATE.wizard === 'item-edit') return itemWizardHtml(STATE.wizard === 'item-edit');
   return expenseWizardHtml();
 }
 
-function tripWizardHtml(editing = false) {
-  const trip = editing ? activeTrip() : null;
-  const saveAction = editing ? 'rf-v2-update-trip' : 'rf-v2-save-trip';
-  const title = editing ? 'Edit road journal' : 'Plan a road journal';
-  const kicker = editing ? 'Edit trip' : 'New trip';
-  return `<aside class="rf-v2-wizard-panel" role="dialog" aria-modal="true" aria-labelledby="rf-v2-trip-title">
-    <div class="rf-v2-wizard-head">
-      <div class="rf-d2-aside-kicker">${kicker}</div>
-      <h2 class="rf-d2-aside-title" id="rf-v2-trip-title">${title}</h2>
-      <p class="rf-d2-aside-sub">Stages, costs, GPX and notes stay attached to this trip.</p>
-    </div>
-    <div class="rf-d2-form-row"><label class="rf-d2-form-label" for="v2-trip-title">Title</label><input class="rf-d2-input" id="v2-trip-title" value="${esc(trip?.title || '')}" placeholder="e.g. Pyrenees Crossing"></div>
-    <div class="rf-d2-form-row"><label class="rf-d2-form-label" for="v2-trip-desc">Subtitle / short description</label><input class="rf-d2-input" id="v2-trip-desc" value="${esc(trip?.description || '')}" placeholder="Bordeaux to Barcelona"></div>
-    <div class="rf-d2-form-row-pair">
-      <div class="rf-d2-form-row"><label class="rf-d2-form-label" for="v2-trip-start">Start</label><input class="rf-d2-input" id="v2-trip-start" type="date" value="${esc(trip?.start_date || '')}"></div>
-      <div class="rf-d2-form-row"><label class="rf-d2-form-label" for="v2-trip-end">End</label><input class="rf-d2-input" id="v2-trip-end" type="date" value="${esc(trip?.end_date || '')}"></div>
-    </div>
-    <div class="rf-d2-form-row-pair">
-      <div class="rf-d2-form-row"><label class="rf-d2-form-label" for="v2-trip-status">Status</label><select class="rf-d2-input" id="v2-trip-status">${option('planning', 'Planning', trip?.status)}${option('active', 'Active', trip?.status)}${option('completed', 'Completed', trip?.status)}${option('cancelled', 'Cancelled', trip?.status)}</select></div>
-      <div class="rf-d2-form-row"><label class="rf-d2-form-label" for="v2-trip-visibility">Visibility</label><select class="rf-d2-input" id="v2-trip-visibility">${option('group', 'Group', trip?.visibility || 'group')}${option('private', 'Private', trip?.visibility)}</select></div>
-    </div>
-    <div class="rf-v2-wizard-error" id="v2-trip-error" hidden></div>
-    <div class="rf-d2-form-actions"><button class="rf-d2-btn" data-action="rf-v2-cancel-wizard" type="button">Cancel</button><button class="rf-d2-btn is-primary" data-action="${saveAction}" type="button">${editing ? 'Save changes' : 'Create trip'}</button></div>
+function panelHtml({ id, kicker, title, sub = '', body, errorId, saveAction, saveLabel }) {
+  return `<aside class="rf-v2-wizard-panel" role="dialog" aria-modal="true" aria-labelledby="${esc(id)}">
+    <div class="rf-v2-wizard-head"><div class="rf-d2-aside-kicker">${esc(kicker)}</div><h2 class="rf-d2-aside-title" id="${esc(id)}">${esc(title)}</h2>${sub ? `<p class="rf-d2-aside-sub">${esc(sub)}</p>` : ''}</div>
+    ${body}
+    <div class="rf-v2-wizard-error" id="${esc(errorId)}" hidden></div>
+    <div class="rf-d2-form-actions"><button class="rf-d2-btn" data-action="rf-v2-cancel-wizard" type="button">Cancel</button><button class="rf-d2-btn is-primary" data-action="${esc(saveAction)}" type="button">${esc(saveLabel)}</button></div>
   </aside>`;
 }
 
+function row(id, label, controlHtml) {
+  return `<div class="rf-d2-form-row"><label class="rf-d2-form-label" for="${esc(id)}">${esc(label)}</label>${controlHtml}</div>`;
+}
+
+function pair(left, right) { return `<div class="rf-d2-form-row-pair">${left}${right}</div>`; }
+function input(id, value = '', attrs = '') { return `<input class="rf-d2-input" id="${esc(id)}" value="${esc(value ?? '')}" ${attrs}>`; }
+function textarea(id, value = '', attrs = '') { return `<textarea class="rf-d2-textarea" id="${esc(id)}" ${attrs}>${esc(value ?? '')}</textarea>`; }
+function select(id, optionsHtml) { return `<select class="rf-d2-input" id="${esc(id)}">${optionsHtml}</select>`; }
+
+function tripWizardHtml(editing = false) {
+  const trip = editing ? activeTrip() : null;
+  return panelHtml({
+    id: 'rf-v2-trip-title',
+    kicker: editing ? 'Edit trip' : 'New trip',
+    title: editing ? 'Edit road journal' : 'Plan a road journal',
+    sub: 'Stages, costs, GPX and notes stay attached to this trip.',
+    errorId: 'v2-trip-error',
+    saveAction: editing ? 'rf-v2-update-trip' : 'rf-v2-save-trip',
+    saveLabel: editing ? 'Save changes' : 'Create trip',
+    body: [
+      row('v2-trip-title', 'Title', input('v2-trip-title', trip?.title || '', 'placeholder="e.g. Pyrenees Crossing"')),
+      row('v2-trip-desc', 'Subtitle / short description', input('v2-trip-desc', trip?.description || '', 'placeholder="Bordeaux to Barcelona"')),
+      pair(row('v2-trip-start', 'Start', input('v2-trip-start', trip?.start_date || '', 'type="date"')), row('v2-trip-end', 'End', input('v2-trip-end', trip?.end_date || '', 'type="date"'))),
+      pair(row('v2-trip-status', 'Status', select('v2-trip-status', `${option('planning', 'Planning', trip?.status)}${option('active', 'Active', trip?.status)}${option('completed', 'Completed', trip?.status)}${option('cancelled', 'Cancelled', trip?.status)}`)), row('v2-trip-visibility', 'Visibility', select('v2-trip-visibility', `${option('group', 'Group', trip?.visibility || 'group')}${option('private', 'Private', trip?.visibility)}`))),
+    ].join(''),
+  });
+}
+
 function stageCreateWizardHtml() {
-  return `<aside class="rf-v2-wizard-panel" role="dialog" aria-modal="true" aria-labelledby="rf-v2-stage-create-title">
-    <div class="rf-v2-wizard-head"><div class="rf-d2-aside-kicker">New stage</div><h2 class="rf-d2-aside-title" id="rf-v2-stage-create-title">Add a route leg</h2><p class="rf-d2-aside-sub">Keep the first pass simple. You can refine GPX and notes later.</p></div>
-    <div class="rf-d2-form-row"><label class="rf-d2-form-label" for="v2-stage-from">From</label><input class="rf-d2-input" id="v2-stage-from" placeholder="Aveiro"></div>
-    <div class="rf-d2-form-row"><label class="rf-d2-form-label" for="v2-stage-to">To</label><input class="rf-d2-input" id="v2-stage-to" placeholder="Ávila"></div>
-    <div class="rf-d2-form-row-pair"><div class="rf-d2-form-row"><label class="rf-d2-form-label" for="v2-stage-date">Date</label><input class="rf-d2-input" id="v2-stage-date" type="date"></div><div class="rf-d2-form-row"><label class="rf-d2-form-label" for="v2-stage-km">Distance km</label><input class="rf-d2-input" id="v2-stage-km" inputmode="decimal" placeholder="410"></div></div>
-    <div class="rf-d2-form-row"><label class="rf-d2-form-label" for="v2-stage-notes">Notes</label><textarea class="rf-d2-textarea" id="v2-stage-notes" placeholder="Motorway, mountain pass, long stage..."></textarea></div>
-    <div class="rf-v2-wizard-error" id="v2-stage-create-error" hidden></div>
-    <div class="rf-d2-form-actions"><button class="rf-d2-btn" data-action="rf-v2-cancel-wizard" type="button">Cancel</button><button class="rf-d2-btn is-primary" data-action="rf-v2-save-stage" type="button">Save stage</button></div>
-  </aside>`;
+  return panelHtml({
+    id: 'rf-v2-stage-create-title',
+    kicker: 'New stage',
+    title: 'Add a route leg',
+    sub: 'Add the route basics now. Coordinates and weather are resolved after saving.',
+    errorId: 'v2-stage-create-error',
+    saveAction: 'rf-v2-save-stage',
+    saveLabel: 'Save stage',
+    body: [
+      row('v2-stage-from', 'From', input('v2-stage-from', '', 'placeholder="Aveiro"')),
+      row('v2-stage-to', 'To', input('v2-stage-to', '', 'placeholder="Ávila"')),
+      pair(row('v2-stage-date', 'Date', input('v2-stage-date', '', 'type="date"')), row('v2-stage-km', 'Distance km', input('v2-stage-km', '', 'inputmode="decimal" placeholder="410"'))),
+      row('v2-stage-notes', 'Notes', textarea('v2-stage-notes', '', 'placeholder="Motorway, mountain pass, long stage..."')),
+    ].join(''),
+  });
 }
 
 function stageEditWizardHtml() {
   const stage = selectedStage();
   if (!stage) return emptyWizard('No stage selected.');
-  return `<aside class="rf-v2-wizard-panel" role="dialog" aria-modal="true" aria-labelledby="rf-v2-stage-title">
-    <div class="rf-v2-wizard-head"><div class="rf-d2-aside-kicker">Edit stage</div><h2 class="rf-d2-aside-title" id="rf-v2-stage-title">Adjust the route leg</h2></div>
-    <div class="rf-d2-form-row"><label class="rf-d2-form-label" for="v2-stage-from-edit">From</label><input class="rf-d2-input" id="v2-stage-from-edit" value="${esc(stage.start_location || '')}"></div>
-    <div class="rf-d2-form-row"><label class="rf-d2-form-label" for="v2-stage-to-edit">To</label><input class="rf-d2-input" id="v2-stage-to-edit" value="${esc(stage.end_location || '')}"></div>
-    <div class="rf-d2-form-row-pair"><div class="rf-d2-form-row"><label class="rf-d2-form-label" for="v2-stage-date-edit">Date</label><input class="rf-d2-input" id="v2-stage-date-edit" type="date" value="${esc(stage.planned_date || '')}"></div><div class="rf-d2-form-row"><label class="rf-d2-form-label" for="v2-stage-km-edit">Distance km</label><input class="rf-d2-input" id="v2-stage-km-edit" inputmode="decimal" value="${esc(stage.distance_km ?? '')}"></div></div>
-    <div class="rf-d2-form-row"><label class="rf-d2-form-label" for="v2-stage-route-edit">Custom Google Maps URL</label><input class="rf-d2-input" id="v2-stage-route-edit" value="${esc(stage.custom_route_url || '')}" placeholder="https://www.google.com/maps/..."></div>
-    <div class="rf-d2-form-row"><label class="rf-d2-form-label" for="v2-stage-notes-edit">Notes</label><textarea class="rf-d2-textarea" id="v2-stage-notes-edit">${esc(stage.notes || '')}</textarea></div>
-    <div class="rf-v2-wizard-error" id="v2-stage-error" hidden></div>
-    <div class="rf-d2-form-actions"><button class="rf-d2-btn" data-action="rf-v2-cancel-wizard" type="button">Cancel</button><button class="rf-d2-btn is-primary" data-action="rf-v2-update-stage" type="button">Save stage</button></div>
-  </aside>`;
+  return panelHtml({
+    id: 'rf-v2-stage-title',
+    kicker: 'Edit stage',
+    title: 'Adjust the route leg',
+    sub: 'Changing locations can refresh stored coordinates and weather.',
+    errorId: 'v2-stage-error',
+    saveAction: 'rf-v2-update-stage',
+    saveLabel: 'Save stage',
+    body: [
+      row('v2-stage-from-edit', 'From', input('v2-stage-from-edit', stage.start_location || '')),
+      row('v2-stage-to-edit', 'To', input('v2-stage-to-edit', stage.end_location || '')),
+      pair(row('v2-stage-date-edit', 'Date', input('v2-stage-date-edit', stage.planned_date || '', 'type="date"')), row('v2-stage-km-edit', 'Distance km', input('v2-stage-km-edit', stage.distance_km ?? '', 'inputmode="decimal"'))),
+      row('v2-stage-route-edit', 'Custom Google Maps URL', input('v2-stage-route-edit', stage.custom_route_url || '', 'placeholder="https://www.google.com/maps/..."')),
+      row('v2-stage-notes-edit', 'Notes', textarea('v2-stage-notes-edit', stage.notes || '')),
+    ].join(''),
+  });
+}
+
+function journalCreateWizardHtml() {
+  return panelHtml({
+    id: 'rf-v2-entry-create-title',
+    kicker: 'New entry',
+    title: 'Add a stage note',
+    sub: 'Capture stops, meals, lodging, links and anything worth remembering.',
+    errorId: 'v2-entry-create-error',
+    saveAction: 'rf-v2-save-journal',
+    saveLabel: 'Save entry',
+    body: [
+      row('v2-entry-type', 'Type', select('v2-entry-type', `${option('note', 'Note', STATE.journalType || 'note')}${option('stop', 'Stop', STATE.journalType)}${option('meal', 'Meal', STATE.journalType)}${option('drink', 'Drink', STATE.journalType)}${option('lodging', 'Lodging', STATE.journalType)}${option('other', 'Other', STATE.journalType)}`)),
+      row('v2-entry-title', 'Title', input('v2-entry-title', '', 'placeholder="e.g. Lunch stop"')),
+      pair(row('v2-entry-place', 'Place', input('v2-entry-place', '', 'placeholder="Town, restaurant, pass..."')), row('v2-entry-time', 'Time', input('v2-entry-time', '', 'type="time"'))),
+      row('v2-entry-note', 'Description', textarea('v2-entry-note', '', 'placeholder="What happened here?"')),
+    ].join(''),
+  });
 }
 
 function journalEditWizardHtml() {
@@ -199,16 +235,21 @@ function journalEditWizardHtml() {
   if (!entry) return emptyWizard('No journal entry selected.');
   const local = entry.timestamp ? new Date(entry.timestamp) : null;
   const time = local && !Number.isNaN(local.getTime()) ? String(local.getHours()).padStart(2, '0') + ':' + String(local.getMinutes()).padStart(2, '0') : '';
-  return `<aside class="rf-v2-wizard-panel" role="dialog" aria-modal="true" aria-labelledby="rf-v2-entry-title">
-    <div class="rf-v2-wizard-head"><div class="rf-d2-aside-kicker">Edit entry</div><h2 class="rf-d2-aside-title" id="rf-v2-entry-title">Refine the note</h2></div>
-    <div class="rf-d2-form-row"><label class="rf-d2-form-label" for="v2-entry-type-edit">Type</label><select class="rf-d2-input" id="v2-entry-type-edit">${option('note', 'Note', entry.entry_type)}${option('stop', 'Stop', entry.entry_type)}${option('meal', 'Meal', entry.entry_type)}${option('drink', 'Drink', entry.entry_type)}${option('lodging', 'Lodging', entry.entry_type)}${option('other', 'Other', entry.entry_type)}</select></div>
-    <div class="rf-d2-form-row"><label class="rf-d2-form-label" for="v2-entry-title-edit">Title</label><input class="rf-d2-input" id="v2-entry-title-edit" value="${esc(entry.title || '')}"></div>
-    <div class="rf-d2-form-row-pair"><div class="rf-d2-form-row"><label class="rf-d2-form-label" for="v2-entry-place-edit">Place</label><input class="rf-d2-input" id="v2-entry-place-edit" value="${esc(entry.location || '')}"></div><div class="rf-d2-form-row"><label class="rf-d2-form-label" for="v2-entry-time-edit">Time</label><input class="rf-d2-input" id="v2-entry-time-edit" type="time" value="${esc(time)}"></div></div>
-    <div class="rf-d2-form-row"><label class="rf-d2-form-label" for="v2-entry-note-edit">Description</label><textarea class="rf-d2-textarea" id="v2-entry-note-edit">${esc(entry.description || '')}</textarea></div>
-    <div class="rf-d2-form-row"><label class="rf-d2-form-label" for="v2-entry-location-url-edit">Maps URL</label><input class="rf-d2-input" id="v2-entry-location-url-edit" value="${esc(entry.location_url || '')}" placeholder="https://www.google.com/maps/..."></div>
-    <div class="rf-v2-wizard-error" id="v2-entry-error" hidden></div>
-    <div class="rf-d2-form-actions"><button class="rf-d2-btn" data-action="rf-v2-cancel-wizard" type="button">Cancel</button><button class="rf-d2-btn is-primary" data-action="rf-v2-update-entry" type="button">Save entry</button></div>
-  </aside>`;
+  return panelHtml({
+    id: 'rf-v2-entry-title',
+    kicker: 'Edit entry',
+    title: 'Refine the note',
+    errorId: 'v2-entry-error',
+    saveAction: 'rf-v2-update-entry',
+    saveLabel: 'Save entry',
+    body: [
+      row('v2-entry-type-edit', 'Type', select('v2-entry-type-edit', `${option('note', 'Note', entry.entry_type)}${option('stop', 'Stop', entry.entry_type)}${option('meal', 'Meal', entry.entry_type)}${option('drink', 'Drink', entry.entry_type)}${option('lodging', 'Lodging', entry.entry_type)}${option('other', 'Other', entry.entry_type)}`)),
+      row('v2-entry-title-edit', 'Title', input('v2-entry-title-edit', entry.title || '')),
+      pair(row('v2-entry-place-edit', 'Place', input('v2-entry-place-edit', entry.location || '')), row('v2-entry-time-edit', 'Time', input('v2-entry-time-edit', time, 'type="time"'))),
+      row('v2-entry-note-edit', 'Description', textarea('v2-entry-note-edit', entry.description || '')),
+      row('v2-entry-location-url-edit', 'Maps URL', input('v2-entry-location-url-edit', entry.location_url || '', 'placeholder="https://www.google.com/maps/..."')),
+    ].join(''),
+  });
 }
 
 function itemWizardHtml(editing = false) {
@@ -217,16 +258,20 @@ function itemWizardHtml(editing = false) {
   if (editing && !item) return emptyWizard('No packing item selected.');
   const cats = trip ? categoriesForTrip(trip.id) : [];
   const selectedCategoryId = item?.category_id || cats.find((cat) => STATE.selectedCategoryKey && slug(cat.name) === STATE.selectedCategoryKey)?.id || cats[0]?.id || '';
-  return `<aside class="rf-v2-wizard-panel" role="dialog" aria-modal="true" aria-labelledby="rf-v2-item-title">
-    <div class="rf-v2-wizard-head"><div class="rf-d2-aside-kicker">${editing ? 'Edit item' : 'New item'}</div><h2 class="rf-d2-aside-title" id="rf-v2-item-title">${editing ? 'Update packing item' : 'Add to the packing list'}</h2><p class="rf-d2-aside-sub">Use this for equipment, documents, clothing and trip-specific preparation.</p></div>
-    <form data-action="rf-v2-item-form">
-      <div class="rf-d2-form-row"><label class="rf-d2-form-label" for="v2-item-text">Item</label><input class="rf-d2-input" id="v2-item-text" name="text" value="${esc(item?.name || '')}" placeholder="e.g. Rain gloves"></div>
-      <div class="rf-d2-form-row-pair"><div class="rf-d2-form-row"><label class="rf-d2-form-label" for="v2-item-category">Category</label><select class="rf-d2-input" id="v2-item-category" name="category_id">${cats.map((cat) => `<option value="${esc(cat.id || '')}" ${selectedCategoryId === cat.id ? 'selected' : ''}>${esc(cat.name)}</option>`).join('')}</select></div><div class="rf-d2-form-row"><label class="rf-d2-form-label" for="v2-item-status">Status</label><select class="rf-d2-input" id="v2-item-status" name="status">${option('planned', 'To-do', item?.status || 'planned')}${option('packed', 'Done', item?.status)}${option('optional', 'Optional', item?.status)}</select></div></div>
-      <div class="rf-d2-form-row"><label class="rf-d2-form-label" for="v2-item-notes">Notes</label><textarea class="rf-d2-textarea" id="v2-item-notes" name="notes" placeholder="Optional detail">${esc(item?.notes || '')}</textarea></div>
-      <div class="rf-v2-wizard-error" id="v2-item-error" hidden></div>
-      <div class="rf-d2-form-actions"><button class="rf-d2-btn" data-action="rf-v2-cancel-wizard" type="button">Cancel</button><button class="rf-d2-btn is-primary" data-action="${editing ? 'rf-v2-update-item' : 'rf-v2-save-item'}" type="button">${editing ? 'Save item' : 'Add item'}</button></div>
-    </form>
-  </aside>`;
+  return panelHtml({
+    id: 'rf-v2-item-title',
+    kicker: editing ? 'Edit item' : 'New item',
+    title: editing ? 'Update packing item' : 'Add to the packing list',
+    sub: 'Use this for equipment, documents, clothing and trip-specific preparation.',
+    errorId: 'v2-item-error',
+    saveAction: editing ? 'rf-v2-update-item' : 'rf-v2-save-item',
+    saveLabel: editing ? 'Save item' : 'Add item',
+    body: [
+      row('v2-item-text', 'Item', input('v2-item-text', item?.name || '', 'placeholder="e.g. Rain gloves"')),
+      pair(row('v2-item-category', 'Category', select('v2-item-category', cats.map((cat) => `<option value="${esc(cat.id || '')}" ${selectedCategoryId === cat.id ? 'selected' : ''}>${esc(cat.name)}</option>`).join(''))), row('v2-item-status', 'Status', select('v2-item-status', `${option('planned', 'To-do', item?.status || 'planned')}${option('packed', 'Done', item?.status)}${option('optional', 'Optional', item?.status)}`))),
+      row('v2-item-notes', 'Notes', textarea('v2-item-notes', item?.notes || '', 'placeholder="Optional detail"')),
+    ].join(''),
+  });
 }
 
 function expenseWizardHtml() {
@@ -236,31 +281,33 @@ function expenseWizardHtml() {
   const categoryOptions = Object.entries(EXPENSE_CATEGORY_META).map(([key, meta]) => `<option value="${esc(key)}">${esc(meta.label)}</option>`).join('');
   const stageOptions = ['<option value="">Whole trip</option>', ...stageRows.map((stage, index) => `<option value="${esc(stage.id)}" ${selectedStageId === stage.id ? 'selected' : ''}>${index + 1}. ${esc(stage.start_location || 'Start')} → ${esc(stage.end_location || 'End')}</option>`)].join('');
   const payerOptions = [STATE.user, ...STATE.profiles.filter((profile) => profile.id !== STATE.user?.id)].filter(Boolean).map((profile) => `<option value="${esc(profile.id)}">${esc(profile.full_name || profile.email || 'Rider')}</option>`).join('');
-  return `<aside class="rf-v2-wizard-panel" role="dialog" aria-modal="true" aria-labelledby="rf-v2-expense-title">
-    <div class="rf-v2-wizard-head"><div class="rf-d2-aside-kicker">New expense</div><h2 class="rf-d2-aside-title" id="rf-v2-expense-title">Log an expense</h2><p class="rf-d2-aside-sub">Keep it simple: category, amount, payer, date and optional stage.</p></div>
-    <div class="rf-d2-form-row-pair"><div class="rf-d2-form-row"><label class="rf-d2-form-label" for="v2-expense-category">Category</label><select class="rf-d2-input" id="v2-expense-category">${categoryOptions}</select></div><div class="rf-d2-form-row"><label class="rf-d2-form-label" for="v2-expense-amount">Amount</label><input class="rf-d2-input" id="v2-expense-amount" inputmode="decimal" placeholder="42.80"></div></div>
-    <div class="rf-d2-form-row-pair"><div class="rf-d2-form-row"><label class="rf-d2-form-label" for="v2-expense-payer">Paid by</label><select class="rf-d2-input" id="v2-expense-payer">${payerOptions}</select></div><div class="rf-d2-form-row"><label class="rf-d2-form-label" for="v2-expense-date">Date</label><input class="rf-d2-input" id="v2-expense-date" type="date" value="${esc(new Date().toISOString().slice(0, 10))}"></div></div>
-    <div class="rf-d2-form-row"><label class="rf-d2-form-label" for="v2-expense-stage">Stage</label><select class="rf-d2-input" id="v2-expense-stage">${stageOptions}</select></div>
-    <div class="rf-d2-form-row"><label class="rf-d2-form-label" for="v2-expense-description">Description</label><input class="rf-d2-input" id="v2-expense-description" placeholder="e.g. Fuel, lunch, lodging"></div>
-    <div class="rf-v2-wizard-error" id="v2-expense-error" hidden></div>
-    <div class="rf-d2-form-actions"><button class="rf-d2-btn" data-action="rf-v2-cancel-wizard" type="button">Cancel</button><button class="rf-d2-btn is-primary" data-action="rf-v2-save-expense" type="button">Save expense</button></div>
-  </aside>`;
+  return panelHtml({
+    id: 'rf-v2-expense-title',
+    kicker: 'New expense',
+    title: 'Log an expense',
+    sub: 'Keep it simple: category, amount, payer, date and optional stage.',
+    errorId: 'v2-expense-error',
+    saveAction: 'rf-v2-save-expense',
+    saveLabel: 'Save expense',
+    body: [
+      pair(row('v2-expense-category', 'Category', select('v2-expense-category', categoryOptions)), row('v2-expense-amount', 'Amount', input('v2-expense-amount', '', 'inputmode="decimal" placeholder="42.80"'))),
+      pair(row('v2-expense-payer', 'Paid by', select('v2-expense-payer', payerOptions)), row('v2-expense-date', 'Date', input('v2-expense-date', new Date().toISOString().slice(0, 10), 'type="date"'))),
+      row('v2-expense-stage', 'Stage', select('v2-expense-stage', stageOptions)),
+      row('v2-expense-description', 'Description', input('v2-expense-description', '', 'placeholder="e.g. Fuel, lunch, lodging"')),
+    ].join(''),
+  });
 }
 
 function emptyWizard(message) {
   return `<aside class="rf-v2-wizard-panel"><div class="rf-v2-wizard-head"><h2 class="rf-d2-aside-title">Nothing selected</h2><p>${esc(message)}</p></div><button class="rf-d2-btn" data-action="rf-v2-cancel-wizard" type="button">Close</button></aside>`;
 }
 
-function option(value, label, selected) {
-  return `<option value="${esc(value)}" ${selected === value ? 'selected' : ''}>${esc(label)}</option>`;
-}
-
-function slug(value) {
-  return String(value || '').trim().toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '') || 'other';
-}
+function option(value, label, selected) { return `<option value="${esc(value)}" ${selected === value ? 'selected' : ''}>${esc(label)}</option>`; }
+function slug(value) { return String(value || '').trim().toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '') || 'other'; }
 
 function showError(id, error) {
-  const node = byId(id);
+  const fallback = document.querySelector('.rf-v2-wizard-error');
+  const node = byId(id) || fallback;
   if (!node) return;
   node.textContent = error?.message || String(error || 'Something went wrong.');
   node.hidden = false;
@@ -288,9 +335,7 @@ async function saveTrip(event) {
     rememberTripContext(trip.id, 'detail');
     await api().openTrip?.(trip.id, 'detail');
     renderAll();
-  } catch (error) {
-    showError('v2-trip-error', error);
-  }
+  } catch (error) { showError('v2-trip-error', error); }
 }
 
 async function saveTripEdit(event) {
@@ -306,9 +351,7 @@ async function saveTripEdit(event) {
     else rememberTripContext(updated.id, STATE.view || 'detail');
     await api().openTrip?.(updated.id, STATE.view || 'detail');
     renderAll();
-  } catch (error) {
-    showError('v2-trip-error', error);
-  }
+  } catch (error) { showError('v2-trip-error', error); }
 }
 
 async function removeTrip(event) {
@@ -344,9 +387,7 @@ async function saveStageCreate(event) {
     STATE.editTargetId = null;
     await api().loadStagesForTrip?.(trip.id);
     renderAll();
-  } catch (error) {
-    showError('v2-stage-create-error', error);
-  }
+  } catch (error) { showError('v2-stage-create-error', error); }
 }
 
 async function saveStageEdit(event) {
@@ -369,9 +410,7 @@ async function saveStageEdit(event) {
     STATE.editTargetId = null;
     await api().loadStagesForTrip?.(trip.id);
     renderAll();
-  } catch (error) {
-    showError('v2-stage-error', error);
-  }
+  } catch (error) { showError('v2-stage-error', error); }
 }
 
 async function removeStage(event, stageId) {
@@ -409,9 +448,7 @@ async function saveEntryEdit(event) {
     STATE.editTargetId = null;
     await api().loadEntriesForStage?.(stage.id, { quiet: true });
     renderAll();
-  } catch (error) {
-    showError('v2-entry-error', error);
-  }
+  } catch (error) { showError('v2-entry-error', error); }
 }
 
 async function removeEntry(event, entryId) {
@@ -445,9 +482,7 @@ async function saveExpense(event) {
     STATE.editTargetId = null;
     await api().loadExpensesForTrip?.(trip.id, { quiet: true });
     renderAll();
-  } catch (error) {
-    showError('v2-expense-error', error);
-  }
+  } catch (error) { showError('v2-expense-error', error); }
 }
 
 function itemPayload() {
@@ -470,9 +505,7 @@ async function saveItem(event) {
     STATE.editTargetId = null;
     await api().loadItemsForTrip?.(trip.id, { quiet: true });
     renderAll();
-  } catch (error) {
-    showError('v2-item-error', error);
-  }
+  } catch (error) { showError('v2-item-error', error); }
 }
 
 async function saveItemEdit(event) {
@@ -487,9 +520,7 @@ async function saveItemEdit(event) {
     STATE.editTargetId = null;
     await api().loadItemsForTrip?.(trip.id, { quiet: true });
     renderAll();
-  } catch (error) {
-    showError('v2-item-error', error);
-  }
+  } catch (error) { showError('v2-item-error', error); }
 }
 
 document.addEventListener('click', async (event) => {
@@ -517,5 +548,4 @@ document.addEventListener('click', async (event) => {
 }, true);
 
 document.addEventListener('routefolk:v2-render', () => requestAnimationFrame(renderWizardLayer));
-window.addEventListener('resize', () => requestAnimationFrame(renderWizardLayer));
 requestAnimationFrame(renderWizardLayer);
