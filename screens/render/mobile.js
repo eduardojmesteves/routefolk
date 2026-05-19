@@ -49,7 +49,7 @@ function screen(inner, active = 'trips') {
 }
 
 function tripHeader(trip, active) {
-  return `<header class="rf-clean-trip-head"><button class="rf-clean-back" data-action="rf-m2-back-to-trips">← Trips</button><div class="rf-clean-kicker">${esc(tripNo(trip))} · ${esc(season(trip))}</div><h1>${esc(trip.title || 'Untitled trip')}</h1><p>${esc(subtitle(trip))}</p><div class="rf-clean-stamps rf-clean-head-stamps"><span class="rf-trip-status ${statusClass(trip.status)}">• ${esc(statusLabel(trip.status))}</span><span>${esc(trip.visibility || 'group')}</span></div></header><nav class="rf-clean-tabs">${DETAIL_TABS.map(([key, label]) => `<button class="${active === key ? 'is-active' : ''}" data-action="rf-m2-tab" data-value="${key}">${label}</button>`).join('')}</nav>`;
+  return `<header class="rf-clean-trip-head"><button class="rf-clean-back" data-action="rf-m2-back-to-trips">← Trips</button><div class="rf-clean-kicker">${esc(tripNo(trip))} · ${esc(season(trip))}</div><h1>${esc(trip.title || 'Untitled trip')}</h1><p>${esc(subtitle(trip))}</p><div class="rf-m2-detail-stamps">${statePillHtml(trip.status)}${stampHtml(trip.visibility || 'group', 'accent')}</div></header><nav class="rf-clean-tabs">${DETAIL_TABS.map(([key, label]) => `<button class="${active === key ? 'is-active' : ''}" data-action="rf-m2-tab" data-value="${key}">${label}</button>`).join('')}</nav>`;
 }
 
 function selectedStage(trip) {
@@ -82,6 +82,21 @@ function statusLabel(status) {
 
 function statusClass(status) {
   return status === 'active' ? 'is-active' : status === 'completed' ? 'is-completed' : status === 'cancelled' ? 'is-cancelled' : 'is-planning';
+}
+
+function stateKey(status) {
+  if (status === 'active') return 'active';
+  if (status === 'completed') return 'completed';
+  if (status === 'cancelled') return 'cancelled';
+  return 'planning';
+}
+
+function statePillHtml(status) {
+  return `<span class="rf-m2-state-pill is-state-${stateKey(status)}"><span class="rf-m2-state-pill-dot"></span>${esc(statusLabel(status))}</span>`;
+}
+
+function stampHtml(value, tone = '') {
+  return `<span class="rf-m2-stamp ${tone ? `is-${tone}` : ''}">${esc(value)}</span>`;
 }
 
 function tripDateRange(trip) {
@@ -119,7 +134,7 @@ function mobileTrips() {
 
 function mobileStages(trip) {
   const st = stages(trip.id);
-  return screen(`${tripHeader(trip, 'stages')}<main class="rf-clean-page"><div class="rf-clean-section-head"><h2>${st.length} stages</h2></div>${st.map((stage, index) => `<button class="rf-clean-stage" data-action="rf-m2-open-stage" data-stage-id="${esc(stage.id)}"><span>${index + 1}</span><div><strong>${esc(stage.start_location || 'Start')} <em>to</em> ${esc(stage.end_location || 'End')}</strong><small>${esc(day(stage.planned_date))} · ${Math.round(Number(stage.distance_km) || 0)} km · ${esc(fmtDate(stage.planned_date) || '')}</small>${stage.notes ? `<p>${esc(stage.notes)}</p>` : ''}</div></button>`).join('') || '<div class="rf-clean-empty">No stages yet.</div>'}<button class="rf-clean-add-stage-card" data-action="rf-m2-add-stage">+ Add another stage</button></main>`);
+  return screen(`${tripHeader(trip, 'stages')}<main class="rf-clean-page"><div class="rf-clean-section-head"><h2>${st.length} stages</h2></div>${st.map((stage, index) => `<button class="rf-clean-stage" data-action="rf-m2-open-stage" data-stage-id="${esc(stage.id)}"><span>${index + 1}</span><div><strong>${esc(stage.start_location || 'Start')} <em>to</em> ${esc(stage.end_location || 'End')}</strong><small>${esc(day(stage.planned_date))} · ${Math.round(Number(stage.distance_km) || 0)} km · ${esc(fmtDate(stage.planned_date) || '')}</small>${stage.notes ? `<p>${esc(stage.notes)}</p>` : ''}</div></button>`).join('') || '<div class="rf-clean-empty">No stages yet.</div>'}<button class="rf-m2-btn is-dashed" data-action="rf-m2-add-stage">+ Add another stage</button></main>`);
 }
 
 function mobileSummary(trip) {
