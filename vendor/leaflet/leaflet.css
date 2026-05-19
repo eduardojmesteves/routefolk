@@ -1,0 +1,80 @@
+/* routefolk local Leaflet-compatible map adapter styles */
+.leaflet-container {
+  position: relative;
+  overflow: hidden;
+  width: 100%;
+  height: 100%;
+  touch-action: none;
+  background: #d8d7cc;
+  font: 12px/1.5 system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+}
+
+.leaflet-pane,
+.leaflet-tile-pane,
+.leaflet-overlay-pane {
+  position: absolute;
+  inset: 0;
+}
+
+.leaflet-tile-pane { z-index: 1; }
+.leaflet-overlay-pane { z-index: 2; pointer-events: none; }
+
+.leaflet-tile {
+  position: absolute;
+  width: 256px;
+  height: 256px;
+  border: 0;
+  user-select: none;
+  -webkit-user-drag: none;
+}
+
+.rf-local-leaflet-svg {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  pointer-events: none;
+  overflow: visible;
+}
+
+.leaflet-control-container { position: absolute; inset: 0; z-index: 4; pointer-events: none; }
+.leaflet-top,
+.leaflet-left { position: absolute; }
+.leaflet-top { top: 10px; }
+.leaflet-left { left: 10px; }
+.leaflet-control { pointer-events: auto; }
+.leaflet-bar {
+  border: 1px solid rgba(38, 52, 94, 0.28);
+  background: rgba(243, 240, 228, 0.92);
+  box-shadow: 0 4px 14px rgba(0,0,0,.12);
+}
+
+.leaflet-bar button {
+  display: block;
+  width: 30px;
+  height: 30px;
+  border: 0;
+  border-bottom: 1px solid rgba(38, 52, 94, 0.18);
+  background: transparent;
+  color: #26345e;
+  font: 700 20px/1 system-ui, sans-serif;
+  cursor: pointer;
+}
+
+.leaflet-bar button:last-child { border-bottom: 0; }
+.leaflet-bar button:hover { background: rgba(38, 52, 94, 0.08); }
+
+.leaflet-control-attribution {
+  position: absolute;
+  right: 8px;
+  bottom: 6px;
+  z-index: 4;
+  padding: 2px 6px;
+  background: rgba(243, 240, 228, 0.84);
+  color: #4f594f;
+  font-size: 10px;
+  pointer-events: auto;
+}
+
+.leaflet-control-attribution a { color: inherit; }
+.leaflet-container.is-dragging { cursor: grabbing !important; }
