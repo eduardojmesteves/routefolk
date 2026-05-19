@@ -16,7 +16,8 @@
 @media(max-width:959px){
   .rf-clean-trips-hero{
     position:relative!important;
-    padding:50px 24px 30px!important;
+    min-height:264px!important;
+    padding:54px 32px 34px!important;
     border-bottom:1px solid var(--rf-m2-rule)!important;
     background:var(--rf-m2-paper)!important;
     background-image:var(--rf-m2-contour-bg)!important;
@@ -24,38 +25,34 @@
     overflow:hidden!important;
   }
 
-  .rf-clean-topbar{
-    display:flex!important;
-    align-items:flex-start!important;
-    justify-content:space-between!important;
-    gap:18px!important;
-  }
-
   .rf-clean-trips-hero .rf-clean-kicker{
-    margin:0 0 4px!important;
-    font:800 12px/1 var(--rf-m2-font-mono)!important;
-    letter-spacing:.26em!important;
+    margin:0 0 6px!important;
+    font:800 13px/1 var(--rf-m2-font-mono)!important;
+    letter-spacing:.34em!important;
     color:#34415d!important;
     text-transform:uppercase!important;
   }
 
   .rf-clean-trips-hero h1{
     margin:0!important;
-    font:700 54px/.86 var(--rf-m2-font-serif)!important;
+    font:700 64px/.86 var(--rf-m2-font-serif)!important;
     color:var(--rf-m2-ink)!important;
-    letter-spacing:-.04em!important;
+    letter-spacing:-.055em!important;
   }
 
   .rf-clean-trips-hero p{
-    margin:18px 0 0!important;
-    font:500 21px/1.25 var(--rf-m2-font-ui)!important;
+    max-width:360px!important;
+    margin:28px 0 0!important;
+    font:500 24px/1.12 var(--rf-m2-font-ui)!important;
     color:var(--rf-m2-muted)!important;
   }
 
   .rf-clean-new-trip{
-    flex:0 0 auto!important;
-    margin-top:130px!important;
-    min-height:50px!important;
+    position:absolute!important;
+    right:42px!important;
+    bottom:54px!important;
+    min-width:118px!important;
+    min-height:58px!important;
     padding:0 26px!important;
     border:0!important;
     border-radius:999px!important;
@@ -66,14 +63,32 @@
   }
 
   .rf-clean-toolbar{
+    display:flex!important;
     align-items:center!important;
+    justify-content:space-between!important;
+    gap:16px!important;
     margin:22px 0 26px!important;
+  }
+
+  .rf-clean-toolbar > div,
+  .rf-clean-mini-pills,
+  .rf-clean-view-toggle{
+    display:flex!important;
+    align-items:center!important;
+    gap:10px!important;
   }
 
   .rf-clean-toolbar button,
   .rf-clean-mini-pills button,
   .rf-clean-view-toggle button{
+    min-height:44px!important;
+    padding:0 18px!important;
+    border:1px solid var(--rf-m2-rule-2)!important;
+    border-radius:999px!important;
+    background:transparent!important;
     color:var(--rf-m2-muted)!important;
+    font:800 16px/1 var(--rf-m2-font-ui)!important;
+    box-shadow:none!important;
   }
 
   .rf-clean-toolbar button.is-active,
@@ -84,10 +99,12 @@
     color:var(--rf-m2-paper)!important;
   }
 
-  .rf-clean-search{
+  .rf-clean-search,
+  .rf-clean-toolbar > button:last-child{
     width:56px!important;
     min-width:56px!important;
     height:56px!important;
+    padding:0!important;
     border-radius:999px!important;
     font-size:26px!important;
   }
@@ -101,12 +118,12 @@
     display:block!important;
     width:100%!important;
     min-height:0!important;
-    padding:28px 30px 24px!important;
+    padding:26px 28px 24px!important;
     border:1px solid var(--rf-m2-rule-2)!important;
     border-radius:4px!important;
-    background:rgba(250,248,239,.72)!important;
+    background:rgba(250,248,239,.74)!important;
     background-image:var(--rf-m2-contour-bg)!important;
-    background-size:420px!important;
+    background-size:440px!important;
     color:var(--rf-m2-ink)!important;
     text-align:left!important;
     white-space:normal!important;
@@ -117,14 +134,14 @@
   .rf-trip-card-top{
     display:grid!important;
     grid-template-columns:minmax(0,1fr) auto!important;
-    gap:16px!important;
+    gap:14px!important;
     align-items:start!important;
   }
 
   .rf-trip-card-title{
     display:block!important;
     margin:0!important;
-    font:700 33px/.98 var(--rf-m2-font-serif)!important;
+    font:700 31px/.98 var(--rf-m2-font-serif)!important;
     color:var(--rf-m2-ink)!important;
     letter-spacing:-.025em!important;
     overflow-wrap:anywhere!important;
@@ -132,8 +149,9 @@
 
   .rf-trip-card-subtitle{
     display:block!important;
-    margin-top:4px!important;
-    font:600 19px/1.15 var(--rf-m2-font-serif)!important;
+    max-width:82%!important;
+    margin-top:6px!important;
+    font:600 18px/1.18 var(--rf-m2-font-serif)!important;
     font-style:italic!important;
     color:var(--rf-m2-muted)!important;
   }
@@ -147,15 +165,17 @@
   }
 
   .rf-trip-card-date{
+    max-width:64%!important;
     margin-top:28px!important;
-    font:700 17px/1 var(--rf-m2-font-mono)!important;
-    letter-spacing:.08em!important;
+    font:700 16px/1.2 var(--rf-m2-font-mono)!important;
+    letter-spacing:.11em!important;
     color:#566074!important;
+    text-transform:none!important;
   }
 
   .rf-trip-card-rule{
     position:relative!important;
-    margin:30px 0 20px!important;
+    margin:26px 0 20px!important;
     height:1px!important;
     background:var(--rf-m2-rule)!important;
   }
@@ -171,16 +191,17 @@
   }
 
   .rf-trip-card-bottom{
-    display:flex!important;
-    align-items:flex-end!important;
-    justify-content:space-between!important;
-    gap:18px!important;
+    display:grid!important;
+    grid-template-columns:minmax(0,1fr) auto!important;
+    align-items:end!important;
+    gap:16px!important;
   }
 
   .rf-trip-card-metrics{
     display:flex!important;
     gap:34px!important;
     align-items:flex-end!important;
+    min-width:0!important;
   }
 
   .rf-trip-card-metrics span{
@@ -189,7 +210,7 @@
 
   .rf-trip-card-metrics b{
     display:block!important;
-    font:500 33px/.9 var(--rf-m2-font-mono)!important;
+    font:500 32px/.9 var(--rf-m2-font-mono)!important;
     color:var(--rf-m2-ink)!important;
     letter-spacing:.03em!important;
     white-space:nowrap!important;
@@ -208,7 +229,8 @@
     display:flex!important;
     flex-direction:column!important;
     align-items:flex-end!important;
-    gap:72px!important;
+    justify-content:flex-end!important;
+    gap:14px!important;
     min-width:0!important;
   }
 
@@ -253,46 +275,38 @@
   }
 
   .rf-clean-trip-detail-card{
-    margin-bottom:20px!important;
-  }
-
-  .rf-clean-trip-detail-card .rf-clean-stamps{
     display:flex!important;
-    gap:10px!important;
-    margin:0 0 24px!important;
+    justify-content:space-between!important;
+    align-items:center!important;
+    gap:12px!important;
+    margin:0 0 20px!important;
+    padding:16px!important;
+    border:1px solid var(--rf-m2-rule-2)!important;
+    border-radius:18px!important;
+    background:rgba(250,248,239,.54)!important;
   }
 
+  .rf-clean-trip-detail-card .rf-clean-stamps,
   .rf-clean-trip-detail-card .rf-clean-actions{
     display:flex!important;
     gap:10px!important;
     align-items:center!important;
+    margin:0!important;
   }
 
   .rf-clean-trip-detail-card .rf-clean-actions button{
-    min-height:42px!important;
-    padding:0 24px!important;
-    border:1px solid var(--rf-m2-rule-2)!important;
-    border-radius:999px!important;
-    background:rgba(250,248,239,.72)!important;
-    color:var(--rf-m2-muted)!important;
-    font:800 16px/1 var(--rf-m2-font-ui)!important;
-  }
-
-  .rf-clean-view-toggle{
-    display:flex!important;
-    justify-content:flex-end!important;
-    gap:10px!important;
-    margin:20px 0 18px!important;
-  }
-
-  .rf-clean-view-toggle button,
-  .rf-clean-mini-pills button{
-    min-height:44px!important;
+    min-height:40px!important;
     padding:0 18px!important;
     border:1px solid var(--rf-m2-rule-2)!important;
     border-radius:999px!important;
     background:transparent!important;
+    color:var(--rf-m2-muted)!important;
     font:800 15px/1 var(--rf-m2-font-ui)!important;
+  }
+
+  .rf-clean-view-toggle{
+    justify-content:flex-end!important;
+    margin:20px 0 18px!important;
   }
 
   .rf-clean-item-list-head{
@@ -314,7 +328,7 @@
   .rf-v2-wizard-host.is-mobile .rf-v2-wizard-panel{
     width:min(100%, 720px)!important;
     max-height:min(82vh, 760px)!important;
-    overflow:visible!important;
+    overflow:auto!important;
     border-radius:24px 24px 18px 18px!important;
     border:1px solid var(--rf-m2-rule-2)!important;
     background:var(--rf-m2-surface)!important;
