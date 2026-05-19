@@ -1,4 +1,6 @@
 /*
+  # Archive map runtime is served from /vendor/leaflet/ on the same origin.
+  # Do not add third-party Leaflet CDN script hosts here; keep the map runtime self-hosted.
   X-Content-Type-Options: nosniff
   Referrer-Policy: strict-origin-when-cross-origin
   Permissions-Policy: geolocation=(), microphone=(), camera=()
