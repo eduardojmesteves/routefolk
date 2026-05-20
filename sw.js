@@ -4,7 +4,7 @@
 // Bump CACHE whenever shell assets change.
 // ============================================================
 
-const CACHE = 'routefolk-shell-v113-mobile-fields-02';
+const CACHE = 'routefolk-shell-v114-wizard-render-03';
 
 const SHELL_ASSETS = [
   './',
@@ -29,7 +29,7 @@ const SHELL_ASSETS = [
   './screens/render/shared.js',
   './screens/render/mobile.js',
   './screens/render/desktop.js',
-  './screens/app-actions.js?v=20260520-mobile-fields-02',
+  './screens/app-actions.js?v=20260520-wizard-render-03',
   './manifest.json',
   './icons/icon-192.png',
   './icons/icon-512.png',
