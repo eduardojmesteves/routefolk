@@ -1,0 +1,192 @@
+/* ============================================================
+   routefolk — styles/weather-polish.css
+   Designer-aligned weather card polish.
+   Uses the existing weather markup; does not touch forecast logic.
+   ============================================================ */
+
+:root{
+  --rf-weather-ink:var(--rf-d2-ink,#1d1d1b);
+  --rf-weather-muted:var(--rf-d2-muted,#747880);
+  --rf-weather-blue:#243052;
+  --rf-weather-accent:#7d3458;
+  --rf-weather-rule:var(--rf-d2-rule-2,#c8c4b6);
+  --rf-weather-surface:rgba(243,240,228,.54);
+}
+
+/* Shared field-note card language */
+.rf-d2-sky,
+.rf-clean-sky{
+  border:1px solid var(--rf-weather-rule)!important;
+  border-radius:6px!important;
+  background:var(--rf-weather-surface)!important;
+  box-shadow:none!important;
+  overflow:hidden!important;
+}
+
+.rf-d2-sky-tag,
+.rf-clean-sky > strong{
+  display:block!important;
+  margin:0!important;
+  color:var(--rf-weather-blue)!important;
+  font:800 13px/1 var(--rf-d2-font-mono,var(--rf-m2-font-mono,monospace))!important;
+  letter-spacing:.34em!important;
+  text-transform:uppercase!important;
+}
+
+/* Desktop: flat three-column printed-card layout */
+.rf-d2-sky{
+  padding:24px 28px 22px!important;
+}
+
+.rf-d2-sky .rf-d2-sky-grid{
+  display:grid!important;
+  grid-template-columns:repeat(3,minmax(0,1fr))!important;
+  gap:0!important;
+  margin:20px 0 0!important;
+  text-align:center!important;
+}
+
+.rf-d2-sky .rf-d2-sky-grid > div{
+  display:flex!important;
+  min-width:0!important;
+  flex-direction:column!important;
+  align-items:center!important;
+  gap:7px!important;
+  color:var(--rf-weather-ink)!important;
+  font:400 16px/1.2 var(--rf-d2-font-ui,system-ui)!important;
+}
+
+.rf-d2-sky .rf-d2-sky-grid > div strong{
+  color:var(--rf-weather-muted)!important;
+  font:italic 16px/1.25 var(--rf-d2-font-serif,serif)!important;
+  letter-spacing:.02em!important;
+}
+
+.rf-d2-sky .rf-d2-sky-grid > div br{
+  display:none!important;
+}
+
+.rf-d2-sky .rf-d2-sky-grid > div{
+  /* icon text node still exists in the current markup; this keeps it quiet and centred */
+  font-size:28px!important;
+}
+
+.rf-d2-sky .rf-d2-sky-grid > div span{
+  display:block!important;
+  color:var(--rf-weather-ink)!important;
+  font:400 23px/1.05 var(--rf-d2-font-ui,system-ui)!important;
+  letter-spacing:-.04em!important;
+}
+
+.rf-d2-sky .rf-d2-sky-grid > div small{
+  display:block!important;
+  max-width:105px!important;
+  color:var(--rf-weather-muted)!important;
+  font:500 15px/1.35 var(--rf-d2-font-mono,monospace)!important;
+  letter-spacing:.06em!important;
+  text-transform:none!important;
+}
+
+.rf-d2-sky .rf-v2-archive-map-status{
+  margin:22px 0 0!important;
+  padding-top:16px!important;
+  border-top:1px solid rgba(120,116,104,.18)!important;
+  color:rgba(110,107,96,.72)!important;
+  font:700 12px/1 var(--rf-d2-font-mono,monospace)!important;
+  letter-spacing:.26em!important;
+  text-transform:uppercase!important;
+}
+
+.rf-d2-sky .rf-d2-mini-table{
+  margin-top:16px!important;
+  border:0!important;
+  background:transparent!important;
+  color:var(--rf-weather-muted)!important;
+  font:italic 14px/1.4 var(--rf-d2-font-serif,serif)!important;
+}
+
+/* Mobile: same designer language, slightly roomier */
+.rf-clean-sky{
+  padding:28px 22px 24px!important;
+  margin:18px 0 28px!important;
+}
+
+.rf-clean-sky > div{
+  display:grid!important;
+  grid-template-columns:repeat(3,minmax(0,1fr))!important;
+  gap:0!important;
+  margin:20px 0 0!important;
+  text-align:center!important;
+}
+
+.rf-clean-sky > div > span{
+  display:flex!important;
+  min-width:0!important;
+  flex-direction:column!important;
+  align-items:center!important;
+  gap:8px!important;
+  color:var(--rf-weather-ink)!important;
+  font-size:30px!important;
+}
+
+.rf-clean-sky > div > span strong{
+  display:block!important;
+  color:var(--rf-weather-muted)!important;
+  font:italic 16px/1.25 var(--rf-m2-font-serif,var(--rf-d2-font-serif,serif))!important;
+  letter-spacing:.02em!important;
+  margin:0!important;
+}
+
+.rf-clean-sky > div > span br{
+  display:none!important;
+}
+
+.rf-clean-sky > div > span{
+  line-height:1.1!important;
+}
+
+.rf-clean-sky > div > span small{
+  display:block!important;
+  max-width:92px!important;
+  margin:0!important;
+  color:var(--rf-weather-muted)!important;
+  font:500 14px/1.32 var(--rf-m2-font-mono,var(--rf-d2-font-mono,monospace))!important;
+  letter-spacing:.04em!important;
+  text-transform:none!important;
+}
+
+.rf-clean-sky > div > span::first-line{
+  font-size:34px!important;
+}
+
+.rf-clean-sky em{
+  display:block!important;
+  margin-top:22px!important;
+  color:rgba(110,107,96,.72)!important;
+  font:700 11px/1 var(--rf-m2-font-mono,var(--rf-d2-font-mono,monospace))!important;
+  letter-spacing:.24em!important;
+  text-transform:uppercase!important;
+  text-align:center!important;
+}
+
+.rf-clean-sky p{
+  margin:16px 0 0!important;
+  color:var(--rf-weather-muted)!important;
+  font:italic 15px/1.45 var(--rf-m2-font-serif,var(--rf-d2-font-serif,serif))!important;
+}
+
+@media(max-width:420px){
+  .rf-clean-sky{
+    padding:24px 16px 22px!important;
+  }
+  .rf-clean-sky > div > span{
+    font-size:26px!important;
+  }
+  .rf-clean-sky > div > span strong{
+    font-size:14px!important;
+  }
+  .rf-clean-sky > div > span small{
+    max-width:80px!important;
+    font-size:12px!important;
+  }
+}
