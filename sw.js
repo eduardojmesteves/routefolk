@@ -4,7 +4,7 @@
 // Bump CACHE whenever shell assets change.
 // ============================================================
 
-const CACHE = 'routefolk-shell-v120-weather-polish-01';
+const CACHE = 'routefolk-shell-v119-desktop-weather-02';
 
 const SHELL_ASSETS = [
   './',
@@ -18,7 +18,6 @@ const SHELL_ASSETS = [
   './styles/renderer-integration.css?v=20260518-production-01',
   './styles/packing-list.css?v=20260518-production-01',
   './styles/production-overrides.css?v=20260520-mobile-fields-02',
-  './styles/weather-polish.css?v=20260520-weather-polish-01',
   './vendor/leaflet/leaflet.css?v=routefolk-local-01',
   './vendor/leaflet/leaflet.js?v=routefolk-local-01',
   './app.js?v=20260520-desktop-weather-02',
