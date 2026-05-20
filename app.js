@@ -18,10 +18,17 @@ const PALETTES = ['forest', 'midnight', 'oxblood', 'alpine'];
 let lastAuthUserId = null;
 let resumeInFlight = false;
 
+function shouldRenderV2Layer() {
+  if (!STATE.wizard) return true;
+  const modeClass = window.matchMedia('(min-width:960px)').matches ? 'is-desktop' : 'is-mobile';
+  const existingHost = document.querySelector('.rf-v2-wizard-host');
+  return !(existingHost && existingHost.dataset.wizard === STATE.wizard && existingHost.classList.contains(modeClass));
+}
+
 function renderAll() {
   if (STATE.user) saveUiState();
   document.dispatchEvent(new CustomEvent('routefolk:render'));
-  document.dispatchEvent(new CustomEvent('routefolk:v2-render'));
+  if (shouldRenderV2Layer()) document.dispatchEvent(new CustomEvent('routefolk:v2-render'));
   if (typeof window.__routefolkRender === 'function') window.__routefolkRender();
   if (typeof window.__routefolkV2Render === 'function') window.__routefolkV2Render();
 }
@@ -104,12 +111,18 @@ async function hydrateSelectedTripAfterTripsLoad() {
 async function resumeVisibleView() {
   if (!STATE.user || resumeInFlight) return;
   resumeInFlight = true;
+  const activeWizard = STATE.wizard;
+  const activeEditTargetId = STATE.editTargetId;
   try {
     restoreUiState(STATE.user);
     validateUiSelection();
     if (!STATE.trips.length) await loadSignedInData();
     await hydrateSelectedTripAfterTripsLoad();
     validateUiSelection();
+    if (activeWizard) {
+      STATE.wizard = activeWizard;
+      STATE.editTargetId = activeEditTargetId;
+    }
     renderAll();
   } finally {
     resumeInFlight = false;
