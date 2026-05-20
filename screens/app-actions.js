@@ -38,7 +38,7 @@ function renderSoon() {
   saveUiState();
   appApi().renderAll?.();
   if (typeof window.__routefolkV2Render === 'function') window.__routefolkV2Render();
-  notifyWizardLayer();
+  if (!STATE.wizard) notifyWizardLayer();
 }
 
 function claim(event) {
