@@ -48,10 +48,11 @@ function screen(inner, active = 'trips') {
   return `<div class="rf-clean-mobile"><div class="rf-clean-scroll">${inner}</div>${bottomNav(active)}</div>`;
 }
 
-function tripHeader(trip, active, backTo = 'trips') {
+function tripHeader(trip, active, backTo = 'trips', summaryOnly = false) {
   const backAction = backTo === 'archive' ? 'rf-m2-back-to-archive' : 'rf-m2-back-to-trips';
   const backLabel = backTo === 'archive' ? 'Archive' : 'Trips';
-  return `<header class="rf-clean-trip-head"><button class="rf-clean-back" data-action="${backAction}">← ${backLabel}</button><div class="rf-clean-kicker">${esc(tripNo(trip))} · ${esc(season(trip))}</div><h1>${esc(trip.title || 'Untitled trip')}</h1><p>${esc(subtitle(trip))}</p><div class="rf-m2-detail-stamps">${statePillHtml(trip.status)}${stampHtml(trip.visibility || 'group', 'accent')}</div></header><nav class="rf-clean-tabs">${DETAIL_TABS.map(([key, label]) => `<button class="${active === key ? 'is-active' : ''}" data-action="rf-m2-tab" data-value="${key}">${label}</button>`).join('')}</nav>`;
+  const tabs = summaryOnly ? [['summary', 'Summary']] : DETAIL_TABS;
+  return `<header class="rf-clean-trip-head"><button class="rf-clean-back" data-action="${backAction}">← ${backLabel}</button><div class="rf-clean-kicker">${esc(tripNo(trip))} · ${esc(season(trip))}</div><h1>${esc(trip.title || 'Untitled trip')}</h1><p>${esc(subtitle(trip))}</p><div class="rf-m2-detail-stamps">${statePillHtml(trip.status)}${stampHtml(trip.visibility || 'group', 'accent')}</div></header><nav class="rf-clean-tabs">${tabs.map(([key, label]) => `<button class="${active === key ? 'is-active' : ''}" data-action="rf-m2-tab" data-value="${key}">${label}</button>`).join('')}</nav>`;
 }
 
 function selectedStage(trip) {
@@ -198,7 +199,7 @@ function mobileSummary(trip) {
 
 function mobileArchiveSummary(trip) {
   const s = stats(trip);
-  return screen(`${tripHeader(trip, 'summary', 'archive')}<main class="rf-clean-page"><div class="rf-clean-card-list">${stages(trip.id).map((stage, index) => `<article class="rf-clean-stage-card"><div class="rf-clean-row"><span>${index + 1}</span><strong>${esc(stage.start_location || 'Start')} <em>to</em> ${esc(stage.end_location || 'End')}</strong></div><div class="rf-clean-stage-meta"><span>${esc(fmtDate(stage.planned_date) || '—')}</span><span>${Math.round(Number(stage.distance_km) || 0)} km</span><span>${esc(stage.notes || '—')}</span></div>${arr(STATE.entriesByStage[stage.id]).map((entry, i) => `<div class="rf-clean-subrow"><small>${i + 1}. ${esc(entry.entry_type || 'note')}</small><b>${esc(entry.title || 'Untitled')}</b></div>`).join('')}</article>`).join('') || '<div class="rf-clean-empty">No stages yet.</div>'}</div><h2>Totals</h2>${metricGrid([['Distance', Math.round(s.distance).toLocaleString(), 'km'], ['Spent', fmtEuro(s.spent), 'total'], ['Stages', String(s.stages), 'days'], ['Entries', String(s.entries), 'journal']])}</main>`, 'archive');
+  return screen(`${tripHeader(trip, 'summary', 'archive', true)}<main class="rf-clean-page"><div class="rf-clean-card-list">${stages(trip.id).map((stage, index) => `<article class="rf-clean-stage-card"><div class="rf-clean-row"><span>${index + 1}</span><strong>${esc(stage.start_location || 'Start')} <em>to</em> ${esc(stage.end_location || 'End')}</strong></div><div class="rf-clean-stage-meta"><span>${esc(fmtDate(stage.planned_date) || '—')}</span><span>${Math.round(Number(stage.distance_km) || 0)} km</span><span>${esc(stage.notes || '—')}</span></div>${arr(STATE.entriesByStage[stage.id]).map((entry, i) => `<div class="rf-clean-subrow"><small>${i + 1}. ${esc(entry.entry_type || 'note')}</small><b>${esc(entry.title || 'Untitled')}</b></div>`).join('')}</article>`).join('') || '<div class="rf-clean-empty">No stages yet.</div>'}</div><h2>Totals</h2>${metricGrid([['Distance', Math.round(s.distance).toLocaleString(), 'km'], ['Spent', fmtEuro(s.spent), 'total'], ['Stages', String(s.stages), 'days'], ['Entries', String(s.entries), 'journal']])}</main>`, 'archive');
 }
 
 function mobileCosts(trip) {
