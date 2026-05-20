@@ -115,6 +115,10 @@ async function resumeVisibleView() {
   const activeEditTargetId = STATE.editTargetId;
   try {
     restoreUiState(STATE.user);
+    if (activeWizard) {
+      STATE.wizard = activeWizard;
+      STATE.editTargetId = activeEditTargetId;
+    }
     validateUiSelection();
     if (!STATE.trips.length) await loadSignedInData();
     await hydrateSelectedTripAfterTripsLoad();
