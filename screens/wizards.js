@@ -108,8 +108,9 @@ function injectCostCta() {
 
 function renderWizardLayer() {
   const modeClass = isDesktop() ? 'is-desktop' : 'is-mobile';
+  const targetKey = STATE.editTargetId || '';
   const existingHost = document.querySelector('.rf-v2-wizard-host');
-  if (STATE.wizard && existingHost && existingHost.dataset.wizard === STATE.wizard && existingHost.classList.contains(modeClass)) return;
+  if (STATE.wizard && existingHost && existingHost.dataset.wizard === STATE.wizard && existingHost.dataset.targetId === targetKey && existingHost.classList.contains(modeClass)) return;
 
   removeExisting();
   injectTripActions();
@@ -121,6 +122,7 @@ function renderWizardLayer() {
   const host = document.createElement('div');
   host.className = `rf-v2-wizard-host ${modeClass}`;
   host.dataset.wizard = STATE.wizard;
+  host.dataset.targetId = targetKey;
   host.innerHTML = wizardHtml();
   document.body.appendChild(host);
 
@@ -280,8 +282,12 @@ function itemWizardHtml(editing = false) {
 
 function expenseWizardHtml() {
   const trip = activeTrip();
-  const stageRows = trip ? stagesForTrip(trip.id) : [];
-  const selectedStageId = STATE.editTargetId && stageRows.some((stage) => stage.id === STATE.editTargetId) ? STATE.editTargetId : '';
+  const loadedStages = trip ? stagesForTrip(trip.id) : [];
+  const requestedStageId = STATE.editTargetId || '';
+  const fallbackStage = requestedStageId ? selectedStage() : null;
+  const stageRows = [...loadedStages];
+  if (fallbackStage && !stageRows.some((stage) => stage.id === fallbackStage.id)) stageRows.push(fallbackStage);
+  const selectedStageId = requestedStageId && stageRows.some((stage) => stage.id === requestedStageId) ? requestedStageId : '';
   const categoryOptions = Object.entries(EXPENSE_CATEGORY_META).map(([key, meta]) => `<option value="${esc(key)}">${esc(meta.label)}</option>`).join('');
   const stageOptions = ['<option value="">Whole trip</option>', ...stageRows.map((stage, index) => `<option value="${esc(stage.id)}" ${selectedStageId === stage.id ? 'selected' : ''}>${index + 1}. ${esc(stage.start_location || 'Start')} → ${esc(stage.end_location || 'End')}</option>`)].join('');
   const payerOptions = [STATE.user, ...STATE.profiles.filter((profile) => profile.id !== STATE.user?.id)].filter(Boolean).map((profile) => `<option value="${esc(profile.id)}">${esc(profile.full_name || profile.email || 'Rider')}</option>`).join('');
