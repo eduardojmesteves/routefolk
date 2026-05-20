@@ -107,6 +107,10 @@ function injectCostCta() {
 }
 
 function renderWizardLayer() {
+  const modeClass = isDesktop() ? 'is-desktop' : 'is-mobile';
+  const existingHost = document.querySelector('.rf-v2-wizard-host');
+  if (STATE.wizard && existingHost && existingHost.dataset.wizard === STATE.wizard && existingHost.classList.contains(modeClass)) return;
+
   removeExisting();
   injectTripActions();
   injectStageActions();
@@ -115,7 +119,7 @@ function renderWizardLayer() {
   if (!STATE.user || !STATE.wizard || !WIZARDS.has(STATE.wizard)) return;
 
   const host = document.createElement('div');
-  host.className = `rf-v2-wizard-host ${isDesktop() ? 'is-desktop' : 'is-mobile'}`;
+  host.className = `rf-v2-wizard-host ${modeClass}`;
   host.dataset.wizard = STATE.wizard;
   host.innerHTML = wizardHtml();
   document.body.appendChild(host);
