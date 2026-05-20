@@ -7,6 +7,7 @@
 
 import { createStage } from '../lib/stages.js';
 import { createEntry } from '../lib/journal.js';
+import { deleteTrip } from '../lib/trips.js';
 import { createTripItem, deleteTripItem, toggleTripItemPacked, updateTripItem } from '../lib/items.js';
 import { STATE } from '../state/app-state.js';
 import { rememberArchiveContext, rememberTripContext, saveUiState, switchPrimaryTab } from '../state/ui-state.js';
@@ -41,6 +42,26 @@ function selectedStage() {
   return stages.find((stage) => stage.id === STATE.selectedStageId) || stages[0] || null;
 }
 
+function isArchiveTrip(trip, source = '') {
+  return source === 'archive' || ['completed', 'cancelled'].includes(trip?.status);
+}
+
+function clearDeletedTripContext(tripId, archiveContext = false) {
+  if (STATE.viewTripId === tripId) STATE.viewTripId = null;
+  if (STATE.selectedTripId === tripId) STATE.selectedTripId = null;
+  if (STATE.selectedArchiveTripId === tripId) STATE.selectedArchiveTripId = null;
+  STATE.selectedStageId = null;
+  STATE.wizard = null;
+  STATE.editTargetId = null;
+  if (archiveContext) {
+    STATE.tab = 'archive';
+    rememberArchiveContext(null, 'list');
+  } else {
+    STATE.tab = 'trips';
+    STATE.view = 'list';
+  }
+}
+
 async function openTripWithData(tripId, view = 'detail', tab = 'trips') {
   STATE.tab = tab;
   STATE.wizard = null;
@@ -55,6 +76,43 @@ async function openTripWithData(tripId, view = 'detail', tab = 'trips') {
   STATE.tab = tab;
   if (tab === 'archive') rememberArchiveContext(tripId, 'summary');
   else rememberTripContext(tripId, nextView);
+  renderSoon();
+}
+
+async function editTripFromList(event, btn) {
+  claim(event);
+  const tripId = btn.dataset.tripId;
+  const trip = STATE.trips.find((candidate) => candidate.id === tripId);
+  if (!trip) return;
+  const archiveContext = isArchiveTrip(trip, btn.dataset.source);
+  const view = archiveContext ? 'summary' : 'detail';
+  STATE.tab = archiveContext ? 'archive' : 'trips';
+  STATE.wizard = null;
+  STATE.editTargetId = null;
+  if (archiveContext) rememberArchiveContext(trip.id, 'summary');
+  else rememberTripContext(trip.id, 'detail');
+  if (appApi().openTrip) await appApi().openTrip(trip.id, view);
+  STATE.tab = archiveContext ? 'archive' : 'trips';
+  if (archiveContext) rememberArchiveContext(trip.id, 'summary');
+  else rememberTripContext(trip.id, 'detail');
+  STATE.wizard = 'trip-edit';
+  renderSoon();
+}
+
+async function deleteTripFromList(event, btn) {
+  claim(event);
+  const tripId = btn.dataset.tripId;
+  const trip = STATE.trips.find((candidate) => candidate.id === tripId);
+  if (!trip) return;
+  if (!window.confirm(`Delete trip "${trip.title || 'Untitled'}"? This cannot be undone.`)) return;
+  const archiveContext = isArchiveTrip(trip, btn.dataset.source);
+  await deleteTrip(trip.id);
+  STATE.trips = STATE.trips.filter((candidate) => candidate.id !== trip.id);
+  delete STATE.stagesByTrip[trip.id];
+  delete STATE.expensesByTrip[trip.id];
+  delete STATE.itemsByTrip[trip.id];
+  delete STATE.itemCategoriesByTrip[trip.id];
+  clearDeletedTripContext(trip.id, archiveContext);
   renderSoon();
 }
 
@@ -84,7 +142,7 @@ async function saveJournal(event) {
   const time = byId('v2-entry-time')?.value || '';
   const date = stage.planned_date || new Date().toISOString().slice(0, 10);
   const entry = await createEntry(stage.id, {
-    entry_type: STATE.journalType || 'note',
+    entry_type: byId('v2-entry-type')?.value || STATE.journalType || 'note',
     title: byId('v2-entry-title')?.value?.trim() || '',
     location: byId('v2-entry-place')?.value?.trim() || '',
     description: byId('v2-entry-note')?.value?.trim() || '',
@@ -155,6 +213,8 @@ document.addEventListener('click', async (event) => {
   if (action.endsWith('sign-in')) { claim(event); await appApi().handleSignIn?.(); return; }
   if (action.endsWith('sign-out')) { claim(event); await appApi().handleSignOut?.(); window.location.reload(); return; }
   if (action.endsWith('new-trip')) { claim(event); STATE.wizard = 'trip'; renderSoon(); return; }
+  if (action.endsWith('list-edit-trip')) { await editTripFromList(event, btn); return; }
+  if (action.endsWith('list-delete-trip')) { await deleteTripFromList(event, btn); return; }
 
   if (action.endsWith('nav')) {
     claim(event);
@@ -253,7 +313,7 @@ document.addEventListener('input', (event) => {
 
 document.addEventListener('submit', async (event) => {
   const target = event.target instanceof Element ? event.target : null;
-  const form = target?.closest('[data-action="rf-d2-item-form"], [data-action="rf-m2-item-form"], [data-action="rf-v3-item-form"]');
+  const form = target?.closest('[data-action="rf-d2-item-form"], [data-action="rf-m2-item-form"], [data-action="rf-v2-item-form"], [data-action="rf-v3-item-form"]');
   if (!form) return;
   await addItem(event, form);
 }, true);
