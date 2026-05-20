@@ -19,15 +19,26 @@ const tripStages = (tripId) => Array.isArray(STATE.stagesByTrip[tripId]) ? STATE
 const tripItems = (tripId) => Array.isArray(STATE.itemsByTrip[tripId]) ? STATE.itemsByTrip[tripId] : [];
 const viewForTab = (key) => key === 'summary' ? 'summary' : key === 'costs' ? 'costs' : key === 'items' ? 'packing' : 'detail';
 const normalTripView = (view) => ['detail', 'summary', 'costs', 'packing', 'journal'].includes(view) ? view : 'detail';
+let wizardRenderQueued = false;
 
 function appApi() {
   return window.routefolkData || {};
+}
+
+function notifyWizardLayer() {
+  if (wizardRenderQueued) return;
+  wizardRenderQueued = true;
+  requestAnimationFrame(() => {
+    wizardRenderQueued = false;
+    document.dispatchEvent(new Event('routefolk:v2-render'));
+  });
 }
 
 function renderSoon() {
   saveUiState();
   appApi().renderAll?.();
   if (typeof window.__routefolkV2Render === 'function') window.__routefolkV2Render();
+  notifyWizardLayer();
 }
 
 function claim(event) {
