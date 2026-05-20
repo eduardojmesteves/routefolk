@@ -481,7 +481,7 @@
     background-size:420px!important;
     padding:24px!important;
     box-shadow:0 26px 70px rgba(0,0,0,.28)!important;
-    touch-action:pan-y!important;
+    touch-action:manipulation!important;
   }
 
   .rf-v2-wizard-host.is-mobile .rf-d2-aside-title{
@@ -505,19 +505,39 @@
   }
 
   .rf-v2-wizard-host.is-mobile .rf-d2-input,
-  .rf-v2-wizard-host.is-mobile .rf-d2-textarea,
   .rf-v2-wizard-host.is-mobile select.rf-d2-input,
   .rf-v2-wizard-host.is-mobile .rf-d2-select{
     width:100%!important;
+    height:48px!important;
     min-height:48px!important;
+    max-height:48px!important;
+    border:1px solid var(--rf-m2-rule-2)!important;
+    background:rgba(243,240,228,.72)!important;
+    color:var(--rf-m2-ink)!important;
+    padding:0 14px!important;
+    border-radius:10px!important;
+    font:600 16px/48px var(--rf-m2-font-ui)!important;
+    box-sizing:border-box!important;
+    pointer-events:auto!important;
+    touch-action:manipulation!important;
+    -webkit-user-select:text!important;
+    user-select:text!important;
+  }
+
+  .rf-v2-wizard-host.is-mobile .rf-d2-textarea{
+    width:100%!important;
+    min-height:110px!important;
     border:1px solid var(--rf-m2-rule-2)!important;
     background:rgba(243,240,228,.72)!important;
     color:var(--rf-m2-ink)!important;
     padding:12px 14px!important;
     border-radius:10px!important;
-    font:600 16px/1.2 var(--rf-m2-font-ui)!important;
+    font:600 16px/1.35 var(--rf-m2-font-ui)!important;
     box-sizing:border-box!important;
     pointer-events:auto!important;
+    touch-action:manipulation!important;
+    -webkit-user-select:text!important;
+    user-select:text!important;
   }
 
   .rf-v2-wizard-host.is-mobile select.rf-d2-input,
@@ -526,8 +546,16 @@
     -webkit-appearance:menulist!important;
   }
 
-  .rf-v2-wizard-host.is-mobile .rf-d2-textarea{
-    min-height:110px!important;
+  .rf-v2-wizard-host.is-mobile input[type="date"].rf-d2-input,
+  .rf-v2-wizard-host.is-mobile input[type="time"].rf-d2-input{
+    appearance:none!important;
+    -webkit-appearance:none!important;
+  }
+
+  .rf-v2-wizard-host.is-mobile input[type="date"].rf-d2-input::-webkit-date-and-time-value,
+  .rf-v2-wizard-host.is-mobile input[type="time"].rf-d2-input::-webkit-date-and-time-value{
+    min-height:0!important;
+    text-align:left!important;
   }
 
   .rf-v2-wizard-host.is-mobile .rf-d2-form-actions{

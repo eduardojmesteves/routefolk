@@ -55,4 +55,64 @@
   .rf-v2-entry-actions,.rf-v2-item-actions{margin-left:0;}
   .rf-v2-gpx-row{grid-template-columns:1fr;}
   .rf-v2-archive-map{height:300px;}
+
+  .rf-v2-wizard-host.is-mobile,
+  .rf-v2-extra-host.is-mobile{
+    pointer-events:auto;
+    touch-action:manipulation;
+  }
+
+  .rf-v2-wizard-host.is-mobile .rf-v2-wizard-panel,
+  .rf-v2-extra-host.is-mobile .rf-v2-wizard-panel{
+    overflow-y:scroll;
+    -webkit-overflow-scrolling:touch;
+    overscroll-behavior:contain;
+    touch-action:manipulation;
+  }
+
+  .rf-v2-wizard-host.is-mobile .rf-d2-input,
+  .rf-v2-wizard-host.is-mobile select.rf-d2-input,
+  .rf-v2-wizard-host.is-mobile .rf-d2-select,
+  .rf-v2-extra-host.is-mobile .rf-d2-input,
+  .rf-v2-extra-host.is-mobile select.rf-d2-input,
+  .rf-v2-extra-host.is-mobile .rf-d2-select{
+    height:48px;
+    min-height:48px;
+    max-height:48px;
+    padding:0 14px;
+    line-height:48px;
+    pointer-events:auto;
+    touch-action:manipulation;
+    -webkit-user-select:text;
+    user-select:text;
+  }
+
+  .rf-v2-wizard-host.is-mobile .rf-d2-textarea,
+  .rf-v2-extra-host.is-mobile .rf-d2-textarea{
+    height:auto;
+    max-height:none;
+    min-height:110px;
+    line-height:1.35;
+    padding:12px 14px;
+    pointer-events:auto;
+    touch-action:manipulation;
+    -webkit-user-select:text;
+    user-select:text;
+  }
+
+  .rf-v2-wizard-host.is-mobile input[type="date"].rf-d2-input,
+  .rf-v2-wizard-host.is-mobile input[type="time"].rf-d2-input,
+  .rf-v2-extra-host.is-mobile input[type="date"].rf-d2-input,
+  .rf-v2-extra-host.is-mobile input[type="time"].rf-d2-input{
+    appearance:none;
+    -webkit-appearance:none;
+  }
+
+  .rf-v2-wizard-host.is-mobile input[type="date"].rf-d2-input::-webkit-date-and-time-value,
+  .rf-v2-wizard-host.is-mobile input[type="time"].rf-d2-input::-webkit-date-and-time-value,
+  .rf-v2-extra-host.is-mobile input[type="date"].rf-d2-input::-webkit-date-and-time-value,
+  .rf-v2-extra-host.is-mobile input[type="time"].rf-d2-input::-webkit-date-and-time-value{
+    min-height:0;
+    text-align:left;
+  }
 }

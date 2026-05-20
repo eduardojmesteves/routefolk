@@ -4,7 +4,7 @@
 // Bump CACHE whenever shell assets change.
 // ============================================================
 
-const CACHE = 'routefolk-shell-v111-mobile-wizard-fix-01';
+const CACHE = 'routefolk-shell-v116-stable-wizard-05';
 
 const SHELL_ASSETS = [
   './',
@@ -13,23 +13,23 @@ const SHELL_ASSETS = [
   './style-fidelity.css?v=20260516-fidelity-01',
   './styles/shell.css?v=20260516-production-01',
   './styles/app-ui.css?v=20260518-geo-map-01',
-  './styles/wizards.css?v=20260519-wizard-weather-04',
+  './styles/wizards.css?v=20260520-stable-wizard-05',
   './styles/interface-polish.css?v=20260518-production-01',
   './styles/renderer-integration.css?v=20260518-production-01',
   './styles/packing-list.css?v=20260518-production-01',
-  './styles/production-overrides.css?v=20260519-mobile-wizard-fix-01',
+  './styles/production-overrides.css?v=20260520-mobile-fields-02',
   './vendor/leaflet/leaflet.css?v=routefolk-local-01',
   './vendor/leaflet/leaflet.js?v=routefolk-local-01',
-  './app.js?v=20260517-state-01',
-  './screens/app-renderer.js?v=20260519-mobile-wizard-fix-01',
-  './screens/wizards.js?v=20260519-wizard-weather-04',
-  './screens/extra-writes.js?v=20260516-production-01',
+  './app.js?v=20260520-stable-wizard-05',
+  './screens/app-renderer.js?v=20260520-mobile-fields-02',
+  './screens/wizards.js?v=20260520-stable-wizard-05',
+  './screens/extra-writes.js?v=20260520-mobile-fields-02',
   './screens/gpx-panel.js?v=20260516-production-01',
   './screens/archive-geo-map.js?v=20260519-local-map-01',
   './screens/render/shared.js',
   './screens/render/mobile.js',
   './screens/render/desktop.js',
-  './screens/app-actions.js?v=20260519-wizard-weather-04',
+  './screens/app-actions.js?v=20260520-wizard-loop-04',
   './manifest.json',
   './icons/icon-192.png',
   './icons/icon-512.png',
