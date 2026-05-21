@@ -67,9 +67,7 @@ AS $$
 DECLARE
   v_seen boolean;
 BEGIN
-  SELECT EXISTS (
-    SELECT 1 FROM public.stages s WHERE s.trip_id = p_trip_id
-  ) INTO v_seen;
+  SELECT EXISTS (SELECT 1 FROM public.stages s WHERE s.trip_id = p_trip_id) INTO v_seen;
   PERFORM pg_temp.assert_bool(v_seen = p_expected, p_message || ' — stages');
 
   SELECT EXISTS (
@@ -79,24 +77,16 @@ BEGIN
   ) INTO v_seen;
   PERFORM pg_temp.assert_bool(v_seen = p_expected, p_message || ' — journal');
 
-  SELECT EXISTS (
-    SELECT 1 FROM public.expenses e WHERE e.trip_id = p_trip_id
-  ) INTO v_seen;
+  SELECT EXISTS (SELECT 1 FROM public.expenses e WHERE e.trip_id = p_trip_id) INTO v_seen;
   PERFORM pg_temp.assert_bool(v_seen = p_expected, p_message || ' — expenses');
 
-  SELECT EXISTS (
-    SELECT 1 FROM public.gpx_tracks g WHERE g.trip_id = p_trip_id
-  ) INTO v_seen;
+  SELECT EXISTS (SELECT 1 FROM public.gpx_tracks g WHERE g.trip_id = p_trip_id) INTO v_seen;
   PERFORM pg_temp.assert_bool(v_seen = p_expected, p_message || ' — gpx records');
 
-  SELECT EXISTS (
-    SELECT 1 FROM public.item_categories c WHERE c.trip_id = p_trip_id
-  ) INTO v_seen;
+  SELECT EXISTS (SELECT 1 FROM public.item_categories c WHERE c.trip_id = p_trip_id) INTO v_seen;
   PERFORM pg_temp.assert_bool(v_seen = p_expected, p_message || ' — item categories');
 
-  SELECT EXISTS (
-    SELECT 1 FROM public.trip_items i WHERE i.trip_id = p_trip_id
-  ) INTO v_seen;
+  SELECT EXISTS (SELECT 1 FROM public.trip_items i WHERE i.trip_id = p_trip_id) INTO v_seen;
   PERFORM pg_temp.assert_bool(v_seen = p_expected, p_message || ' — trip items');
 END;
 $$;
@@ -134,14 +124,18 @@ BEGIN
     ('inactive@example.test', 'member', false)
   ON CONFLICT (email) DO UPDATE SET role = EXCLUDED.role, active = EXCLUDED.active;
 
+  PERFORM pg_temp.set_test_auth(v_creator, 'creator@example.test');
+
   INSERT INTO public.trips (id, created_by, title, visibility, status)
   VALUES
     (v_private_trip, v_creator, 'Private visibility test', 'private', 'planning'),
-    (v_selected_trip, v_creator, 'Selected visibility test', 'selected', 'planning'),
+    (v_selected_trip, v_creator, 'Selected visibility test', 'private', 'planning'),
     (v_group_trip, v_creator, 'Everyone visibility test', 'group', 'planning');
 
-  INSERT INTO public.trip_members (trip_id, user_id, added_by)
-  VALUES (v_selected_trip, v_selected, v_creator);
+  INSERT INTO public.trip_members (trip_id, member_email, added_by)
+  VALUES (v_selected_trip, 'selected@example.test', v_creator);
+
+  UPDATE public.trips SET visibility = 'selected' WHERE id = v_selected_trip;
 
   INSERT INTO public.stages (id, trip_id, order_index, title)
   VALUES
