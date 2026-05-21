@@ -36,6 +36,8 @@ function renderAll() {
 const {
   loadTrips,
   loadProfiles,
+  loadSelectableTripMembers,
+  loadTripMembersForTrip,
   loadStagesForTrip,
   loadEntriesForStage,
   loadExpensesForTrip,
@@ -57,6 +59,8 @@ window.routefolkData = {
   renderAll,
   loadTrips,
   loadProfiles,
+  loadSelectableTripMembers,
+  loadTripMembersForTrip,
   loadStagesForTrip,
   loadEntriesForStage,
   loadExpensesForTrip,
