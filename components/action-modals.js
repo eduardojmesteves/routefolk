@@ -19,6 +19,11 @@ import { stageRouteLabel } from '../utils/trip-detail.js';
 import { findStageById } from '../utils/state-selectors.js';
 import { trackFileName } from '../lib/gpx.js';
 
+async function preloadTripVisibilityData(trip = null) {
+  await window.routefolkData?.loadSelectableTripMembers?.({ quiet: true });
+  if (trip?.id) await window.routefolkData?.loadTripMembersForTrip?.(trip.id, { quiet: true });
+}
+
 export function createActionModals(handlers) {
   const {
     handleCreateTrip,
@@ -37,7 +42,8 @@ export function createActionModals(handlers) {
     handleDeleteGpx,
   } = handlers;
 
-  function showNewTripModal() {
+  async function showNewTripModal() {
+    await preloadTripVisibilityData();
     showModal('New trip', tripFormHtml({ status: 'planning', visibility: 'group' }), [
       { label: 'Create', cls: 'btn-primary', fn: handleCreateTrip },
       { label: 'Cancel', cls: 'btn-secondary', fn: closeModal },
@@ -45,7 +51,8 @@ export function createActionModals(handlers) {
     setTimeout(() => $('tfTitle')?.focus(), 50);
   }
 
-  function showEditTripModal(trip) {
+  async function showEditTripModal(trip) {
+    await preloadTripVisibilityData(trip);
     showModal('Edit trip', tripFormHtml(trip), [
       { label: 'Save', cls: 'btn-primary', fn: () => handleUpdateTrip(trip.id) },
       { label: 'Cancel', cls: 'btn-secondary', fn: closeModal },
