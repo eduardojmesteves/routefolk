@@ -20,6 +20,12 @@ export function resetSessionState(user = null) {
   STATE.profiles = [];
   STATE.profilesById = {};
   STATE.profilesError = null;
+  STATE.selectableTripMembers = [];
+  STATE.selectableTripMembersLoading = false;
+  STATE.selectableTripMembersError = null;
+  STATE.tripMembersByTrip = {};
+  STATE.tripMembersLoadingByTrip = {};
+  STATE.tripMembersErrorByTrip = {};
   STATE.expensesByTrip = {};
   STATE.expensesError = null;
   STATE.expandedStages.clear();
