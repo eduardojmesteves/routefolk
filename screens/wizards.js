@@ -110,7 +110,7 @@ function injectCostCta() {
 function preloadVisibilityDataForWizard() {
   if (STATE.wizard !== 'trip' && STATE.wizard !== 'trip-edit') return;
   const trip = STATE.wizard === 'trip-edit' ? activeTrip() : null;
-  if (!STATE.selectableTripMembers.length && !STATE.selectableTripMembersLoading) {
+  if (!STATE.selectableTripMembers.length && !STATE.selectableTripMembersLoading && !STATE.selectableTripMembersError) {
     api().loadSelectableTripMembers?.({ quiet: true });
   }
   if (trip?.id && !Array.isArray(STATE.tripMembersByTrip[trip.id]) && !STATE.tripMembersLoadingByTrip[trip.id]) {
@@ -118,25 +118,56 @@ function preloadVisibilityDataForWizard() {
   }
 }
 
+function wizardDataSignature(modeClass, targetKey) {
+  if (STATE.wizard !== 'trip' && STATE.wizard !== 'trip-edit') return `${modeClass}|${targetKey}`;
+  const trip = STATE.wizard === 'trip-edit' ? activeTrip() : null;
+  const selectable = (STATE.selectableTripMembers || []).map((member) => member.email).join(',');
+  const selectedRows = trip?.id && Array.isArray(STATE.tripMembersByTrip[trip.id])
+    ? STATE.tripMembersByTrip[trip.id].map((row) => row.member_email).join(',')
+    : '';
+  return [
+    modeClass,
+    targetKey,
+    STATE.selectableTripMembersLoading ? 'members-loading' : 'members-ready',
+    STATE.selectableTripMembersError || '',
+    selectable,
+    trip?.id || '',
+    trip?.id && STATE.tripMembersLoadingByTrip[trip.id] ? 'trip-members-loading' : 'trip-members-ready',
+    selectedRows,
+  ].join('|');
+}
+
 function renderWizardLayer() {
   const modeClass = isDesktop() ? 'is-desktop' : 'is-mobile';
   const targetKey = STATE.editTargetId || '';
-  const existingHost = document.querySelector('.rf-v2-wizard-host');
-  if (STATE.wizard && existingHost && existingHost.dataset.wizard === STATE.wizard && existingHost.dataset.targetId === targetKey && existingHost.classList.contains(modeClass)) return;
 
-  removeExisting();
-  injectTripActions();
-  injectStageActions();
-  injectEntryActions();
-  injectCostCta();
-  if (!STATE.user || !STATE.wizard || !WIZARDS.has(STATE.wizard)) return;
+  if (!STATE.user || !STATE.wizard || !WIZARDS.has(STATE.wizard)) {
+    removeExisting();
+    injectTripActions();
+    injectStageActions();
+    injectEntryActions();
+    injectCostCta();
+    return;
+  }
 
   preloadVisibilityDataForWizard();
+  const signature = wizardDataSignature(modeClass, targetKey);
+  const existingHost = document.querySelector('.rf-v2-wizard-host');
+  if (
+    existingHost
+    && existingHost.dataset.wizard === STATE.wizard
+    && existingHost.dataset.targetId === targetKey
+    && existingHost.dataset.signature === signature
+    && existingHost.classList.contains(modeClass)
+  ) return;
+
+  removeExisting();
 
   const host = document.createElement('div');
   host.className = `rf-v2-wizard-host ${modeClass}`;
   host.dataset.wizard = STATE.wizard;
   host.dataset.targetId = targetKey;
+  host.dataset.signature = signature;
   host.innerHTML = wizardHtml();
   document.body.appendChild(host);
 
@@ -190,12 +221,16 @@ function selectedTripUserCheckboxes(trip, disabled = false) {
     return '<p class="rf-d2-aside-sub">Loading active Routefolk members…</p>';
   }
 
+  if (STATE.selectableTripMembersError) {
+    return `<p class="rf-d2-aside-sub">Could not load active Routefolk members. Confirm migration 015 was applied. ${esc(STATE.selectableTripMembersError)}</p>`;
+  }
+
   const currentEmail = String(STATE.user?.email || '').toLowerCase();
   const selected = selectedTripMemberEmails(trip);
   const members = (STATE.selectableTripMembers || []).filter((member) => member.email && member.email !== currentEmail);
 
   if (!members.length) {
-    return '<p class="rf-d2-aside-sub">No other active Routefolk members are available yet.</p>';
+    return '<p class="rf-d2-aside-sub">No other active Routefolk members are available yet. Add another active app member before using selected-user visibility.</p>';
   }
 
   return `<div class="rf-v2-selected-users">
@@ -383,7 +418,14 @@ function selectedMemberEmailsFromWizard() {
 }
 
 function assertSelectedVisibilityHasMembers(payload) {
-  if (payload.visibility === 'selected' && !payload.selected_member_emails.length) {
+  if (payload.visibility !== 'selected') return;
+  if (STATE.selectableTripMembersLoading) {
+    throw new Error('Wait for active Routefolk members to finish loading before saving.');
+  }
+  if (STATE.selectableTripMembersError) {
+    throw new Error('Could not load active Routefolk members. Confirm migration 015 was applied.');
+  }
+  if (!payload.selected_member_emails.length) {
     throw new Error('Selected-users visibility requires at least one selected user.');
   }
 }
