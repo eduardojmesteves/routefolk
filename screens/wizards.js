@@ -7,6 +7,7 @@
 import { STATE } from '../state/app-state.js';
 import { esc } from '../utils/dom.js';
 import { createTrip, updateTrip, deleteTrip } from '../lib/trips.js';
+import { replaceTripMembers } from '../lib/trip-members.js';
 import { createStage, updateStage, deleteStage } from '../lib/stages.js';
 import { updateEntry, deleteEntry } from '../lib/journal.js';
 import { createExpense } from '../lib/expenses.js';
@@ -106,6 +107,17 @@ function injectCostCta() {
   target.appendChild(wrap);
 }
 
+function preloadVisibilityDataForWizard() {
+  if (STATE.wizard !== 'trip' && STATE.wizard !== 'trip-edit') return;
+  const trip = STATE.wizard === 'trip-edit' ? activeTrip() : null;
+  if (!STATE.selectableTripMembers.length && !STATE.selectableTripMembersLoading) {
+    api().loadSelectableTripMembers?.({ quiet: true });
+  }
+  if (trip?.id && !Array.isArray(STATE.tripMembersByTrip[trip.id]) && !STATE.tripMembersLoadingByTrip[trip.id]) {
+    api().loadTripMembersForTrip?.(trip.id, { quiet: true });
+  }
+}
+
 function renderWizardLayer() {
   const modeClass = isDesktop() ? 'is-desktop' : 'is-mobile';
   const targetKey = STATE.editTargetId || '';
@@ -118,6 +130,8 @@ function renderWizardLayer() {
   injectEntryActions();
   injectCostCta();
   if (!STATE.user || !STATE.wizard || !WIZARDS.has(STATE.wizard)) return;
+
+  preloadVisibilityDataForWizard();
 
   const host = document.createElement('div');
   host.className = `rf-v2-wizard-host ${modeClass}`;
@@ -158,10 +172,48 @@ function row(id, label, controlHtml) {
 function pair(left, right) { return `<div class="rf-d2-form-row-pair">${left}${right}</div>`; }
 function input(id, value = '', attrs = '') { return `<input class="rf-d2-input" id="${esc(id)}" value="${esc(value ?? '')}" ${attrs}>`; }
 function textarea(id, value = '', attrs = '') { return `<textarea class="rf-d2-textarea" id="${esc(id)}" ${attrs}>${esc(value ?? '')}</textarea>`; }
-function select(id, optionsHtml) { return `<select class="rf-d2-input" id="${esc(id)}">${optionsHtml}</select>`; }
+function select(id, optionsHtml, attrs = '') { return `<select class="rf-d2-input" id="${esc(id)}" ${attrs}>${optionsHtml}</select>`; }
+
+function canManageTripVisibility(trip) {
+  return !trip?.id || trip.created_by === STATE.user?.id;
+}
+
+function selectedTripMemberEmails(trip) {
+  if (!trip?.id) return new Set();
+  const rows = STATE.tripMembersByTrip[trip.id];
+  if (!Array.isArray(rows)) return new Set();
+  return new Set(rows.map((row) => String(row.member_email || '').toLowerCase()).filter(Boolean));
+}
+
+function selectedTripUserCheckboxes(trip, disabled = false) {
+  if (STATE.selectableTripMembersLoading) {
+    return '<p class="rf-d2-aside-sub">Loading active Routefolk members…</p>';
+  }
+
+  const currentEmail = String(STATE.user?.email || '').toLowerCase();
+  const selected = selectedTripMemberEmails(trip);
+  const members = (STATE.selectableTripMembers || []).filter((member) => member.email && member.email !== currentEmail);
+
+  if (!members.length) {
+    return '<p class="rf-d2-aside-sub">No other active Routefolk members are available yet.</p>';
+  }
+
+  return `<div class="rf-v2-selected-users">
+    ${members.map((member) => `
+      <label class="rf-v2-selected-user">
+        <input type="checkbox" name="v2-trip-selected-user" value="${esc(member.email)}" ${selected.has(member.email) ? 'checked' : ''} ${disabled ? 'disabled' : ''}>
+        <span><strong>${esc(member.full_name || member.email)}</strong><small>${esc(member.email)}</small></span>
+      </label>
+    `).join('')}
+    <p class="rf-d2-aside-sub">Selected users can view and edit the whole trip. Only the creator can manage this list.</p>
+  </div>`;
+}
 
 function tripWizardHtml(editing = false) {
   const trip = editing ? activeTrip() : null;
+  const visibility = trip?.visibility || 'group';
+  const canManageVisibility = canManageTripVisibility(trip);
+  const visibilityAttrs = canManageVisibility ? '' : 'disabled';
   return panelHtml({
     id: 'rf-v2-trip-title',
     kicker: editing ? 'Edit trip' : 'New trip',
@@ -174,7 +226,8 @@ function tripWizardHtml(editing = false) {
       row('v2-trip-title', 'Title', input('v2-trip-title', trip?.title || '', 'placeholder="e.g. Pyrenees Crossing"')),
       row('v2-trip-desc', 'Subtitle / short description', input('v2-trip-desc', trip?.description || '', 'placeholder="Bordeaux to Barcelona"')),
       pair(row('v2-trip-start', 'Start', input('v2-trip-start', trip?.start_date || '', 'type="date"')), row('v2-trip-end', 'End', input('v2-trip-end', trip?.end_date || '', 'type="date"'))),
-      pair(row('v2-trip-status', 'Status', select('v2-trip-status', `${option('planning', 'Planning', trip?.status)}${option('active', 'Active', trip?.status)}${option('completed', 'Completed', trip?.status)}${option('cancelled', 'Cancelled', trip?.status)}`)), row('v2-trip-visibility', 'Visibility', select('v2-trip-visibility', `${option('group', 'Group', trip?.visibility || 'group')}${option('private', 'Private', trip?.visibility)}`))),
+      pair(row('v2-trip-status', 'Status', select('v2-trip-status', `${option('planning', 'Planning', trip?.status)}${option('active', 'Active', trip?.status)}${option('completed', 'Completed', trip?.status)}${option('cancelled', 'Cancelled', trip?.status)}`)), row('v2-trip-visibility', 'Visibility', select('v2-trip-visibility', `${option('group', 'Shared with everyone', visibility)}${option('selected', 'Shared with selected users', visibility)}${option('private', 'Private', visibility)}`, visibilityAttrs))),
+      row('v2-trip-selected-users', 'Selected users', selectedTripUserCheckboxes(trip, !canManageVisibility)),
     ].join(''),
   });
 }
@@ -323,6 +376,18 @@ function showError(id, error) {
   node.hidden = false;
 }
 
+function selectedMemberEmailsFromWizard() {
+  return [...document.querySelectorAll('input[name="v2-trip-selected-user"]:checked')]
+    .map((input) => String(input.value || '').trim().toLowerCase())
+    .filter(Boolean);
+}
+
+function assertSelectedVisibilityHasMembers(payload) {
+  if (payload.visibility === 'selected' && !payload.selected_member_emails.length) {
+    throw new Error('Selected-users visibility requires at least one selected user.');
+  }
+}
+
 function tripPayload() {
   return {
     title: byId('v2-trip-title')?.value?.trim() || '',
@@ -330,19 +395,30 @@ function tripPayload() {
     start_date: byId('v2-trip-start')?.value || null,
     end_date: byId('v2-trip-end')?.value || null,
     status: byId('v2-trip-status')?.value || 'planning',
-    visibility: byId('v2-trip-visibility')?.value || 'group',
+    visibility: byId('v2-trip-visibility')?.value || activeTrip()?.visibility || 'group',
+    selected_member_emails: selectedMemberEmailsFromWizard(),
   };
 }
 
 async function saveTrip(event) {
   claim(event);
   try {
-    const trip = await createTrip(tripPayload());
+    const payload = tripPayload();
+    assertSelectedVisibilityHasMembers(payload);
+    const trip = await createTrip({ ...payload, visibility: payload.visibility === 'selected' ? 'private' : payload.visibility });
+
+    if (payload.visibility === 'selected') {
+      await replaceTripMembers(trip.id, payload.selected_member_emails);
+      await updateTrip(trip.id, { visibility: 'selected' });
+      await api().loadTripMembersForTrip?.(trip.id, { force: true, quiet: true });
+    }
+
     STATE.trips = [trip, ...STATE.trips.filter((item) => item.id !== trip.id)];
     STATE.wizard = null;
     STATE.editTargetId = null;
     STATE.tab = 'trips';
     rememberTripContext(trip.id, 'detail');
+    await api().loadTrips?.();
     await api().openTrip?.(trip.id, 'detail');
     renderAll();
   } catch (error) { showError('v2-trip-error', error); }
@@ -353,7 +429,20 @@ async function saveTripEdit(event) {
   const trip = activeTrip();
   if (!trip) return;
   try {
-    const updated = await updateTrip(trip.id, tripPayload());
+    const payload = tripPayload();
+    const canManageVisibility = canManageTripVisibility(trip);
+    let updated;
+
+    if (canManageVisibility) {
+      assertSelectedVisibilityHasMembers(payload);
+      if (payload.visibility === 'selected') await replaceTripMembers(trip.id, payload.selected_member_emails);
+      updated = await updateTrip(trip.id, payload);
+      await api().loadTripMembersForTrip?.(trip.id, { force: true, quiet: true });
+    } else {
+      const { visibility, selected_member_emails, ...contentPayload } = payload;
+      updated = await updateTrip(trip.id, contentPayload);
+    }
+
     STATE.trips = STATE.trips.map((item) => item.id === updated.id ? updated : item);
     STATE.wizard = null;
     STATE.editTargetId = null;
