@@ -110,11 +110,28 @@ function injectCostCta() {
   target.appendChild(wrap);
 }
 
+function currentWizardVisibility() {
+  return byId('v2-trip-visibility')?.value || activeTrip()?.visibility || 'group';
+}
+
+function syncSelectedUsersVisibility() {
+  const row = byId('v2-trip-selected-users-row');
+  if (!row || (STATE.wizard !== 'trip' && STATE.wizard !== 'trip-edit')) return false;
+  const isSelected = currentWizardVisibility() === 'selected';
+  row.hidden = !isSelected;
+  if (isSelected) {
+    preloadVisibilityDataForWizard();
+    refreshTripSelectedUsersControl();
+  }
+  return true;
+}
+
 function refreshTripSelectedUsersControl() {
   const node = byId('v2-trip-selected-users');
   if (!node || (STATE.wizard !== 'trip' && STATE.wizard !== 'trip-edit')) return false;
   const trip = STATE.wizard === 'trip-edit' ? activeTrip() : null;
   node.innerHTML = selectedTripUserCheckboxes(trip, !canManageTripVisibility(trip));
+  syncSelectedUsersVisibility();
   const host = document.querySelector('.rf-v2-wizard-host');
   if (host) {
     const modeClass = isDesktop() ? 'is-desktop' : 'is-mobile';
@@ -161,6 +178,7 @@ function wizardDataSignature(modeClass, targetKey) {
   return [
     modeClass,
     targetKey,
+    currentWizardVisibility(),
     STATE.selectableTripMembersLoading ? 'members-loading' : 'members-ready',
     STATE.selectableTripMembersError || '',
     selectable,
@@ -203,6 +221,7 @@ function renderWizardLayer() {
   host.dataset.signature = signature;
   host.innerHTML = wizardHtml();
   document.body.appendChild(host);
+  syncSelectedUsersVisibility();
 
   if (isDesktop()) {
     const first = host.querySelector('input, select, textarea, button');
@@ -237,6 +256,14 @@ function pair(left, right) { return `<div class="rf-d2-form-row-pair">${left}${r
 function input(id, value = '', attrs = '') { return `<input class="rf-d2-input" id="${esc(id)}" value="${esc(value ?? '')}" ${attrs}>`; }
 function textarea(id, value = '', attrs = '') { return `<textarea class="rf-d2-textarea" id="${esc(id)}" ${attrs}>${esc(value ?? '')}</textarea>`; }
 function select(id, optionsHtml, attrs = '') { return `<select class="rf-d2-input" id="${esc(id)}" ${attrs}>${optionsHtml}</select>`; }
+
+function selectedUsersRowHtml(trip, canManageVisibility, visibility) {
+  const hidden = visibility === 'selected' ? '' : ' hidden';
+  return `<div class="rf-d2-form-row" id="v2-trip-selected-users-row"${hidden}>
+    <label class="rf-d2-form-label" for="v2-trip-selected-users">Selected users</label>
+    <div id="v2-trip-selected-users">${selectedTripUserCheckboxes(trip, !canManageVisibility)}</div>
+  </div>`;
+}
 
 function canManageTripVisibility(trip) {
   return !trip?.id || trip.created_by === STATE.user?.id;
@@ -303,7 +330,7 @@ function tripWizardHtml(editing = false) {
       row('v2-trip-desc', 'Subtitle / short description', input('v2-trip-desc', trip?.description || '', 'placeholder="Bordeaux to Barcelona"')),
       pair(row('v2-trip-start', 'Start', input('v2-trip-start', trip?.start_date || '', 'type="date"')), row('v2-trip-end', 'End', input('v2-trip-end', trip?.end_date || '', 'type="date"'))),
       pair(row('v2-trip-status', 'Status', select('v2-trip-status', `${option('planning', 'Planning', trip?.status)}${option('active', 'Active', trip?.status)}${option('completed', 'Completed', trip?.status)}${option('cancelled', 'Cancelled', trip?.status)}`)), row('v2-trip-visibility', 'Visibility', select('v2-trip-visibility', `${option('group', 'Shared with everyone', visibility)}${option('selected', 'Shared with selected users', visibility)}${option('private', 'Private', visibility)}`, visibilityAttrs))),
-      row('v2-trip-selected-users-row', 'Selected users', `<div id="v2-trip-selected-users">${selectedTripUserCheckboxes(trip, !canManageVisibility)}</div>`),
+      selectedUsersRowHtml(trip, canManageVisibility, visibility),
     ].join(''),
   });
 }
@@ -704,6 +731,11 @@ async function saveItemEdit(event) {
     renderAll();
   } catch (error) { showError('v2-item-error', error); }
 }
+
+document.addEventListener('change', (event) => {
+  const target = event.target instanceof Element ? event.target : null;
+  if (target?.id === 'v2-trip-visibility') syncSelectedUsersVisibility();
+}, true);
 
 document.addEventListener('click', async (event) => {
   const target = event.target instanceof Element ? event.target : null;
