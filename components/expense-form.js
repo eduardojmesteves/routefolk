@@ -54,21 +54,66 @@ function validateExpenseForTrip(trip, fields) {
   return fields;
 }
 
-function payerOptionsHtml(trip, selectedUserId) {
-  const selected = selectedUserId || STATE.user?.id || '';
-  if (tripVisibility(trip) === 'private') {
-    return `<option value="${esc(STATE.user?.id || '')}" selected>${esc(userDisplayName(STATE.user))}</option>`;
+function selectedTripMemberEmails(trip) {
+  const rows = STATE.tripMembersByTrip[trip.id];
+  if (!Array.isArray(rows)) return new Set();
+  return new Set(rows.map((row) => String(row.member_email || '').toLowerCase()).filter(Boolean));
+}
+
+function currentUserProfile() {
+  return STATE.user ? {
+    id: STATE.user.id,
+    email: STATE.user.email,
+    full_name: userDisplayName(STATE.user),
+    avatar_url: userAvatarUrl(STATE.user),
+  } : null;
+}
+
+function appMemberAsProfile(member) {
+  if (!member?.user_id) return null;
+  return {
+    id: member.user_id,
+    email: member.email,
+    full_name: member.full_name || member.email,
+    avatar_url: member.avatar_url || null,
+  };
+}
+
+function uniqueProfiles(profiles) {
+  const seen = new Set();
+  return profiles.filter((profile) => {
+    if (!profile?.id || seen.has(profile.id)) return false;
+    seen.add(profile.id);
+    return true;
+  });
+}
+
+function payerProfilesForTrip(trip) {
+  const visibility = tripVisibility(trip);
+  const self = currentUserProfile();
+
+  if (visibility === 'private') return self ? [self] : [];
+
+  if (visibility === 'selected') {
+    const selectedEmails = selectedTripMemberEmails(trip);
+    const candidates = [
+      self,
+      ...STATE.selectableTripMembers
+        .filter((member) => selectedEmails.has(member.email) || member.user_id === trip.created_by)
+        .map(appMemberAsProfile),
+      ...STATE.profiles.filter((profile) => profile.id === trip.created_by || selectedEmails.has(String(profile.email || '').toLowerCase())),
+    ];
+    return uniqueProfiles(candidates).sort((a, b) => String(a.full_name || a.email).localeCompare(String(b.full_name || b.email)));
   }
 
   const profiles = [...STATE.profiles];
-  if (STATE.user && !profiles.some((p) => p.id === STATE.user.id)) {
-    profiles.unshift({
-      id: STATE.user.id,
-      email: STATE.user.email,
-      full_name: userDisplayName(STATE.user),
-      avatar_url: userAvatarUrl(STATE.user),
-    });
-  }
+  if (self && !profiles.some((p) => p.id === self.id)) profiles.unshift(self);
+  return uniqueProfiles(profiles);
+}
+
+function payerOptionsHtml(trip, selectedUserId) {
+  const selected = selectedUserId || STATE.user?.id || '';
+  const profiles = payerProfilesForTrip(trip);
 
   return profiles.map((profile) => {
     const label = profile.full_name || profile.email || 'Unknown';
@@ -77,7 +122,8 @@ function payerOptionsHtml(trip, selectedUserId) {
 }
 
 export function expenseFormHtml(trip, expense = {}) {
-  const isPrivate = tripVisibility(trip) === 'private';
+  const visibility = tripVisibility(trip);
+  const isPrivate = visibility === 'private';
   const amount = expense.amount != null ? String(expense.amount) : '';
   return `
     <div class="form-row">
@@ -86,6 +132,7 @@ export function expenseFormHtml(trip, expense = {}) {
         ${payerOptionsHtml(trip, expense.user_id)}
       </select>
       ${isPrivate ? '<div class="form-help">Private trip expenses can only be paid by you.</div>' : ''}
+      ${visibility === 'selected' ? '<div class="form-help">Selected trip expenses can only be paid by someone with access to this trip.</div>' : ''}
     </div>
     <div class="form-row">
       <label class="form-label" for="efCategory">Category</label>
