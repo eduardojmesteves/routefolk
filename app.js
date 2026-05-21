@@ -12,7 +12,7 @@ import { createSessionController } from './state/session-controller.js';
 import { restoreUiState, saveUiState, validateUiSelection } from './state/ui-state.js';
 import { toast } from './components/toast.js';
 
-const EXPECTED_SCHEMA_VERSION = '014';
+const EXPECTED_SCHEMA_VERSION = '015';
 const PALETTE_KEY = 'rf.palette';
 const PALETTES = ['forest', 'midnight', 'oxblood', 'alpine'];
 let lastAuthUserId = null;
