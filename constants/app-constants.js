@@ -15,8 +15,24 @@ export const ARCHIVE_SCREEN_STATUSES = ['completed', 'cancelled'];
 
 
 export const VISIBILITY_META = {
-  private: { label: 'Private', formLabel: 'Private — only me', cls: 'visibility-private' },
-  group:   { label: 'Group',   formLabel: 'Friends group — everyone with app access', cls: 'visibility-group' },
+  private: {
+    label: 'Private',
+    formLabel: 'Private — only me',
+    help: 'Only you can see and edit this trip.',
+    cls: 'visibility-private',
+  },
+  selected: {
+    label: 'Selected',
+    formLabel: 'Shared with selected users',
+    help: 'Only selected active Routefolk members can see and edit this trip.',
+    cls: 'visibility-selected',
+  },
+  group: {
+    label: 'Everyone',
+    formLabel: 'Shared with everyone',
+    help: 'All active Routefolk app members can see and edit this trip.',
+    cls: 'visibility-group',
+  },
 };
 
 export const ENTRY_TYPE_META = {
