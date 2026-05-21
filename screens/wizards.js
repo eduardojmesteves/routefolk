@@ -23,6 +23,9 @@ const stagesForTrip = (tripId) => Array.isArray(STATE.stagesByTrip[tripId]) ? ST
 const expensesForTrip = (tripId) => Array.isArray(STATE.expensesByTrip[tripId]) ? STATE.expensesByTrip[tripId] : [];
 const categoriesForTrip = (tripId) => Array.isArray(STATE.itemCategoriesByTrip[tripId]) ? STATE.itemCategoriesByTrip[tripId] : [];
 const itemsForTrip = (tripId) => Array.isArray(STATE.itemsByTrip[tripId]) ? STATE.itemsByTrip[tripId] : [];
+let selectableMembersLoadPromise = null;
+let selectableMembersLoadUserId = null;
+const tripMembersLoadPromises = new Map();
 
 const selectedStage = () => {
   const trip = activeTrip();
@@ -107,21 +110,51 @@ function injectCostCta() {
   target.appendChild(wrap);
 }
 
+function refreshTripSelectedUsersControl() {
+  const node = byId('v2-trip-selected-users');
+  if (!node || (STATE.wizard !== 'trip' && STATE.wizard !== 'trip-edit')) return false;
+  const trip = STATE.wizard === 'trip-edit' ? activeTrip() : null;
+  node.innerHTML = selectedTripUserCheckboxes(trip, !canManageTripVisibility(trip));
+  const host = document.querySelector('.rf-v2-wizard-host');
+  if (host) {
+    const modeClass = isDesktop() ? 'is-desktop' : 'is-mobile';
+    host.dataset.signature = wizardDataSignature(modeClass, STATE.editTargetId || '');
+  }
+  return true;
+}
+
 function preloadVisibilityDataForWizard() {
   if (STATE.wizard !== 'trip' && STATE.wizard !== 'trip-edit') return;
   const trip = STATE.wizard === 'trip-edit' ? activeTrip() : null;
-  if (!STATE.selectableTripMembers.length && !STATE.selectableTripMembersLoading && !STATE.selectableTripMembersError) {
-    api().loadSelectableTripMembers?.({ quiet: true });
+  const currentUserId = STATE.user?.id || '';
+
+  if (selectableMembersLoadUserId !== currentUserId) {
+    selectableMembersLoadUserId = currentUserId;
+    selectableMembersLoadPromise = null;
   }
-  if (trip?.id && !Array.isArray(STATE.tripMembersByTrip[trip.id]) && !STATE.tripMembersLoadingByTrip[trip.id]) {
-    api().loadTripMembersForTrip?.(trip.id, { quiet: true });
+
+  if (!STATE.selectableTripMembers.length && !STATE.selectableTripMembersLoading && !STATE.selectableTripMembersError && !selectableMembersLoadPromise) {
+    selectableMembersLoadPromise = Promise.resolve(api().loadSelectableTripMembers?.({ quiet: true }));
+    selectableMembersLoadPromise.finally(() => {
+      selectableMembersLoadPromise = null;
+      if (!refreshTripSelectedUsersControl()) requestAnimationFrame(renderWizardLayer);
+    });
+  }
+
+  if (trip?.id && !Array.isArray(STATE.tripMembersByTrip[trip.id]) && !STATE.tripMembersLoadingByTrip[trip.id] && !tripMembersLoadPromises.has(trip.id)) {
+    const promise = Promise.resolve(api().loadTripMembersForTrip?.(trip.id, { quiet: true }));
+    tripMembersLoadPromises.set(trip.id, promise);
+    promise.finally(() => {
+      tripMembersLoadPromises.delete(trip.id);
+      if (!refreshTripSelectedUsersControl()) requestAnimationFrame(renderWizardLayer);
+    });
   }
 }
 
 function wizardDataSignature(modeClass, targetKey) {
   if (STATE.wizard !== 'trip' && STATE.wizard !== 'trip-edit') return `${modeClass}|${targetKey}`;
   const trip = STATE.wizard === 'trip-edit' ? activeTrip() : null;
-  const selectable = (STATE.selectableTripMembers || []).map((member) => member.email).join(',');
+  const selectable = (STATE.selectableTripMembers || []).map((member) => `${member.email}:${member.full_name || ''}`).join(',');
   const selectedRows = trip?.id && Array.isArray(STATE.tripMembersByTrip[trip.id])
     ? STATE.tripMembersByTrip[trip.id].map((row) => row.member_email).join(',')
     : '';
@@ -216,6 +249,13 @@ function selectedTripMemberEmails(trip) {
   return new Set(rows.map((row) => String(row.member_email || '').toLowerCase()).filter(Boolean));
 }
 
+function memberDisplayName(member) {
+  const explicitName = String(member?.full_name || '').trim();
+  if (explicitName) return explicitName;
+  const emailName = String(member?.email || '').split('@')[0].replace(/[._-]+/g, ' ').trim();
+  return emailName || 'Routefolk member';
+}
+
 function selectedTripUserCheckboxes(trip, disabled = false) {
   if (STATE.selectableTripMembersLoading) {
     return '<p class="rf-d2-aside-sub">Loading active Routefolk members…</p>';
@@ -227,6 +267,7 @@ function selectedTripUserCheckboxes(trip, disabled = false) {
 
   const currentEmail = String(STATE.user?.email || '').toLowerCase();
   const selected = selectedTripMemberEmails(trip);
+  selectedMemberEmailsFromWizard().forEach((email) => selected.add(email));
   const members = (STATE.selectableTripMembers || []).filter((member) => member.email && member.email !== currentEmail);
 
   if (!members.length) {
@@ -237,7 +278,7 @@ function selectedTripUserCheckboxes(trip, disabled = false) {
     ${members.map((member) => `
       <label class="rf-v2-selected-user">
         <input type="checkbox" name="v2-trip-selected-user" value="${esc(member.email)}" ${selected.has(member.email) ? 'checked' : ''} ${disabled ? 'disabled' : ''}>
-        <span><strong>${esc(member.full_name || member.email)}</strong><small>${esc(member.email)}</small></span>
+        <span><strong>${esc(memberDisplayName(member))}</strong></span>
       </label>
     `).join('')}
     <p class="rf-d2-aside-sub">Selected users can view and edit the whole trip. Only the creator can manage this list.</p>
@@ -262,7 +303,7 @@ function tripWizardHtml(editing = false) {
       row('v2-trip-desc', 'Subtitle / short description', input('v2-trip-desc', trip?.description || '', 'placeholder="Bordeaux to Barcelona"')),
       pair(row('v2-trip-start', 'Start', input('v2-trip-start', trip?.start_date || '', 'type="date"')), row('v2-trip-end', 'End', input('v2-trip-end', trip?.end_date || '', 'type="date"'))),
       pair(row('v2-trip-status', 'Status', select('v2-trip-status', `${option('planning', 'Planning', trip?.status)}${option('active', 'Active', trip?.status)}${option('completed', 'Completed', trip?.status)}${option('cancelled', 'Cancelled', trip?.status)}`)), row('v2-trip-visibility', 'Visibility', select('v2-trip-visibility', `${option('group', 'Shared with everyone', visibility)}${option('selected', 'Shared with selected users', visibility)}${option('private', 'Private', visibility)}`, visibilityAttrs))),
-      row('v2-trip-selected-users', 'Selected users', selectedTripUserCheckboxes(trip, !canManageVisibility)),
+      row('v2-trip-selected-users-row', 'Selected users', `<div id="v2-trip-selected-users">${selectedTripUserCheckboxes(trip, !canManageVisibility)}</div>`),
     ].join(''),
   });
 }
