@@ -4,7 +4,7 @@
 // Bump CACHE whenever shell assets change.
 // ============================================================
 
-const CACHE = 'routefolk-shell-v120-legacy-cleanup';
+const CACHE = 'routefolk-shell-v121-action-router';
 
 const SHELL_ASSETS = [
   './',
@@ -20,6 +20,7 @@ const SHELL_ASSETS = [
   './styles/production-overrides.css?v=20260520-mobile-fields-02',
   './vendor/leaflet/leaflet.css?v=routefolk-local-01',
   './vendor/leaflet/leaflet.js?v=routefolk-local-01',
+  './actions/action-router.js',
   './app.js?v=20260520-desktop-weather-02',
   './screens/app-renderer.js?v=20260520-desktop-weather-02',
   './screens/wizards.js?v=20260522-journal-gpx-02',
