@@ -25,6 +25,7 @@ const categoriesForTrip = (tripId) => Array.isArray(STATE.itemCategoriesByTrip[t
 const itemsForTrip = (tripId) => Array.isArray(STATE.itemsByTrip[tripId]) ? STATE.itemsByTrip[tripId] : [];
 let selectableMembersLoadPromise = null;
 let selectableMembersLoadUserId = null;
+let draftTripVisibility = null;
 const tripMembersLoadPromises = new Map();
 
 const selectedStage = () => {
@@ -110,8 +111,15 @@ function injectCostCta() {
   target.appendChild(wrap);
 }
 
+function rememberTripVisibility(value) {
+  if (value === 'private' || value === 'selected' || value === 'group') draftTripVisibility = value;
+}
+
 function currentWizardVisibility() {
-  return byId('v2-trip-visibility')?.value || activeTrip()?.visibility || 'group';
+  const visibleValue = byId('v2-trip-visibility')?.value;
+  if (visibleValue === 'private' || visibleValue === 'selected' || visibleValue === 'group') return visibleValue;
+  if (draftTripVisibility === 'private' || draftTripVisibility === 'selected' || draftTripVisibility === 'group') return draftTripVisibility;
+  return activeTrip()?.visibility || 'group';
 }
 
 function syncSelectedUsersVisibility() {
@@ -119,10 +127,7 @@ function syncSelectedUsersVisibility() {
   if (!row || (STATE.wizard !== 'trip' && STATE.wizard !== 'trip-edit')) return false;
   const isSelected = currentWizardVisibility() === 'selected';
   row.hidden = !isSelected;
-  if (isSelected) {
-    preloadVisibilityDataForWizard();
-    refreshTripSelectedUsersControl();
-  }
+  if (isSelected) preloadVisibilityDataForWizard();
   return true;
 }
 
@@ -131,7 +136,8 @@ function refreshTripSelectedUsersControl() {
   if (!node || (STATE.wizard !== 'trip' && STATE.wizard !== 'trip-edit')) return false;
   const trip = STATE.wizard === 'trip-edit' ? activeTrip() : null;
   node.innerHTML = selectedTripUserCheckboxes(trip, !canManageTripVisibility(trip));
-  syncSelectedUsersVisibility();
+  const row = byId('v2-trip-selected-users-row');
+  if (row) row.hidden = currentWizardVisibility() !== 'selected';
   const host = document.querySelector('.rf-v2-wizard-host');
   if (host) {
     const modeClass = isDesktop() ? 'is-desktop' : 'is-mobile';
@@ -314,7 +320,7 @@ function selectedTripUserCheckboxes(trip, disabled = false) {
 
 function tripWizardHtml(editing = false) {
   const trip = editing ? activeTrip() : null;
-  const visibility = trip?.visibility || 'group';
+  const visibility = currentWizardVisibility();
   const canManageVisibility = canManageTripVisibility(trip);
   const visibilityAttrs = canManageVisibility ? '' : 'disabled';
   return panelHtml({
@@ -523,6 +529,7 @@ async function saveTrip(event) {
       await api().loadTripMembersForTrip?.(trip.id, { force: true, quiet: true });
     }
 
+    draftTripVisibility = null;
     STATE.trips = [trip, ...STATE.trips.filter((item) => item.id !== trip.id)];
     STATE.wizard = null;
     STATE.editTargetId = null;
@@ -553,6 +560,7 @@ async function saveTripEdit(event) {
       updated = await updateTrip(trip.id, contentPayload);
     }
 
+    draftTripVisibility = null;
     STATE.trips = STATE.trips.map((item) => item.id === updated.id ? updated : item);
     STATE.wizard = null;
     STATE.editTargetId = null;
@@ -734,7 +742,10 @@ async function saveItemEdit(event) {
 
 document.addEventListener('change', (event) => {
   const target = event.target instanceof Element ? event.target : null;
-  if (target?.id === 'v2-trip-visibility') syncSelectedUsersVisibility();
+  if (target?.id === 'v2-trip-visibility') {
+    rememberTripVisibility(target.value);
+    syncSelectedUsersVisibility();
+  }
 }, true);
 
 document.addEventListener('click', async (event) => {
@@ -743,7 +754,10 @@ document.addEventListener('click', async (event) => {
   if (!btn) return;
   const action = btn.dataset.action || '';
 
-  if (action === 'rf-v2-edit-trip') { claim(event); STATE.wizard = 'trip-edit'; renderAll(); return; }
+  if (action.endsWith('new-trip')) draftTripVisibility = null;
+  if (action === 'rf-v2-save-trip' || action === 'rf-v2-update-trip' || action === 'rf-v2-cancel-wizard') draftTripVisibility = null;
+
+  if (action === 'rf-v2-edit-trip') { claim(event); STATE.wizard = 'trip-edit'; draftTripVisibility = null; renderAll(); return; }
   if (action === 'rf-v2-delete-trip') { await removeTrip(event); return; }
   if (action === 'rf-v2-cancel-wizard') { claim(event); STATE.wizard = null; STATE.editTargetId = null; renderAll(); return; }
   if (action === 'rf-v2-save-trip') { await saveTrip(event); return; }
