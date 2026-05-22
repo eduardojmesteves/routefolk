@@ -6,57 +6,60 @@
 
 import { STATE } from '../state/app-state.js';
 import { esc } from '../utils/dom.js';
-import { createTrip, updateTrip, deleteTrip } from '../lib/trips.js';
-import { replaceTripMembers } from '../lib/trip-members.js';
 import { createStage, updateStage, deleteStage } from '../lib/stages.js';
 import { createEntry, updateEntry, deleteEntry } from '../lib/journal.js';
 import { createExpense } from '../lib/expenses.js';
 import { uploadStageGpx } from '../lib/gpx.js';
 import { createTripItem, updateTripItem } from '../lib/items.js';
 import { EXPENSE_CATEGORY_META } from '../constants/app-constants.js';
-import { rememberArchiveContext, rememberTripContext } from '../state/ui-state.js';
 
 const WIZARDS = new Set(['trip', 'trip-edit', 'stage', 'stage-edit', 'journal', 'journal-edit', 'gpx-upload', 'expense', 'item', 'item-edit']);
 const isDesktop = () => window.matchMedia('(min-width:960px)').matches;
 const byId = (id) => document.getElementById(id);
-const activeTrip = () => STATE.trips.find((trip) => trip.id === (STATE.viewTripId || (STATE.tab === 'archive' ? STATE.selectedArchiveTripId : STATE.selectedTripId))) || null;
-const stagesForTrip = (tripId) => Array.isArray(STATE.stagesByTrip[tripId]) ? STATE.stagesByTrip[tripId] : [];
-const expensesForTrip = (tripId) => Array.isArray(STATE.expensesByTrip[tripId]) ? STATE.expensesByTrip[tripId] : [];
+export const activeTrip = () => STATE.trips.find((trip) => trip.id === (STATE.viewTripId || (STATE.tab === 'archive' ? STATE.selectedArchiveTripId : STATE.selectedTripId))) || null;
+export const stagesForTrip = (tripId) => Array.isArray(STATE.stagesByTrip[tripId]) ? STATE.stagesByTrip[tripId] : [];
+export const expensesForTrip = (tripId) => Array.isArray(STATE.expensesByTrip[tripId]) ? STATE.expensesByTrip[tripId] : [];
 const categoriesForTrip = (tripId) => Array.isArray(STATE.itemCategoriesByTrip[tripId]) ? STATE.itemCategoriesByTrip[tripId] : [];
-const itemsForTrip = (tripId) => Array.isArray(STATE.itemsByTrip[tripId]) ? STATE.itemsByTrip[tripId] : [];
-const tracksForTrip = (tripId) => Array.isArray(STATE.gpxByTrip[tripId]) ? STATE.gpxByTrip[tripId] : [];
+export const itemsForTrip = (tripId) => Array.isArray(STATE.itemsByTrip[tripId]) ? STATE.itemsByTrip[tripId] : [];
+export const tracksForTrip = (tripId) => Array.isArray(STATE.gpxByTrip[tripId]) ? STATE.gpxByTrip[tripId] : [];
 let selectableMembersLoadPromise = null;
 let selectableMembersLoadUserId = null;
 let draftTripVisibility = null;
 let pendingGpxFile = null;
 const tripMembersLoadPromises = new Map();
 
-const selectedStage = () => {
+/** Module-state accessors for the wizard draft trip visibility. */
+export function getDraftTripVisibility() { return draftTripVisibility; }
+export function setDraftTripVisibility(value) { draftTripVisibility = value; }
+/** Module-state accessor for the captured pending GPX file. */
+export function getPendingGpxFile() { return pendingGpxFile; }
+
+export const selectedStage = () => {
   const trip = activeTrip();
   if (!trip) return null;
   return stagesForTrip(trip.id).find((stage) => stage.id === (STATE.editTargetId || STATE.selectedStageId)) || stagesForTrip(trip.id)[0] || null;
 };
-const entriesForStage = (stageId) => Array.isArray(STATE.entriesByStage[stageId]) ? STATE.entriesByStage[stageId] : [];
-const selectedEntry = () => {
+export const entriesForStage = (stageId) => Array.isArray(STATE.entriesByStage[stageId]) ? STATE.entriesByStage[stageId] : [];
+export const selectedEntry = () => {
   const stage = selectedStage();
   if (!stage) return null;
   return entriesForStage(stage.id).find((entry) => entry.id === STATE.editTargetId) || null;
 };
-const selectedItem = () => {
+export const selectedItem = () => {
   const trip = activeTrip();
   if (!trip) return null;
   return itemsForTrip(trip.id).find((item) => item.id === STATE.editTargetId) || null;
 };
 
-function api() { return window.routefolkData || {}; }
+export function api() { return window.routefolkData || {}; }
 
-function renderAll() {
+export function renderAll() {
   api().renderAll?.();
   window.__routefolkV2Render?.();
   requestAnimationFrame(renderWizardLayer);
 }
 
-function claim(event) {
+export function claim(event) {
   event.preventDefault();
   event.stopImmediatePropagation();
 }
@@ -65,11 +68,11 @@ function wizardHost() {
   return document.querySelector('.rf-v2-wizard-host');
 }
 
-function field(id) {
+export function field(id) {
   return wizardHost()?.querySelector(`#${CSS.escape(id)}`) || byId(id);
 }
 
-function fieldValue(id) {
+export function fieldValue(id) {
   return field(id)?.value?.trim() || '';
 }
 
@@ -271,7 +274,7 @@ function selectedUsersRowHtml(trip, canManageVisibility, visibility) {
   return `<div class="rf-d2-form-row" id="v2-trip-selected-users-row"${hidden}><label class="rf-d2-form-label" for="v2-trip-selected-users">Selected users</label><div id="v2-trip-selected-users">${selectedTripUserCheckboxes(trip, !canManageVisibility)}</div></div>`;
 }
 
-function canManageTripVisibility(trip) { return !trip?.id || trip.created_by === STATE.user?.id; }
+export function canManageTripVisibility(trip) { return !trip?.id || trip.created_by === STATE.user?.id; }
 function selectedTripMemberEmails(trip) { if (!trip?.id) return new Set(); const rows = STATE.tripMembersByTrip[trip.id]; if (!Array.isArray(rows)) return new Set(); return new Set(rows.map((row) => String(row.member_email || '').toLowerCase()).filter(Boolean)); }
 function memberDisplayName(member) { const explicitName = String(member?.full_name || '').trim(); if (explicitName) return explicitName; const emailName = String(member?.email || '').split('@')[0].replace(/[._-]+/g, ' ').trim(); return emailName || 'Routefolk member'; }
 
@@ -302,7 +305,7 @@ function journalCreateWizardHtml() { return panelHtml({ id: 'rf-v2-entry-create-
 
 function journalEditWizardHtml() { const entry = selectedEntry(); if (!entry) return emptyWizard('No journal entry selected.'); const local = entry.timestamp ? new Date(entry.timestamp) : null; const time = local && !Number.isNaN(local.getTime()) ? String(local.getHours()).padStart(2, '0') + ':' + String(local.getMinutes()).padStart(2, '0') : ''; return panelHtml({ id: 'rf-v2-entry-title', kicker: 'Edit entry', title: 'Refine the note', errorId: 'v2-entry-error', saveAction: 'rf-v2-update-entry', saveLabel: 'Save entry', body: [row('v2-entry-type-edit', 'Type', select('v2-entry-type-edit', `${option('note', 'Note', entry.entry_type)}${option('stop', 'Stop', entry.entry_type)}${option('meal', 'Meal', entry.entry_type)}${option('drink', 'Drink', entry.entry_type)}${option('lodging', 'Lodging', entry.entry_type)}${option('other', 'Other', entry.entry_type)}`)), row('v2-entry-title-edit', 'Title', input('v2-entry-title-edit', entry.title || '')), pair(row('v2-entry-place-edit', 'Place', input('v2-entry-place-edit', entry.location || '')), row('v2-entry-time-edit', 'Time', input('v2-entry-time-edit', time, 'type="time"'))), row('v2-entry-note-edit', 'Description', textarea('v2-entry-note-edit', entry.description || '')), row('v2-entry-location-url-edit', 'Maps URL', input('v2-entry-location-url-edit', entry.location_url || '', 'placeholder="https://www.google.com/maps/..."'))].join('') }); }
 
-function gpxTarget() { const target = STATE.gpxUploadTarget || {}; const trip = target.tripId ? STATE.trips.find((item) => item.id === target.tripId) : activeTrip(); const tripId = trip?.id || target.tripId || ''; const stageId = target.stageId || selectedStage()?.id || ''; const stage = stagesForTrip(tripId).find((item) => item.id === stageId) || selectedStage(); return { trip, tripId, stage, stageId }; }
+export function gpxTarget() { const target = STATE.gpxUploadTarget || {}; const trip = target.tripId ? STATE.trips.find((item) => item.id === target.tripId) : activeTrip(); const tripId = trip?.id || target.tripId || ''; const stageId = target.stageId || selectedStage()?.id || ''; const stage = stagesForTrip(tripId).find((item) => item.id === stageId) || selectedStage(); return { trip, tripId, stage, stageId }; }
 
 function gpxUploadWizardHtml() { const { tripId, stage } = gpxTarget(); const selectedFile = pendingGpxFile?.name || ''; const stageLabel = stage ? `${stage.start_location || 'Start'} → ${stage.end_location || 'End'}` : 'Selected stage'; return panelHtml({ id: 'rf-v2-gpx-upload-title', kicker: 'GPX upload', title: 'Attach a GPX track', sub: `${stageLabel}. The selected file is captured before upload so a re-render cannot wipe it.`, errorId: 'v2-gpx-error', saveAction: 'rf-v2-save-gpx-upload', saveLabel: 'Upload GPX', body: [row('v2-gpx-file', 'GPX file', `${fileInput('v2-gpx-file', `accept=".gpx,application/gpx+xml,application/xml,text/xml" data-trip-id="${esc(tripId)}"`)}<div class="rf-d2-aside-sub" id="v2-gpx-selected-file">${selectedFile ? `Selected: ${esc(selectedFile)}` : 'No file selected yet.'}</div>`)].join('') }).replace('data-action="rf-v2-cancel-wizard"', 'data-action="rf-v2-cancel-gpx-upload"'); }
 
@@ -313,17 +316,11 @@ function expenseWizardHtml() { const trip = activeTrip(); const loadedStages = t
 function emptyWizard(message) { return `<aside class="rf-v2-wizard-panel"><div class="rf-v2-wizard-head"><h2 class="rf-d2-aside-title">Nothing selected</h2><p>${esc(message)}</p></div><button class="rf-d2-btn" data-action="rf-v2-cancel-wizard" type="button">Close</button></aside>`; }
 function option(value, label, selected) { return `<option value="${esc(value)}" ${selected === value ? 'selected' : ''}>${esc(label)}</option>`; }
 function slug(value) { return String(value || '').trim().toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '') || 'other'; }
-function showError(id, error) { const fallback = wizardHost()?.querySelector('.rf-v2-wizard-error') || document.querySelector('.rf-v2-wizard-error'); const node = wizardHost()?.querySelector(`#${CSS.escape(id)}`) || byId(id) || fallback; if (!node) return; node.textContent = error?.message || String(error || 'Something went wrong.'); node.hidden = false; }
+export function showError(id, error) { const fallback = wizardHost()?.querySelector('.rf-v2-wizard-error') || document.querySelector('.rf-v2-wizard-error'); const node = wizardHost()?.querySelector(`#${CSS.escape(id)}`) || byId(id) || fallback; if (!node) return; node.textContent = error?.message || String(error || 'Something went wrong.'); node.hidden = false; }
 function selectedMemberEmailsFromWizard() { return [...document.querySelectorAll('input[name="v2-trip-selected-user"]:checked')].map((input) => String(input.value || '').trim().toLowerCase()).filter(Boolean); }
 
-function assertSelectedVisibilityHasMembers(payload) { if (payload.visibility !== 'selected') return; if (STATE.selectableTripMembersLoading) throw new Error('Wait for active Routefolk members to finish loading before saving.'); if (STATE.selectableTripMembersError) throw new Error('Could not load active Routefolk members. Confirm migration 015 was applied.'); if (!payload.selected_member_emails.length) throw new Error('Selected-users visibility requires at least one selected user.'); }
-function tripPayload() { return { title: fieldValue('v2-trip-title'), description: fieldValue('v2-trip-desc'), start_date: field('v2-trip-start')?.value || null, end_date: field('v2-trip-end')?.value || null, status: field('v2-trip-status')?.value || 'planning', visibility: field('v2-trip-visibility')?.value || activeTrip()?.visibility || 'group', selected_member_emails: selectedMemberEmailsFromWizard() }; }
-
-async function saveTrip(event) { claim(event); try { const payload = tripPayload(); assertSelectedVisibilityHasMembers(payload); const trip = await createTrip({ ...payload, visibility: payload.visibility === 'selected' ? 'private' : payload.visibility }); if (payload.visibility === 'selected') { await replaceTripMembers(trip.id, payload.selected_member_emails); await updateTrip(trip.id, { visibility: 'selected' }); await api().loadTripMembersForTrip?.(trip.id, { force: true, quiet: true }); } draftTripVisibility = null; STATE.trips = [trip, ...STATE.trips.filter((item) => item.id !== trip.id)]; STATE.wizard = null; STATE.editTargetId = null; STATE.tab = 'trips'; rememberTripContext(trip.id, 'detail'); await api().loadTrips?.(); await api().openTrip?.(trip.id, 'detail'); renderAll(); } catch (error) { showError('v2-trip-error', error); } }
-
-async function saveTripEdit(event) { claim(event); const trip = activeTrip(); if (!trip) return; try { const payload = tripPayload(); const canManageVisibility = canManageTripVisibility(trip); let updated; if (canManageVisibility) { assertSelectedVisibilityHasMembers(payload); if (payload.visibility === 'selected') await replaceTripMembers(trip.id, payload.selected_member_emails); updated = await updateTrip(trip.id, payload); await api().loadTripMembersForTrip?.(trip.id, { force: true, quiet: true }); } else { const { visibility, selected_member_emails, ...contentPayload } = payload; updated = await updateTrip(trip.id, contentPayload); } draftTripVisibility = null; STATE.trips = STATE.trips.map((item) => item.id === updated.id ? updated : item); STATE.wizard = null; STATE.editTargetId = null; if (STATE.tab === 'archive') rememberArchiveContext(updated.id, 'summary'); else rememberTripContext(updated.id, STATE.view || 'detail'); await api().openTrip?.(updated.id, STATE.view || 'detail'); renderAll(); } catch (error) { showError('v2-trip-error', error); } }
-
-async function removeTrip(event) { claim(event); const trip = activeTrip(); if (!trip) return; if (!window.confirm(`Delete trip “${trip.title || 'Untitled'}”? This cannot be undone.`)) return; await deleteTrip(trip.id); STATE.trips = STATE.trips.filter((item) => item.id !== trip.id); STATE.wizard = null; STATE.editTargetId = null; if (STATE.tab === 'archive') rememberArchiveContext(null, 'list'); else rememberTripContext(null, 'list'); renderAll(); }
+export function assertSelectedVisibilityHasMembers(payload) { if (payload.visibility !== 'selected') return; if (STATE.selectableTripMembersLoading) throw new Error('Wait for active Routefolk members to finish loading before saving.'); if (STATE.selectableTripMembersError) throw new Error('Could not load active Routefolk members. Confirm migration 015 was applied.'); if (!payload.selected_member_emails.length) throw new Error('Selected-users visibility requires at least one selected user.'); }
+export function tripPayload() { return { title: fieldValue('v2-trip-title'), description: fieldValue('v2-trip-desc'), start_date: field('v2-trip-start')?.value || null, end_date: field('v2-trip-end')?.value || null, status: field('v2-trip-status')?.value || 'planning', visibility: field('v2-trip-visibility')?.value || activeTrip()?.visibility || 'group', selected_member_emails: selectedMemberEmailsFromWizard() }; }
 
 async function saveStageCreate(event) { claim(event); const trip = activeTrip(); if (!trip) return; try { const stage = await createStage(trip.id, { start_location: fieldValue('v2-stage-from'), end_location: fieldValue('v2-stage-to'), planned_date: field('v2-stage-date')?.value || null, distance_km: field('v2-stage-km')?.value || null, notes: fieldValue('v2-stage-notes') }); STATE.stagesByTrip[trip.id] = [...stagesForTrip(trip.id), stage]; STATE.selectedStageId = stage.id; STATE.view = 'detail'; STATE.wizard = null; STATE.editTargetId = null; await api().loadStagesForTrip?.(trip.id); renderAll(); } catch (error) { showError('v2-stage-create-error', error); } }
 
@@ -336,12 +333,12 @@ async function saveEntryCreate(event) { claim(event); const stage = selectedStag
 async function saveEntryEdit(event) { claim(event); const entry = selectedEntry(); const stage = selectedStage(); if (!entry || !stage) return; try { const time = field('v2-entry-time-edit')?.value || ''; const date = stage.planned_date || new Date().toISOString().slice(0, 10); const updated = await updateEntry(entry.id, { entry_type: field('v2-entry-type-edit')?.value || 'note', title: fieldValue('v2-entry-title-edit'), location: fieldValue('v2-entry-place-edit'), description: fieldValue('v2-entry-note-edit'), location_url: fieldValue('v2-entry-location-url-edit') || null, timestamp: time ? `${date}T${time}:00` : null }); STATE.entriesByStage[stage.id] = entriesForStage(stage.id).map((candidate) => candidate.id === updated.id ? updated : candidate); STATE.wizard = null; STATE.editTargetId = null; await api().loadEntriesForStage?.(stage.id, { quiet: true }); renderAll(); } catch (error) { showError('v2-entry-error', error); } }
 
 async function removeEntry(event, entryId) { claim(event); const stage = selectedStage(); const entry = entriesForStage(stage?.id).find((candidate) => candidate.id === entryId); if (!stage || !entry) return; if (!window.confirm(`Delete journal entry “${entry.title || 'Untitled'}”?`)) return; await deleteEntry(entry.id); STATE.entriesByStage[stage.id] = entriesForStage(stage.id).filter((candidate) => candidate.id !== entry.id); STATE.wizard = null; STATE.editTargetId = null; renderAll(); }
-function clearGpxUploadState() { pendingGpxFile = null; STATE.gpxUploadTarget = null; }
+export function clearGpxUploadState() { pendingGpxFile = null; STATE.gpxUploadTarget = null; }
 
 async function saveGpxUpload(event) { claim(event); const { tripId, stageId } = gpxTarget(); const inputFile = field('v2-gpx-file')?.files?.[0] || null; const file = pendingGpxFile || inputFile; try { if (!tripId || !stageId) throw new Error('Trip and stage are required before uploading GPX.'); if (!file) throw new Error('Choose a GPX file first.'); const { record, geometry } = await uploadStageGpx({ tripId, stageId, file }); const existing = tracksForTrip(tripId).filter((track) => track.id !== record.id); STATE.gpxByTrip[tripId] = [record, ...existing]; if (geometry) STATE.gpxGeometryByTrack[record.id] = geometry; STATE.wizard = null; clearGpxUploadState(); await api().loadGpxForTrip?.(tripId, { quiet: true }); renderAll(); } catch (error) { showError('v2-gpx-error', error); } }
 
 async function saveExpense(event) { claim(event); const trip = activeTrip(); if (!trip) return; try { const expense = await createExpense(trip.id, { category: field('v2-expense-category')?.value || 'other', amount: field('v2-expense-amount')?.value || '', user_id: field('v2-expense-payer')?.value || STATE.user?.id, date: field('v2-expense-date')?.value || null, stage_id: field('v2-expense-stage')?.value || null, description: fieldValue('v2-expense-description') }); STATE.expensesByTrip[trip.id] = [...expensesForTrip(trip.id), expense]; STATE.wizard = null; STATE.editTargetId = null; await api().loadExpensesForTrip?.(trip.id, { quiet: true }); renderAll(); } catch (error) { showError('v2-expense-error', error); } }
-function itemPayload() { return { text: fieldValue('v2-item-text'), category_id: field('v2-item-category')?.value || null, status: field('v2-item-status')?.value || 'planned', notes: fieldValue('v2-item-notes') }; }
+export function itemPayload() { return { text: fieldValue('v2-item-text'), category_id: field('v2-item-category')?.value || null, status: field('v2-item-status')?.value || 'planned', notes: fieldValue('v2-item-notes') }; }
 async function saveItem(event) { claim(event); const trip = activeTrip(); if (!trip) return; try { const item = await createTripItem(trip.id, itemPayload()); STATE.itemsByTrip[trip.id] = [...itemsForTrip(trip.id), item]; STATE.wizard = null; STATE.editTargetId = null; await api().loadItemsForTrip?.(trip.id, { quiet: true }); renderAll(); } catch (error) { showError('v2-item-error', error); } }
 async function saveItemEdit(event) { claim(event); const trip = activeTrip(); const item = selectedItem(); if (!trip || !item) return; try { const updated = await updateTripItem(item.id, itemPayload()); STATE.itemsByTrip[trip.id] = itemsForTrip(trip.id).map((candidate) => candidate.id === updated.id ? updated : candidate); STATE.wizard = null; STATE.editTargetId = null; await api().loadItemsForTrip?.(trip.id, { quiet: true }); renderAll(); } catch (error) { showError('v2-item-error', error); } }
 
@@ -359,13 +356,7 @@ document.addEventListener('change', (event) => { const target = event.target ins
  * @returns {Promise<boolean>}
  */
 export async function dispatchWizardAction(event, btn, action) {
-  if (action.endsWith('new-trip')) draftTripVisibility = null;
-  if (action === 'rf-v2-save-trip' || action === 'rf-v2-update-trip' || action === 'rf-v2-cancel-wizard') draftTripVisibility = null;
-  if (action === 'rf-v2-edit-trip') { claim(event); STATE.wizard = 'trip-edit'; draftTripVisibility = null; renderAll(); return true; }
-  if (action === 'rf-v2-delete-trip') { await removeTrip(event); return true; }
-  if (action === 'rf-v2-cancel-wizard') { claim(event); STATE.wizard = null; STATE.editTargetId = null; clearGpxUploadState(); renderAll(); return true; }
-  if (action === 'rf-v2-save-trip') { await saveTrip(event); return true; }
-  if (action === 'rf-v2-update-trip') { await saveTripEdit(event); return true; }
+  if (action === 'rf-v2-cancel-wizard') { draftTripVisibility = null; claim(event); STATE.wizard = null; STATE.editTargetId = null; clearGpxUploadState(); renderAll(); return true; }
   if (action === 'rf-v2-save-stage') { await saveStageCreate(event); return true; }
   if (action === 'rf-v2-edit-stage') { claim(event); STATE.wizard = 'stage-edit'; STATE.editTargetId = btn.dataset.stageId; renderAll(); return true; }
   if (action === 'rf-v2-delete-stage') { await removeStage(event, btn.dataset.stageId); return true; }
