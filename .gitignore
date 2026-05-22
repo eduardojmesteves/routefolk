@@ -23,8 +23,6 @@
 # Dependencies
 node_modules/
 
-# Local npm/test tooling if created in the project root
-playwright.config.js
 
 # Build/output folders
 /dist/
