@@ -24,10 +24,7 @@
 node_modules/
 
 # Local npm/test tooling if created in the project root
-package.json
-package-lock.json
 playwright.config.js
-/tests/
 
 # Build/output folders
 /dist/
