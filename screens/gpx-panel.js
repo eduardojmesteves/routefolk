@@ -97,7 +97,7 @@ function trackRow(track) {
   `;
 }
 
-async function removeGpx(event, trackId) {
+export async function removeGpx(event, trackId) {
   claim(event);
   const trip = activeTrip();
   if (!trip) return;
