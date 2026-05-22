@@ -94,7 +94,7 @@ export function tripFormHtml(trip = {}) {
       ${canManageVisibility ? '' : '<div class="form-help">Only the trip creator can change visibility.</div>'}
       <div class="form-help">This is enforced by Supabase RLS, not just hidden in the interface.</div>
     </div>
-    <div class="form-row" id="tfSelectedMembersBlock">
+    <div class="form-row" id="tfSelectedMembersBlock"${visibility !== 'selected' ? ' hidden' : ''}>
       <div class="form-label">Selected users</div>
       ${selectedMembersHtml(trip, canManageVisibility)}
     </div>
@@ -118,4 +118,11 @@ export function readTripForm() {
     selected_member_emails,
   };
 }
+
+document.addEventListener('change', (event) => {
+  const target = event.target instanceof Element ? event.target : null;
+  if (target?.name !== 'tfVisibility') return;
+  const block = document.getElementById('tfSelectedMembersBlock');
+  if (block) block.hidden = target.value !== 'selected';
+}, true);
 
