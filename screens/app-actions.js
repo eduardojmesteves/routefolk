@@ -321,14 +321,6 @@ export async function dispatchAppAction(event, btn, action) {
   return false;
 }
 
-document.addEventListener('click', async (event) => {
-  const target = event.target instanceof Element ? event.target : null;
-  const btn = target?.closest('[data-action]');
-  if (!btn) return;
-  const action = btn.dataset.action || '';
-  await dispatchAppAction(event, btn, action);
-}, true);
-
 document.addEventListener('input', (event) => {
   const target = event.target instanceof HTMLInputElement ? event.target : null;
   if (!target?.dataset?.action?.endsWith('search-input')) return;

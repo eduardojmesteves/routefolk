@@ -251,14 +251,6 @@ export async function dispatchExtraWriteAction(event, btn, action) {
   return false;
 }
 
-document.addEventListener('click', async (event) => {
-  const target = event.target instanceof Element ? event.target : null;
-  const btn = target?.closest('[data-action]');
-  if (!btn) return;
-  const action = btn.dataset.action || '';
-  await dispatchExtraWriteAction(event, btn, action);
-}, true);
-
 document.addEventListener('routefolk:v2-render', () => requestAnimationFrame(renderExtraWritesLayer));
 window.addEventListener('resize', () => requestAnimationFrame(renderExtraWritesLayer));
 requestAnimationFrame(renderExtraWritesLayer);

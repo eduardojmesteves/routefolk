@@ -19,14 +19,23 @@ const NAVIGATION_SUFFIXES = [
   'back-to-archive',
   'back-to-stages',
   'tab',
+  // Account / palette actions — not in a dedicated domain, routed here.
+  'sign-in',
+  'sign-out',
+  'status-filter',
+  'search-toggle',
 ];
+
+/** Exact-match actions owned by the navigation domain. */
+const NAVIGATION_EXACT = new Set(['rf-palette-select']);
 
 /**
  * @param {string} action
  * @returns {boolean} true if this action belongs to the navigation domain
  */
 export function owns(action) {
-  return NAVIGATION_SUFFIXES.some((suffix) => action.endsWith(suffix));
+  return NAVIGATION_EXACT.has(action)
+    || NAVIGATION_SUFFIXES.some((suffix) => action.endsWith(suffix));
 }
 
 /**

@@ -114,13 +114,6 @@ export async function removeGpx(event, trackId) {
   }
 }
 
-document.addEventListener('click', async (event) => {
-  const target = event.target instanceof Element ? event.target : null;
-  const btn = target?.closest('[data-action="rf-v2-delete-gpx"]');
-  if (!btn) return;
-  await removeGpx(event, btn.dataset.trackId);
-}, true);
-
 document.addEventListener('routefolk:v2-render', () => requestAnimationFrame(renderGpxPanel));
 window.addEventListener('resize', () => requestAnimationFrame(renderGpxPanel));
 requestAnimationFrame(renderGpxPanel);
