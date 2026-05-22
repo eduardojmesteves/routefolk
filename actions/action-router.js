@@ -1,15 +1,24 @@
 // ============================================================
 // routefolk — actions/action-router.js
-// Unified document-level action router (Task 4.1 scaffold).
+// Unified document-level action router.
 //
-// This is the single global click router going forward.
-// Domain logic currently lives in the sibling files listed below;
-// Tasks 4.2-4.8 will move each domain into a dedicated module here.
+// This is the single global click router going forward. Each click on
+// a [data-action] element is routed to the domain module that owns it.
 //
-// Existing domain listeners (app-actions.js, wizards.js,
-// extra-writes.js, gpx-panel.js) remain registered in parallel
-// until Task 4.9 removes them.
+// Tasks 4.2-4.8 introduced seven domain modules under actions/. They
+// currently act as thin wrappers that delegate to the dispatcher
+// functions still exported by the legacy sidecars (screens/app-actions
+// .js, screens/wizards.js, screens/extra-writes.js, screens/gpx-panel
+// .js). Task 4.9 will move the underlying logic into these modules and
+// remove the legacy sidecars entirely.
+//
+// Because this listener is registered first (this module loads ahead
+// of the legacy sidecars in index.html) and runs in the capture phase,
+// claiming a routed event with claim() stops the legacy capture-phase
+// listeners from also handling it — preventing double execution.
 // ============================================================
+
+import * as navigation from './navigation-actions.js';
 
 /**
  * Prevent the event from bubbling further and stop any other
@@ -24,46 +33,34 @@ export function claim(event) {
 }
 
 // ---------------------------------------------------------------------------
-// Domain ownership map (populated by Tasks 4.2-4.8)
+// Domain ownership map.
 //
-// Each entry maps an action suffix or exact action name to the module
-// responsible for handling it. During the Task 4.1 scaffold phase every
-// action falls through to the existing capture-phase listeners registered
-// in:
-//   screens/app-actions.js   — navigation, trips list, stages, journal, items
-//   screens/wizards.js       — wizard save/edit/delete workflows
-//   screens/extra-writes.js  — expense & item edit/delete overlays
-//   screens/gpx-panel.js     — GPX track deletion
+// Domain modules are probed in priority order. Several actions are
+// recognised by more than one domain (e.g. wizard cancel) — the order
+// below mirrors the legacy capture-phase registration order so behaviour
+// is preserved exactly:
+//   screens/wizards.js  >  screens/extra-writes.js  >  screens/app-actions.js
 // ---------------------------------------------------------------------------
-
-// Placeholder for future domain handler imports, e.g.:
-//   import { handle as handleTrips }   from './trips.js';
-//   import { handle as handleStages }  from './stages.js';
-//   import { handle as handleJournal } from './journal.js';
-//   import { handle as handleItems }   from './items.js';
-//   import { handle as handleExpenses } from './expenses.js';
-//   import { handle as handleGpx }     from './gpx.js';
-//   import { handle as handleNav }     from './navigation.js';
+const DOMAINS = [navigation];
 
 /**
  * Route a click event to the appropriate domain handler.
  *
  * Returns true if the router fully handled the event (claimed it),
- * false if it should fall through to the existing legacy listeners.
+ * false if it should fall through to the legacy listeners.
  *
  * @param {MouseEvent} event
- * @param {Element}    btn   — the closest [data-action] ancestor
+ * @param {Element}    btn    — the closest [data-action] ancestor
  * @param {string}     action — btn.dataset.action value
- * @returns {boolean}
+ * @returns {Promise<boolean>}
  */
-function route(event, btn, action) { // eslint-disable-line no-unused-vars
-  // Tasks 4.2-4.8 will add routing branches here, e.g.:
-  //
-  //   if (action.endsWith('new-trip') || action.endsWith('list-edit-trip') || ...) {
-  //     return handleTrips(event, btn, action);
-  //   }
-  //
-  // For now all actions fall through to the legacy listeners.
+async function route(event, btn, action) {
+  for (const domain of DOMAINS) {
+    if (domain.owns(action)) {
+      const handled = await domain.handle(event, btn, action);
+      if (handled) return true;
+    }
+  }
   return false;
 }
 
@@ -73,8 +70,9 @@ function route(event, btn, action) { // eslint-disable-line no-unused-vars
  * before the legacy per-domain listeners (which are loaded after this
  * module in index.html).
  *
- * Tasks 4.2-4.8 will progressively move domain logic here and call
- * claim(event) to stop the legacy listeners from seeing claimed events.
+ * Each delegated dispatcher calls claim() internally when it owns an
+ * action, which stops the legacy capture-phase listeners on `document`
+ * from also handling the event.
  */
 export function initActionRouter() {
   document.addEventListener(
@@ -87,10 +85,9 @@ export function initActionRouter() {
       const action = btn.dataset.action || '';
       if (!action) return;
 
-      // Attempt to route to a domain module.
-      // Currently always returns false (Task 4.1 scaffold).
-      // Tasks 4.2-4.8 will progressively take ownership here.
-      route(event, btn, action);
+      // Route to a domain module. Unhandled actions fall through to the
+      // legacy listeners untouched (route() leaves the event unclaimed).
+      await route(event, btn, action);
     },
     true, // capture phase — mirrors the existing listeners
   );
