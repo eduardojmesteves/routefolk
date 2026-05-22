@@ -21,6 +21,7 @@
 import * as navigation from './navigation-actions.js';
 import * as trip from './trip-actions.js';
 import * as stage from './stage-actions.js';
+import * as journal from './journal-actions.js';
 import { dispatchWizardAction } from '../screens/wizards.js';
 
 /**
@@ -44,7 +45,7 @@ export function claim(event) {
 // is preserved exactly:
 //   screens/wizards.js  >  screens/extra-writes.js  >  screens/app-actions.js
 // ---------------------------------------------------------------------------
-const DOMAINS = [trip, stage, navigation];
+const DOMAINS = [trip, stage, journal, navigation];
 
 /**
  * Route a click event to the appropriate domain handler.
