@@ -14,8 +14,9 @@ export const STATE = {
   selectedCategoryKey: null,
   lastTripView: 'detail',
   lastArchiveView: 'list',
-  wizard: null, // null | trip | trip-edit | stage | stage-edit | journal | journal-edit | expense | item
+  wizard: null, // null | trip | trip-edit | stage | stage-edit | journal | journal-edit | gpx-upload | expense | item
   editTargetId: null,
+  gpxUploadTarget: null,
   journalType: 'note',
   user: null,
   appAccess: null,
