@@ -5,7 +5,6 @@
 // stages, journal, costs, GPX, and items before rendering.
 // ============================================================
 
-import './wizard-visibility-fixes.js';
 import { createStage } from '../lib/stages.js';
 import { createEntry } from '../lib/journal.js';
 import { deleteTrip } from '../lib/trips.js';
