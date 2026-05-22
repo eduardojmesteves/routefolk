@@ -6,7 +6,6 @@
 
 import { STATE } from '../state/app-state.js';
 import { esc } from '../utils/dom.js';
-import { createExpense } from '../lib/expenses.js';
 import { uploadStageGpx } from '../lib/gpx.js';
 import { createTripItem, updateTripItem } from '../lib/items.js';
 import { EXPENSE_CATEGORY_META } from '../constants/app-constants.js';
@@ -324,7 +323,6 @@ export function clearGpxUploadState() { pendingGpxFile = null; STATE.gpxUploadTa
 
 async function saveGpxUpload(event) { claim(event); const { tripId, stageId } = gpxTarget(); const inputFile = field('v2-gpx-file')?.files?.[0] || null; const file = pendingGpxFile || inputFile; try { if (!tripId || !stageId) throw new Error('Trip and stage are required before uploading GPX.'); if (!file) throw new Error('Choose a GPX file first.'); const { record, geometry } = await uploadStageGpx({ tripId, stageId, file }); const existing = tracksForTrip(tripId).filter((track) => track.id !== record.id); STATE.gpxByTrip[tripId] = [record, ...existing]; if (geometry) STATE.gpxGeometryByTrack[record.id] = geometry; STATE.wizard = null; clearGpxUploadState(); await api().loadGpxForTrip?.(tripId, { quiet: true }); renderAll(); } catch (error) { showError('v2-gpx-error', error); } }
 
-async function saveExpense(event) { claim(event); const trip = activeTrip(); if (!trip) return; try { const expense = await createExpense(trip.id, { category: field('v2-expense-category')?.value || 'other', amount: field('v2-expense-amount')?.value || '', user_id: field('v2-expense-payer')?.value || STATE.user?.id, date: field('v2-expense-date')?.value || null, stage_id: field('v2-expense-stage')?.value || null, description: fieldValue('v2-expense-description') }); STATE.expensesByTrip[trip.id] = [...expensesForTrip(trip.id), expense]; STATE.wizard = null; STATE.editTargetId = null; await api().loadExpensesForTrip?.(trip.id, { quiet: true }); renderAll(); } catch (error) { showError('v2-expense-error', error); } }
 export function itemPayload() { return { text: fieldValue('v2-item-text'), category_id: field('v2-item-category')?.value || null, status: field('v2-item-status')?.value || 'planned', notes: fieldValue('v2-item-notes') }; }
 async function saveItem(event) { claim(event); const trip = activeTrip(); if (!trip) return; try { const item = await createTripItem(trip.id, itemPayload()); STATE.itemsByTrip[trip.id] = [...itemsForTrip(trip.id), item]; STATE.wizard = null; STATE.editTargetId = null; await api().loadItemsForTrip?.(trip.id, { quiet: true }); renderAll(); } catch (error) { showError('v2-item-error', error); } }
 async function saveItemEdit(event) { claim(event); const trip = activeTrip(); const item = selectedItem(); if (!trip || !item) return; try { const updated = await updateTripItem(item.id, itemPayload()); STATE.itemsByTrip[trip.id] = itemsForTrip(trip.id).map((candidate) => candidate.id === updated.id ? updated : candidate); STATE.wizard = null; STATE.editTargetId = null; await api().loadItemsForTrip?.(trip.id, { quiet: true }); renderAll(); } catch (error) { showError('v2-item-error', error); } }
@@ -347,8 +345,6 @@ export async function dispatchWizardAction(event, btn, action) {
   if (action === 'rf-v2-open-gpx-upload') { claim(event); pendingGpxFile = null; STATE.wizard = 'gpx-upload'; STATE.gpxUploadTarget = { tripId: btn.dataset.tripId || activeTrip()?.id || null, stageId: btn.dataset.stageId || selectedStage()?.id || null }; renderAll(); return true; }
   if (action === 'rf-v2-cancel-gpx-upload') { claim(event); STATE.wizard = null; clearGpxUploadState(); renderAll(); return true; }
   if (action === 'rf-v2-save-gpx-upload') { await saveGpxUpload(event); return true; }
-  if (action === 'rf-v2-add-expense' || action === 'rf-v2-add-stage-expense') { claim(event); STATE.wizard = 'expense'; STATE.editTargetId = btn.dataset.stageId || null; renderAll(); return true; }
-  if (action === 'rf-v2-save-expense') { await saveExpense(event); return true; }
   if (action === 'rf-v2-save-item') { await saveItem(event); return true; }
   if (action === 'rf-v2-update-item') { await saveItemEdit(event); return true; }
   return false;
