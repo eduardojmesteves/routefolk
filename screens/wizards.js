@@ -6,7 +6,6 @@
 
 import { STATE } from '../state/app-state.js';
 import { esc } from '../utils/dom.js';
-import { createEntry, updateEntry, deleteEntry } from '../lib/journal.js';
 import { createExpense } from '../lib/expenses.js';
 import { uploadStageGpx } from '../lib/gpx.js';
 import { createTripItem, updateTripItem } from '../lib/items.js';
@@ -321,11 +320,6 @@ function selectedMemberEmailsFromWizard() { return [...document.querySelectorAll
 export function assertSelectedVisibilityHasMembers(payload) { if (payload.visibility !== 'selected') return; if (STATE.selectableTripMembersLoading) throw new Error('Wait for active Routefolk members to finish loading before saving.'); if (STATE.selectableTripMembersError) throw new Error('Could not load active Routefolk members. Confirm migration 015 was applied.'); if (!payload.selected_member_emails.length) throw new Error('Selected-users visibility requires at least one selected user.'); }
 export function tripPayload() { return { title: fieldValue('v2-trip-title'), description: fieldValue('v2-trip-desc'), start_date: field('v2-trip-start')?.value || null, end_date: field('v2-trip-end')?.value || null, status: field('v2-trip-status')?.value || 'planning', visibility: field('v2-trip-visibility')?.value || activeTrip()?.visibility || 'group', selected_member_emails: selectedMemberEmailsFromWizard() }; }
 
-async function saveEntryCreate(event) { claim(event); const stage = selectedStage(); if (!stage) return; try { const time = field('v2-entry-time')?.value || ''; const date = stage.planned_date || new Date().toISOString().slice(0, 10); const payload = { entry_type: field('v2-entry-type')?.value || STATE.journalType || 'note', title: fieldValue('v2-entry-title'), location: fieldValue('v2-entry-place'), description: fieldValue('v2-entry-note'), timestamp: time ? `${date}T${time}:00` : null }; if (!payload.title && !payload.location && !payload.description) throw new Error('Write a title, place, or description before saving the note.'); const entry = await createEntry(stage.id, payload); const existing = STATE.entriesByStage[stage.id]; STATE.entriesByStage[stage.id] = Array.isArray(existing) ? [...existing, entry] : [entry]; STATE.journalType = payload.entry_type; STATE.wizard = null; STATE.editTargetId = null; await api().loadEntriesForStage?.(stage.id, { quiet: true }); renderAll(); } catch (error) { showError('v2-entry-create-error', error); } }
-
-async function saveEntryEdit(event) { claim(event); const entry = selectedEntry(); const stage = selectedStage(); if (!entry || !stage) return; try { const time = field('v2-entry-time-edit')?.value || ''; const date = stage.planned_date || new Date().toISOString().slice(0, 10); const updated = await updateEntry(entry.id, { entry_type: field('v2-entry-type-edit')?.value || 'note', title: fieldValue('v2-entry-title-edit'), location: fieldValue('v2-entry-place-edit'), description: fieldValue('v2-entry-note-edit'), location_url: fieldValue('v2-entry-location-url-edit') || null, timestamp: time ? `${date}T${time}:00` : null }); STATE.entriesByStage[stage.id] = entriesForStage(stage.id).map((candidate) => candidate.id === updated.id ? updated : candidate); STATE.wizard = null; STATE.editTargetId = null; await api().loadEntriesForStage?.(stage.id, { quiet: true }); renderAll(); } catch (error) { showError('v2-entry-error', error); } }
-
-async function removeEntry(event, entryId) { claim(event); const stage = selectedStage(); const entry = entriesForStage(stage?.id).find((candidate) => candidate.id === entryId); if (!stage || !entry) return; if (!window.confirm(`Delete journal entry “${entry.title || 'Untitled'}”?`)) return; await deleteEntry(entry.id); STATE.entriesByStage[stage.id] = entriesForStage(stage.id).filter((candidate) => candidate.id !== entry.id); STATE.wizard = null; STATE.editTargetId = null; renderAll(); }
 export function clearGpxUploadState() { pendingGpxFile = null; STATE.gpxUploadTarget = null; }
 
 async function saveGpxUpload(event) { claim(event); const { tripId, stageId } = gpxTarget(); const inputFile = field('v2-gpx-file')?.files?.[0] || null; const file = pendingGpxFile || inputFile; try { if (!tripId || !stageId) throw new Error('Trip and stage are required before uploading GPX.'); if (!file) throw new Error('Choose a GPX file first.'); const { record, geometry } = await uploadStageGpx({ tripId, stageId, file }); const existing = tracksForTrip(tripId).filter((track) => track.id !== record.id); STATE.gpxByTrip[tripId] = [record, ...existing]; if (geometry) STATE.gpxGeometryByTrack[record.id] = geometry; STATE.wizard = null; clearGpxUploadState(); await api().loadGpxForTrip?.(tripId, { quiet: true }); renderAll(); } catch (error) { showError('v2-gpx-error', error); } }
@@ -350,10 +344,6 @@ document.addEventListener('change', (event) => { const target = event.target ins
  */
 export async function dispatchWizardAction(event, btn, action) {
   if (action === 'rf-v2-cancel-wizard') { draftTripVisibility = null; claim(event); STATE.wizard = null; STATE.editTargetId = null; clearGpxUploadState(); renderAll(); return true; }
-  if (action === 'rf-v2-edit-entry') { claim(event); STATE.wizard = 'journal-edit'; STATE.editTargetId = btn.dataset.entryId; renderAll(); return true; }
-  if (action === 'rf-v2-delete-entry') { await removeEntry(event, btn.dataset.entryId); return true; }
-  if (action === 'rf-v2-save-journal') { await saveEntryCreate(event); return true; }
-  if (action === 'rf-v2-update-entry') { await saveEntryEdit(event); return true; }
   if (action === 'rf-v2-open-gpx-upload') { claim(event); pendingGpxFile = null; STATE.wizard = 'gpx-upload'; STATE.gpxUploadTarget = { tripId: btn.dataset.tripId || activeTrip()?.id || null, stageId: btn.dataset.stageId || selectedStage()?.id || null }; renderAll(); return true; }
   if (action === 'rf-v2-cancel-gpx-upload') { claim(event); STATE.wizard = null; clearGpxUploadState(); renderAll(); return true; }
   if (action === 'rf-v2-save-gpx-upload') { await saveGpxUpload(event); return true; }
