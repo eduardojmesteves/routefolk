@@ -5,6 +5,8 @@
 # Local/private operational documentation.
 # The repository is public; keep admin docs and real user/admin notes local only.
 /docs/
+# Exception: refactor planning docs tracked alongside the deep-refactor branch.
+!/docs/refactor/
 
 # Local-only maintenance and development tooling.
 # The production repo should remain static-app-first unless this decision changes.
