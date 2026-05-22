@@ -229,19 +229,34 @@ async function removeItem(event, itemId) {
   renderAll();
 }
 
+/**
+ * Dispatch an expense/item edit-or-delete overlay action.
+ * Returns true if the action was recognised and handled.
+ * Shared by the legacy capture-phase listener below and the unified
+ * action-router domain modules (Tasks 4.2-4.8).
+ *
+ * @param {Event} event
+ * @param {Element} btn
+ * @param {string} action
+ * @returns {Promise<boolean>}
+ */
+export async function dispatchExtraWriteAction(event, btn, action) {
+  if (action === 'rf-v2-edit-expense') { claim(event); STATE.wizard = 'expense-edit'; STATE.editTargetId = btn.dataset.expenseId; renderAll(); return true; }
+  if (action === 'rf-v2-delete-expense') { await removeExpense(event, btn.dataset.expenseId); return true; }
+  if (action === 'rf-v2-edit-item') { claim(event); STATE.wizard = 'item-edit'; STATE.editTargetId = btn.dataset.itemId; renderAll(); return true; }
+  if (action === 'rf-v2-delete-item') { await removeItem(event, btn.dataset.itemId); return true; }
+  if (action === 'rf-v2-extra-cancel') { claim(event); STATE.wizard = null; STATE.editTargetId = null; renderAll(); return true; }
+  if (action === 'rf-v2-update-expense') { await saveExpenseEdit(event); return true; }
+  if (action === 'rf-v2-update-item') { await saveItemEdit(event); return true; }
+  return false;
+}
+
 document.addEventListener('click', async (event) => {
   const target = event.target instanceof Element ? event.target : null;
   const btn = target?.closest('[data-action]');
   if (!btn) return;
   const action = btn.dataset.action || '';
-
-  if (action === 'rf-v2-edit-expense') { claim(event); STATE.wizard = 'expense-edit'; STATE.editTargetId = btn.dataset.expenseId; renderAll(); return; }
-  if (action === 'rf-v2-delete-expense') { await removeExpense(event, btn.dataset.expenseId); return; }
-  if (action === 'rf-v2-edit-item') { claim(event); STATE.wizard = 'item-edit'; STATE.editTargetId = btn.dataset.itemId; renderAll(); return; }
-  if (action === 'rf-v2-delete-item') { await removeItem(event, btn.dataset.itemId); return; }
-  if (action === 'rf-v2-extra-cancel') { claim(event); STATE.wizard = null; STATE.editTargetId = null; renderAll(); return; }
-  if (action === 'rf-v2-update-expense') { await saveExpenseEdit(event); return; }
-  if (action === 'rf-v2-update-item') { await saveItemEdit(event); }
+  await dispatchExtraWriteAction(event, btn, action);
 }, true);
 
 document.addEventListener('routefolk:v2-render', () => requestAnimationFrame(renderExtraWritesLayer));
