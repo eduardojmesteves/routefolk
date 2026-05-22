@@ -19,6 +19,8 @@
 // ============================================================
 
 import * as navigation from './navigation-actions.js';
+import * as trip from './trip-actions.js';
+import { dispatchWizardAction } from '../screens/wizards.js';
 
 /**
  * Prevent the event from bubbling further and stop any other
@@ -41,7 +43,7 @@ export function claim(event) {
 // is preserved exactly:
 //   screens/wizards.js  >  screens/extra-writes.js  >  screens/app-actions.js
 // ---------------------------------------------------------------------------
-const DOMAINS = [navigation];
+const DOMAINS = [trip, navigation];
 
 /**
  * Route a click event to the appropriate domain handler.
@@ -55,6 +57,13 @@ const DOMAINS = [navigation];
  * @returns {Promise<boolean>}
  */
 async function route(event, btn, action) {
+  // Shared wizard-cancel action is owned by wizards.js in the legacy
+  // capture-phase registration order.
+  if (action === 'rf-v2-cancel-wizard' || action === 'rf-v2-cancel-gpx-upload') {
+    await dispatchWizardAction(event, btn, action);
+    return true;
+  }
+
   for (const domain of DOMAINS) {
     if (domain.owns(action)) {
       const handled = await domain.handle(event, btn, action);

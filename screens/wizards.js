@@ -347,7 +347,44 @@ async function saveItemEdit(event) { claim(event); const trip = activeTrip(); co
 
 document.addEventListener('change', (event) => { const target = event.target instanceof Element ? event.target : null; if (target?.id === 'v2-trip-visibility') { rememberTripVisibility(target.value); syncSelectedUsersVisibility(); } if (target instanceof HTMLInputElement && target.id === 'v2-gpx-file') { pendingGpxFile = target.files?.[0] || null; const label = byId('v2-gpx-selected-file'); if (label) label.textContent = pendingGpxFile ? `Selected: ${pendingGpxFile.name}` : 'No file selected yet.'; } }, true);
 
-document.addEventListener('click', async (event) => { const target = event.target instanceof Element ? event.target : null; const btn = target?.closest('[data-action]'); if (!btn) return; const action = btn.dataset.action || ''; if (action.endsWith('new-trip')) draftTripVisibility = null; if (action === 'rf-v2-save-trip' || action === 'rf-v2-update-trip' || action === 'rf-v2-cancel-wizard') draftTripVisibility = null; if (action === 'rf-v2-edit-trip') { claim(event); STATE.wizard = 'trip-edit'; draftTripVisibility = null; renderAll(); return; } if (action === 'rf-v2-delete-trip') { await removeTrip(event); return; } if (action === 'rf-v2-cancel-wizard') { claim(event); STATE.wizard = null; STATE.editTargetId = null; clearGpxUploadState(); renderAll(); return; } if (action === 'rf-v2-save-trip') { await saveTrip(event); return; } if (action === 'rf-v2-update-trip') { await saveTripEdit(event); return; } if (action === 'rf-v2-save-stage') { await saveStageCreate(event); return; } if (action === 'rf-v2-edit-stage') { claim(event); STATE.wizard = 'stage-edit'; STATE.editTargetId = btn.dataset.stageId; renderAll(); return; } if (action === 'rf-v2-delete-stage') { await removeStage(event, btn.dataset.stageId); return; } if (action === 'rf-v2-edit-entry') { claim(event); STATE.wizard = 'journal-edit'; STATE.editTargetId = btn.dataset.entryId; renderAll(); return; } if (action === 'rf-v2-delete-entry') { await removeEntry(event, btn.dataset.entryId); return; } if (action === 'rf-v2-update-stage') { await saveStageEdit(event); return; } if (action === 'rf-v2-save-journal') { await saveEntryCreate(event); return; } if (action === 'rf-v2-update-entry') { await saveEntryEdit(event); return; } if (action === 'rf-v2-open-gpx-upload') { claim(event); pendingGpxFile = null; STATE.wizard = 'gpx-upload'; STATE.gpxUploadTarget = { tripId: btn.dataset.tripId || activeTrip()?.id || null, stageId: btn.dataset.stageId || selectedStage()?.id || null }; renderAll(); return; } if (action === 'rf-v2-cancel-gpx-upload') { claim(event); STATE.wizard = null; clearGpxUploadState(); renderAll(); return; } if (action === 'rf-v2-save-gpx-upload') { await saveGpxUpload(event); return; } if (action === 'rf-v2-add-expense' || action === 'rf-v2-add-stage-expense') { claim(event); STATE.wizard = 'expense'; STATE.editTargetId = btn.dataset.stageId || null; renderAll(); return; } if (action === 'rf-v2-save-expense') { await saveExpense(event); return; } if (action === 'rf-v2-save-item') { await saveItem(event); return; } if (action === 'rf-v2-update-item') { await saveItemEdit(event); return; } }, true);
+/**
+ * Dispatch a wizard-domain action. Returns true if the action was
+ * recognised and handled (so callers can stop further routing).
+ * Shared by the legacy capture-phase listener below and the unified
+ * action-router domain modules (Tasks 4.2-4.8).
+ *
+ * @param {Event} event
+ * @param {Element} btn
+ * @param {string} action
+ * @returns {Promise<boolean>}
+ */
+export async function dispatchWizardAction(event, btn, action) {
+  if (action.endsWith('new-trip')) draftTripVisibility = null;
+  if (action === 'rf-v2-save-trip' || action === 'rf-v2-update-trip' || action === 'rf-v2-cancel-wizard') draftTripVisibility = null;
+  if (action === 'rf-v2-edit-trip') { claim(event); STATE.wizard = 'trip-edit'; draftTripVisibility = null; renderAll(); return true; }
+  if (action === 'rf-v2-delete-trip') { await removeTrip(event); return true; }
+  if (action === 'rf-v2-cancel-wizard') { claim(event); STATE.wizard = null; STATE.editTargetId = null; clearGpxUploadState(); renderAll(); return true; }
+  if (action === 'rf-v2-save-trip') { await saveTrip(event); return true; }
+  if (action === 'rf-v2-update-trip') { await saveTripEdit(event); return true; }
+  if (action === 'rf-v2-save-stage') { await saveStageCreate(event); return true; }
+  if (action === 'rf-v2-edit-stage') { claim(event); STATE.wizard = 'stage-edit'; STATE.editTargetId = btn.dataset.stageId; renderAll(); return true; }
+  if (action === 'rf-v2-delete-stage') { await removeStage(event, btn.dataset.stageId); return true; }
+  if (action === 'rf-v2-edit-entry') { claim(event); STATE.wizard = 'journal-edit'; STATE.editTargetId = btn.dataset.entryId; renderAll(); return true; }
+  if (action === 'rf-v2-delete-entry') { await removeEntry(event, btn.dataset.entryId); return true; }
+  if (action === 'rf-v2-update-stage') { await saveStageEdit(event); return true; }
+  if (action === 'rf-v2-save-journal') { await saveEntryCreate(event); return true; }
+  if (action === 'rf-v2-update-entry') { await saveEntryEdit(event); return true; }
+  if (action === 'rf-v2-open-gpx-upload') { claim(event); pendingGpxFile = null; STATE.wizard = 'gpx-upload'; STATE.gpxUploadTarget = { tripId: btn.dataset.tripId || activeTrip()?.id || null, stageId: btn.dataset.stageId || selectedStage()?.id || null }; renderAll(); return true; }
+  if (action === 'rf-v2-cancel-gpx-upload') { claim(event); STATE.wizard = null; clearGpxUploadState(); renderAll(); return true; }
+  if (action === 'rf-v2-save-gpx-upload') { await saveGpxUpload(event); return true; }
+  if (action === 'rf-v2-add-expense' || action === 'rf-v2-add-stage-expense') { claim(event); STATE.wizard = 'expense'; STATE.editTargetId = btn.dataset.stageId || null; renderAll(); return true; }
+  if (action === 'rf-v2-save-expense') { await saveExpense(event); return true; }
+  if (action === 'rf-v2-save-item') { await saveItem(event); return true; }
+  if (action === 'rf-v2-update-item') { await saveItemEdit(event); return true; }
+  return false;
+}
+
+document.addEventListener('click', async (event) => { const target = event.target instanceof Element ? event.target : null; const btn = target?.closest('[data-action]'); if (!btn) return; const action = btn.dataset.action || ''; await dispatchWizardAction(event, btn, action); }, true);
 
 document.addEventListener('routefolk:v2-render', () => requestAnimationFrame(renderWizardLayer));
 requestAnimationFrame(renderWizardLayer);
