@@ -23,8 +23,7 @@ let draftTripVisibility = null;
 let pendingGpxFile = null;
 const tripMembersLoadPromises = new Map();
 
-/** Module-state accessors for the wizard draft trip visibility. */
-export function getDraftTripVisibility() { return draftTripVisibility; }
+/** Module-state setter for the wizard draft trip visibility. */
 export function setDraftTripVisibility(value) { draftTripVisibility = value; }
 /** Module-state accessor for the captured pending GPX file. */
 export function getPendingGpxFile() { return pendingGpxFile; }
