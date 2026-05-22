@@ -6,7 +6,6 @@
 
 import { STATE } from '../state/app-state.js';
 import { esc } from '../utils/dom.js';
-import { uploadStageGpx } from '../lib/gpx.js';
 import { EXPENSE_CATEGORY_META } from '../constants/app-constants.js';
 
 const WIZARDS = new Set(['trip', 'trip-edit', 'stage', 'stage-edit', 'journal', 'journal-edit', 'gpx-upload', 'expense', 'item', 'item-edit']);
@@ -320,17 +319,19 @@ export function tripPayload() { return { title: fieldValue('v2-trip-title'), des
 
 export function clearGpxUploadState() { pendingGpxFile = null; STATE.gpxUploadTarget = null; }
 
-async function saveGpxUpload(event) { claim(event); const { tripId, stageId } = gpxTarget(); const inputFile = field('v2-gpx-file')?.files?.[0] || null; const file = pendingGpxFile || inputFile; try { if (!tripId || !stageId) throw new Error('Trip and stage are required before uploading GPX.'); if (!file) throw new Error('Choose a GPX file first.'); const { record, geometry } = await uploadStageGpx({ tripId, stageId, file }); const existing = tracksForTrip(tripId).filter((track) => track.id !== record.id); STATE.gpxByTrip[tripId] = [record, ...existing]; if (geometry) STATE.gpxGeometryByTrack[record.id] = geometry; STATE.wizard = null; clearGpxUploadState(); await api().loadGpxForTrip?.(tripId, { quiet: true }); renderAll(); } catch (error) { showError('v2-gpx-error', error); } }
-
 export function itemPayload() { return { text: fieldValue('v2-item-text'), category_id: field('v2-item-category')?.value || null, status: field('v2-item-status')?.value || 'planned', notes: fieldValue('v2-item-notes') }; }
 
 document.addEventListener('change', (event) => { const target = event.target instanceof Element ? event.target : null; if (target?.id === 'v2-trip-visibility') { rememberTripVisibility(target.value); syncSelectedUsersVisibility(); } if (target instanceof HTMLInputElement && target.id === 'v2-gpx-file') { pendingGpxFile = target.files?.[0] || null; const label = byId('v2-gpx-selected-file'); if (label) label.textContent = pendingGpxFile ? `Selected: ${pendingGpxFile.name}` : 'No file selected yet.'; } }, true);
 
 /**
- * Dispatch a wizard-domain action. Returns true if the action was
- * recognised and handled (so callers can stop further routing).
- * Shared by the legacy capture-phase listener below and the unified
- * action-router domain modules (Tasks 4.2-4.8).
+ * Dispatch the two shared wizard-cancel actions. The unified
+ * action-router (actions/action-router.js) routes
+ * `rf-v2-cancel-wizard` and `rf-v2-cancel-gpx-upload` straight here
+ * before its domain loop, because cancelling closes the wizard host —
+ * a concern owned by this rendering module rather than any one domain.
+ *
+ * All save/edit/delete handler logic now lives in the actions/* domain
+ * modules.
  *
  * @param {Event} event
  * @param {Element} btn
@@ -339,9 +340,7 @@ document.addEventListener('change', (event) => { const target = event.target ins
  */
 export async function dispatchWizardAction(event, btn, action) {
   if (action === 'rf-v2-cancel-wizard') { draftTripVisibility = null; claim(event); STATE.wizard = null; STATE.editTargetId = null; clearGpxUploadState(); renderAll(); return true; }
-  if (action === 'rf-v2-open-gpx-upload') { claim(event); pendingGpxFile = null; STATE.wizard = 'gpx-upload'; STATE.gpxUploadTarget = { tripId: btn.dataset.tripId || activeTrip()?.id || null, stageId: btn.dataset.stageId || selectedStage()?.id || null }; renderAll(); return true; }
   if (action === 'rf-v2-cancel-gpx-upload') { claim(event); STATE.wizard = null; clearGpxUploadState(); renderAll(); return true; }
-  if (action === 'rf-v2-save-gpx-upload') { await saveGpxUpload(event); return true; }
   return false;
 }
 
