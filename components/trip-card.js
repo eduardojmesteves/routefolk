@@ -10,12 +10,14 @@ import { esc } from '../utils/dom.js';
 import { fmtDateRange } from '../utils/datetime.js';
 
 export function tripVisibility(trip) {
-  return trip?.visibility === 'private' ? 'private' : 'group';
+  if (trip?.visibility === 'private') return 'private';
+  if (trip?.visibility === 'selected') return 'selected';
+  return 'group';
 }
 
 export function visibilityPillHtml(trip) {
   const key = tripVisibility(trip);
-  const meta = VISIBILITY_META[key];
+  const meta = VISIBILITY_META[key] || VISIBILITY_META.group;
   return `<span class="visibility-pill rf-pill ${meta.cls}">${esc(meta.label)}</span>`;
 }
 

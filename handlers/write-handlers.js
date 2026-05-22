@@ -4,6 +4,7 @@
 // ============================================================
 
 import { createTrip, updateTrip, deleteTrip } from '../lib/trips.js';
+import { replaceTripMembers } from '../lib/trip-members.js';
 import { createExpense, updateExpense, deleteExpense } from '../lib/expenses.js';
 import { createEntry, updateEntry, deleteEntry } from '../lib/journal.js';
 import { uploadStageGpx, deleteGpxTrack } from '../lib/gpx.js';
@@ -17,6 +18,12 @@ import { readTripForm } from '../components/trip-form.js';
 import { readEntryForm } from '../components/journal-form.js';
 import { readExpenseForm } from '../components/expense-form.js';
 
+function assertSelectedVisibilityHasMembers(fields) {
+  if (fields.visibility === 'selected' && !fields.selected_member_emails?.length) {
+    throw new Error('Selected-user visibility requires at least one selected user.');
+  }
+}
+
 export function createWriteHandlers({
   loadTrips,
   openTrip,
@@ -28,7 +35,15 @@ export function createWriteHandlers({
   async function handleCreateTrip() {
     if (!ensureOnline()) return;
     try {
-      const trip = await createTrip(readTripForm());
+      const fields = readTripForm();
+      assertSelectedVisibilityHasMembers(fields);
+      const trip = await createTrip({ ...fields, visibility: fields.visibility === 'selected' ? 'private' : fields.visibility });
+
+      if (fields.visibility === 'selected') {
+        await replaceTripMembers(trip.id, fields.selected_member_emails);
+        await updateTrip(trip.id, { visibility: 'selected' });
+      }
+
       closeModal();
       await loadTrips();
       await openTrip(trip.id);
@@ -42,7 +57,21 @@ export function createWriteHandlers({
   async function handleUpdateTrip(tripId) {
     if (!ensureOnline()) return;
     try {
-      await updateTrip(tripId, readTripForm());
+      const fields = readTripForm();
+      const trip = STATE.trips.find((t) => t.id === tripId);
+      const canManageVisibility = trip?.created_by === STATE.user?.id;
+
+      if (canManageVisibility) {
+        assertSelectedVisibilityHasMembers(fields);
+        if (fields.visibility === 'selected') {
+          await replaceTripMembers(tripId, fields.selected_member_emails);
+        }
+        await updateTrip(tripId, fields);
+      } else {
+        const { selected_member_emails, visibility, ...contentFields } = fields;
+        await updateTrip(tripId, contentFields);
+      }
+
       closeModal();
       await loadTrips();
       renderAll();

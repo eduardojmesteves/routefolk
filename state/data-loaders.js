@@ -9,6 +9,7 @@ import { listStages } from '../lib/stages.js';
 import { fetchStageForecasts } from '../lib/weather.js';
 import { listEntriesForStage } from '../lib/journal.js';
 import { listProfiles } from '../lib/profiles.js';
+import { listActiveTripMembers, listTripMembersForTrip } from '../lib/trip-members.js';
 import {
   ensureDefaultItemCategories,
   listItemsForTrip,
@@ -60,6 +61,46 @@ export function createDataLoaders({ renderAll }) {
       STATE.profilesLoading = false;
       renderAll();
     }
+  }
+
+  async function loadSelectableTripMembers(options = {}) {
+    if (!STATE.user) return [];
+    if (STATE.selectableTripMembers.length && !options.force) return STATE.selectableTripMembers;
+    STATE.selectableTripMembersLoading = true;
+    STATE.selectableTripMembersError = null;
+    if (!options.quiet) renderAll();
+
+    try {
+      STATE.selectableTripMembers = await listActiveTripMembers();
+    } catch (err) {
+      console.error(err);
+      STATE.selectableTripMembers = [];
+      STATE.selectableTripMembersError = err.message || 'Failed to load active app members.';
+    } finally {
+      STATE.selectableTripMembersLoading = false;
+      renderAll();
+    }
+    return STATE.selectableTripMembers;
+  }
+
+  async function loadTripMembersForTrip(tripId, options = {}) {
+    if (!STATE.user || !tripId) return [];
+    if (Array.isArray(STATE.tripMembersByTrip[tripId]) && !options.force) return STATE.tripMembersByTrip[tripId];
+    STATE.tripMembersLoadingByTrip[tripId] = true;
+    STATE.tripMembersErrorByTrip[tripId] = null;
+    if (!options.quiet) renderAll();
+
+    try {
+      STATE.tripMembersByTrip[tripId] = await listTripMembersForTrip(tripId);
+    } catch (err) {
+      console.error(err);
+      STATE.tripMembersByTrip[tripId] = [];
+      STATE.tripMembersErrorByTrip[tripId] = err.message || 'Failed to load selected trip users.';
+    } finally {
+      STATE.tripMembersLoadingByTrip[tripId] = false;
+      renderAll();
+    }
+    return STATE.tripMembersByTrip[tripId];
   }
 
   async function loadStagesForTrip(tripId) {
@@ -294,6 +335,7 @@ export function createDataLoaders({ renderAll }) {
         if (!STATE.entriesByStage[stage.id]) loadEntriesForStage(stage.id, { quiet: true });
       });
     }
+    if (!Array.isArray(STATE.tripMembersByTrip[tripId])) await loadTripMembersForTrip(tripId, { quiet: true });
     if (!Array.isArray(STATE.expensesByTrip[tripId])) await loadExpensesForTrip(tripId, { quiet: true });
     if (!Array.isArray(STATE.gpxByTrip[tripId])) await loadGpxForTrip(tripId, { quiet: true });
     if (!Array.isArray(STATE.itemsByTrip[tripId])) await loadItemsForTrip(tripId, { quiet: true });
@@ -302,6 +344,8 @@ export function createDataLoaders({ renderAll }) {
   return {
     loadTrips,
     loadProfiles,
+    loadSelectableTripMembers,
+    loadTripMembersForTrip,
     loadStagesForTrip,
     loadEntriesForStage,
     loadExpensesForTrip,

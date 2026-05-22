@@ -7,7 +7,7 @@
 import { STATE } from '../state/app-state.js';
 import { esc } from '../utils/dom.js';
 import { fmtKm } from '../utils/format.js';
-import { uploadStageGpx, deleteGpxTrack, trackFileName } from '../lib/gpx.js';
+import { deleteGpxTrack, trackFileName } from '../lib/gpx.js';
 
 const activeTrip = () => STATE.trips.find((trip) => trip.id === (STATE.viewTripId || STATE.selectedTripId)) || null;
 const stagesForTrip = (tripId) => Array.isArray(STATE.stagesByTrip[tripId]) ? STATE.stagesByTrip[tripId] : [];
@@ -75,10 +75,9 @@ function gpxHtml(trip, stage) {
     <div class="rf-v2-gpx-card">
       ${STATE.gpxError ? `<div class="rf-v2-gpx-error">${esc(STATE.gpxError)}</div>` : ''}
       ${tracks.length ? tracks.map(trackRow).join('') : '<div class="rf-v2-gpx-empty">No GPX track attached to this stage yet.</div>'}
-      <label class="rf-v2-gpx-upload">
+      <button class="rf-v2-gpx-upload" data-action="rf-v2-open-gpx-upload" data-trip-id="${esc(trip.id)}" data-stage-id="${esc(stage.id)}" type="button">
         <span>Upload GPX</span>
-        <input type="file" accept=".gpx,application/gpx+xml" data-action="rf-v2-upload-gpx" data-trip-id="${esc(trip.id)}" data-stage-id="${esc(stage.id)}">
-      </label>
+      </button>
       <div class="rf-v2-gpx-help">Use GPX exports from your navigation/tracking app. These files will power the archive geography.</div>
     </div>
   `;
@@ -98,25 +97,6 @@ function trackRow(track) {
   `;
 }
 
-async function uploadGpx(input) {
-  const tripId = input.dataset.tripId;
-  const stageId = input.dataset.stageId;
-  const file = input.files?.[0];
-  if (!tripId || !stageId || !file) return;
-
-  try {
-    const { record, geometry } = await uploadStageGpx({ tripId, stageId, file });
-    const existing = tracksForTrip(tripId).filter((track) => track.id !== record.id);
-    STATE.gpxByTrip[tripId] = [record, ...existing];
-    if (geometry) STATE.gpxGeometryByTrack[record.id] = geometry;
-    renderAll();
-  } catch (error) {
-    window.alert(error?.message || 'Could not upload GPX file.');
-  } finally {
-    input.value = '';
-  }
-}
-
 async function removeGpx(event, trackId) {
   claim(event);
   const trip = activeTrip();
@@ -133,13 +113,6 @@ async function removeGpx(event, trackId) {
     window.alert(error?.message || 'Could not delete GPX track.');
   }
 }
-
-document.addEventListener('change', async (event) => {
-  const input = event.target instanceof HTMLInputElement ? event.target : null;
-  if (!input?.dataset?.action?.endsWith('upload-gpx')) return;
-  event.stopImmediatePropagation();
-  await uploadGpx(input);
-}, true);
 
 document.addEventListener('click', async (event) => {
   const target = event.target instanceof Element ? event.target : null;

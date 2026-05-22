@@ -12,7 +12,7 @@ import { createSessionController } from './state/session-controller.js';
 import { restoreUiState, saveUiState, validateUiSelection } from './state/ui-state.js';
 import { toast } from './components/toast.js';
 
-const EXPECTED_SCHEMA_VERSION = '014';
+const EXPECTED_SCHEMA_VERSION = '015';
 const PALETTE_KEY = 'rf.palette';
 const PALETTES = ['forest', 'midnight', 'oxblood', 'alpine'];
 let lastAuthUserId = null;
@@ -36,6 +36,8 @@ function renderAll() {
 const {
   loadTrips,
   loadProfiles,
+  loadSelectableTripMembers,
+  loadTripMembersForTrip,
   loadStagesForTrip,
   loadEntriesForStage,
   loadExpensesForTrip,
@@ -57,6 +59,8 @@ window.routefolkData = {
   renderAll,
   loadTrips,
   loadProfiles,
+  loadSelectableTripMembers,
+  loadTripMembersForTrip,
   loadStagesForTrip,
   loadEntriesForStage,
   loadExpensesForTrip,
@@ -109,7 +113,7 @@ async function hydrateSelectedTripAfterTripsLoad() {
 }
 
 async function resumeVisibleView() {
-  if (!STATE.user || resumeInFlight) return;
+  if (!STATE.user || resumeInFlight || STATE.wizard) return;
   resumeInFlight = true;
   const activeWizard = STATE.wizard;
   const activeEditTargetId = STATE.editTargetId;
@@ -138,9 +142,11 @@ function initPersistenceGuards() {
   window.addEventListener('beforeunload', () => saveUiState());
   document.addEventListener('visibilitychange', () => {
     if (document.visibilityState === 'hidden') saveUiState();
-    if (document.visibilityState === 'visible') resumeVisibleView();
+    if (document.visibilityState === 'visible' && !STATE.wizard) resumeVisibleView();
   });
-  window.addEventListener('focus', () => resumeVisibleView());
+  window.addEventListener('focus', () => {
+    if (!STATE.wizard) resumeVisibleView();
+  });
 }
 
 async function init() {
