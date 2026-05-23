@@ -18,6 +18,7 @@ export const STATE = {
   editTargetId: null,
   gpxUploadTarget: null,
   journalType: 'note',
+  navSheet: null,
   user: null,
   appAccess: null,
   accessLoading: false,
