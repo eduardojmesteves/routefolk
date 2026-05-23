@@ -6,34 +6,24 @@
 
 import { STATE } from '../../state/app-state.js';
 import { esc } from '../../utils/dom.js';
-import { fmtDate } from '../../utils/datetime.js';
 import {
   DETAIL_TABS,
-  aggregateExpense,
-  arr,
-  categoryLabel,
   currentPalette,
   currentTrip,
-  day,
   expenses,
-  fmtEuro,
   items,
-  lifetime,
-  metricGrid,
-  payerName,
   season,
   stages,
-  stats,
   subtitle,
   tripNo,
-  userName,
 } from './shared.js';
-import { gpxPanelHtml } from './trip-detail/gpx-panel.js';
 import { renderMobileAccount } from './account/account-mobile.js';
 import { renderMobileCosts } from './trip-detail/costs-mobile.js';
 import { renderMobileItems } from './trip-detail/packing-mobile.js';
 import { renderMobileArchive } from './archive/archive-list-mobile.js';
 import { renderMobileTrips } from './trips/trips-mobile.js';
+import { renderMobileStages, renderMobileJournal } from './trip-detail/stages-mobile.js';
+import { renderMobileSummary, renderMobileArchiveSummary } from './trip-detail/summary-mobile.js';
 
 
 function bottomNav(active) {
@@ -49,11 +39,6 @@ function tripHeader(trip, active, backTo = 'trips', summaryOnly = false) {
   const backLabel = backTo === 'archive' ? 'Archive' : 'Trips';
   const tabs = summaryOnly ? [['summary', 'Summary']] : DETAIL_TABS;
   return `<header class="rf-clean-trip-head"><button class="rf-clean-back" data-action="${backAction}">← ${backLabel}</button><div class="rf-clean-kicker">${esc(tripNo(trip))} · ${esc(season(trip))}</div><h1>${esc(trip.title || 'Untitled trip')}</h1><p>${esc(subtitle(trip))}</p><div class="rf-m2-detail-stamps">${statePillHtml(trip.status)}${stampHtml(trip.visibility || 'group', 'accent')}</div></header><nav class="rf-clean-tabs">${tabs.map(([key, label]) => `<button class="${active === key ? 'is-active' : ''}" data-action="rf-m2-tab" data-value="${key}">${label}</button>`).join('')}</nav>`;
-}
-
-function selectedStage(trip) {
-  const st = stages(trip.id);
-  return st.find((stage) => stage.id === STATE.selectedStageId) || st[0] || null;
 }
 
 function statusLabel(status) {
@@ -78,75 +63,20 @@ function stampHtml(value, tone = '') {
   return `<span class="rf-m2-stamp ${tone ? `is-${tone}` : ''}">${esc(value)}</span>`;
 }
 
-function numeric(value) {
-  const number = Number(value);
-  return Number.isFinite(number) ? number : null;
-}
-
-function stageHasCoords(stage) {
-  return (numeric(stage?.start_lat) !== null && numeric(stage?.start_lng) !== null)
-    || (numeric(stage?.end_lat) !== null && numeric(stage?.end_lng) !== null);
-}
-
-function forecastTempRange(forecast) {
-  if (forecast?.tempMin != null && forecast?.tempMax != null) return `${Math.round(forecast.tempMin)}–${Math.round(forecast.tempMax)}°`;
-  return '—';
-}
-
-function forecastMeta(forecast) {
-  const precip = forecast?.precipProb != null
-    ? `${Math.round(forecast.precipProb)}% rain`
-    : forecast?.precipMm != null ? `${forecast.precipMm} mm rain` : 'rain —';
-  const wind = forecast?.windKmh != null ? `${Math.round(forecast.windKmh)} km/h wind` : 'wind —';
-  return `${precip} · ${wind}`;
-}
-
-function skyPointHtml(point) {
-  const forecast = point.forecast;
-  return `<span><strong>${esc(point.label)}</strong><br>${esc(forecast.icon || '·')}<br>${esc(forecastTempRange(forecast))}<small>${esc(forecastMeta(forecast))}</small></span>`;
-}
-
-function mobileSkyHtml(stage) {
-  const result = STATE.forecastsByStage[stage.id];
-
-  if (!stage?.planned_date) {
-    return `<section class="rf-clean-sky"><strong>Sky advisory</strong><p>Set a planned date to see the weather forecast.</p></section>`;
-  }
-  if (!stageHasCoords(stage)) {
-    return `<section class="rf-clean-sky"><strong>Sky advisory</strong><p>Weather unavailable. Edit the stage location so routefolk can store coordinates.</p></section>`;
-  }
-  if (result === 'loading' || result === undefined) {
-    return `<section class="rf-clean-sky"><strong>Sky advisory</strong><p>Loading weather…</p></section>`;
-  }
-  if (!Array.isArray(result) || !result.length) {
-    return `<section class="rf-clean-sky"><strong>Sky advisory</strong><p>Weather unavailable for this stage.</p></section>`;
-  }
-
-  const usable = result.filter((point) => point.forecast);
-  if (!usable.length) {
-    return `<section class="rf-clean-sky"><strong>Sky advisory</strong><p>No forecast available for this date.</p></section>`;
-  }
-
-  return `<section class="rf-clean-sky"><strong>Sky advisory</strong><div>${usable.map(skyPointHtml).join('')}</div><em>Weather by Open-Meteo</em></section>`;
-}
-
 function mobileTrips() {
   return renderMobileTrips(screen);
 }
 
 function mobileStages(trip) {
-  const st = stages(trip.id);
-  return screen(`${tripHeader(trip, 'stages')}<main class="rf-clean-page">${st.map((stage, index) => `<button class="rf-clean-stage" data-action="rf-m2-open-stage" data-stage-id="${esc(stage.id)}"><span>${index + 1}</span><div><strong>${esc(stage.start_location || 'Start')} <em>to</em> ${esc(stage.end_location || 'End')}</strong><small>${esc(day(stage.planned_date))} · ${Math.round(Number(stage.distance_km) || 0)} km · ${esc(fmtDate(stage.planned_date) || '')}</small>${stage.notes ? `<p>${esc(stage.notes)}</p>` : ''}</div></button>`).join('') || '<div class="rf-clean-empty">No stages yet.</div>'}<button class="rf-m2-btn is-dashed" data-action="rf-m2-add-stage">+ Add another stage</button></main>`);
+  return renderMobileStages(trip, { screen, tripHeader });
 }
 
 function mobileSummary(trip) {
-  const s = stats(trip);
-  return screen(`${tripHeader(trip, 'summary')}<main class="rf-clean-page"><div class="rf-clean-card-list">${stages(trip.id).map((stage, index) => `<article class="rf-clean-stage-card"><div class="rf-clean-row"><span>${index + 1}</span><strong>${esc(stage.start_location || 'Start')} <em>to</em> ${esc(stage.end_location || 'End')}</strong></div><div class="rf-clean-stage-meta"><span>${esc(fmtDate(stage.planned_date) || '—')}</span><span>${Math.round(Number(stage.distance_km) || 0)} km</span><span>${esc(stage.notes || '—')}</span></div>${arr(STATE.entriesByStage[stage.id]).map((entry, i) => `<div class="rf-clean-subrow"><small>${i + 1}. ${esc(entry.entry_type || 'note')}</small><b>${esc(entry.title || 'Untitled')}</b></div>`).join('')}</article>`).join('') || '<div class="rf-clean-empty">No stages yet.</div>'}</div><h2>Totals</h2>${metricGrid([['Distance', Math.round(s.distance).toLocaleString(), 'km'], ['Spent', fmtEuro(s.spent), 'total'], ['Stages', String(s.stages), 'days'], ['Entries', String(s.entries), 'journal']])}</main>`);
+  return renderMobileSummary(trip, { screen, tripHeader });
 }
 
 function mobileArchiveSummary(trip) {
-  const s = stats(trip);
-  return screen(`${tripHeader(trip, 'summary', 'archive', true)}<main class="rf-clean-page"><div class="rf-clean-card-list">${stages(trip.id).map((stage, index) => `<article class="rf-clean-stage-card"><div class="rf-clean-row"><span>${index + 1}</span><strong>${esc(stage.start_location || 'Start')} <em>to</em> ${esc(stage.end_location || 'End')}</strong></div><div class="rf-clean-stage-meta"><span>${esc(fmtDate(stage.planned_date) || '—')}</span><span>${Math.round(Number(stage.distance_km) || 0)} km</span><span>${esc(stage.notes || '—')}</span></div>${arr(STATE.entriesByStage[stage.id]).map((entry, i) => `<div class="rf-clean-subrow"><small>${i + 1}. ${esc(entry.entry_type || 'note')}</small><b>${esc(entry.title || 'Untitled')}</b></div>`).join('')}</article>`).join('') || '<div class="rf-clean-empty">No stages yet.</div>'}</div><h2>Totals</h2>${metricGrid([['Distance', Math.round(s.distance).toLocaleString(), 'km'], ['Spent', fmtEuro(s.spent), 'total'], ['Stages', String(s.stages), 'days'], ['Entries', String(s.entries), 'journal']])}</main>`, 'archive');
+  return renderMobileArchiveSummary(trip, { screen, tripHeader });
 }
 
 function mobileCosts(trip) {
@@ -157,18 +87,8 @@ function mobileItems(trip) {
   return renderMobileItems(trip, { screen, tripHeader });
 }
 
-function mobileStageTracks(tripId, stageId) {
-  const raw = STATE.gpxByTrip[tripId];
-  return Array.isArray(raw) ? raw.filter((track) => track.stage_id === stageId) : [];
-}
-
 function mobileJournal(trip) {
-  const stage = selectedStage(trip);
-  if (!stage) return screen('<main class="rf-clean-page"><div class="rf-clean-empty">No stage selected.</div></main>');
-  const entries = arr(STATE.entriesByStage[stage.id]);
-  const stageExpenses = expenses(trip.id).filter((expense) => expense.stage_id === stage.id);
-  const tracks = mobileStageTracks(trip.id, stage.id);
-  return screen(`<main class="rf-clean-page"><button class="rf-clean-back" data-action="rf-m2-back-to-stages">← ${esc(trip.title || 'Trip')}</button><div class="rf-clean-kicker">Stage · ${esc(fmtDate(stage.planned_date) || '')}</div><h1 class="rf-clean-title">${esc(stage.start_location || 'Start')} <em>to</em> ${esc(stage.end_location || 'End')}</h1><p>${esc(stage.notes || '')}</p>${mobileSkyHtml(stage)}<div class="rf-clean-section-head"><h2>The day's notes</h2><button data-action="rf-m2-add-journal">+ Add</button></div>${entries.map((entry, i) => `<article class="rf-clean-note"><span>${i + 1}</span><div><small>A ${esc(entry.entry_type || 'note')}</small><strong>${esc(entry.title || 'Untitled')}</strong>${entry.location ? `<em>at ${esc(entry.location)}</em>` : ''}</div></article>`).join('') || '<div class="rf-clean-empty">No entries yet.</div>'}<div class="rf-clean-section-head"><h2>Stage costs</h2><button data-action="rf-v2-add-stage-expense" data-stage-id="${esc(stage.id)}">+ Add</button></div>${stageExpenses.map((expense) => `<article class="rf-clean-expense"><div><strong>${esc(categoryLabel(expense.category))}</strong><small>${esc(payerName(expense.user_id))}</small></div><b>${fmtEuro(expense.amount || 0)}</b></article>`).join('') || '<div class="rf-clean-empty">No costs assigned to this stage.</div>'}<section class="rf-v2-gpx-section">${gpxPanelHtml(trip, stage, tracks)}</section></main>`);
+  return renderMobileJournal(trip, { screen });
 }
 
 function mobileArchive() {
