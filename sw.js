@@ -4,7 +4,7 @@
 // Bump CACHE whenever shell assets change.
 // ============================================================
 
-const CACHE = 'routefolk-shell-v124-gpx-renderer';
+const CACHE = 'routefolk-shell-v125-archive-split';
 
 const SHELL_ASSETS = [
   './',
@@ -42,6 +42,10 @@ const SHELL_ASSETS = [
   './screens/wizards/gpx-wizard.js?v=20260522-wizard-split-01',
   './screens/extra-writes.js?v=20260520-mobile-fields-02',
   './screens/archive-geo-map.js?v=20260519-local-map-01',
+  './screens/render/archive/archive-map-controller.js?v=20260523-archive-split-01',
+  './screens/render/archive/archive-map-leaflet.js?v=20260523-archive-split-01',
+  './screens/render/archive/archive-map-fallback.js?v=20260523-archive-split-01',
+  './screens/render/archive/archive-map-geometry.js?v=20260523-archive-split-01',
   './screens/render/shared.js',
   './screens/render/mobile.js',
   './screens/render/desktop.js',
