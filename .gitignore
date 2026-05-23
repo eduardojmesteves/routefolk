@@ -2,46 +2,9 @@
 # routefolk — .gitignore
 # ============================================================
 
-# Local/private operational documentation.
-# The repository is public; keep admin docs and real user/admin notes local only.
-/docs/*
-# Exception: refactor planning docs tracked alongside the deep-refactor branch.
-# Both forms needed: without trailing slash negates the directory match from /docs/*,
-# and the /** form ensures git traverses into the directory and sees its files.
-!/docs/refactor
-!/docs/refactor/**
-# Exception: PWA release checklist is part of the release workflow.
-!/docs/pwa-release-checklist.md
-
-# Local-only maintenance and development tooling.
-# The production repo should remain static-app-first unless this decision changes.
-/test-tools/
-/local-tests/
-# Most files in /tools/ stay local; the SW asset helper is part of the release workflow.
-# Ignore everything in tools/ except generate-sw-assets.js.
-/tools/*
-!/tools/generate-sw-assets.js
-
-# Environment and secrets
-.env
-.env.*
-!.env.example
-*.local
-.dev.vars*
-!.dev.vars.example
-
-
-# Build/output folders
-/dist/
-/build/
-/out/
-/public/build/
-
-# Hosting/platform folders
-.vercel/
-.netlify/
-.wrangler/
-/.cloudflare/
+# Documentation and tooling — local only, never deploy
+/docs/
+/tools/
 
 # Test infrastructure — run locally, never commit
 /tests/
@@ -52,34 +15,33 @@ vitest.config.js
 playwright.config.js
 .eslintrc.cjs
 .prettierrc
-
-# Test and coverage output
 /coverage/
 /playwright-report/
 /test-results/
 /.nyc_output/
 
-# Caches and temporary files
-.cache/
-.parcel-cache/
-.vite/
-.tmp/
-tmp/
-temp/
-*.tmp
-*.temp
+# Environment and secrets
+.env
+.env.*
+!.env.example
+*.local
+.dev.vars*
+!.dev.vars.example
 
-# Logs
-*.log
-npm-debug.log*
-yarn-debug.log*
-yarn-error.log*
-pnpm-debug.log*
+# Build/output folders
+/dist/
+/build/
+/out/
+
+# Hosting/platform folders
+.vercel/
+.netlify/
+.wrangler/
+/.cloudflare/
 
 # OS files
 .DS_Store
 .AppleDouble
-.LSOverride
 Thumbs.db
 desktop.ini
 
@@ -90,18 +52,19 @@ desktop.ini
 *.swo
 *~
 
-# Local archives/exports
-*.zip
-*.tar
-*.tar.gz
-*.tgz
+# Logs
+*.log
+npm-debug.log*
 
 # Supabase local development artifacts
 .supabase/
 supabase/.branches/
 supabase/.temp/
 
-# Python helper artifacts from local analysis scripts
-__pycache__/
-*.py[cod]
-.ipynb_checkpoints/
+# Temporary files
+*.tmp
+*.temp
+.cache/
+.tmp/
+tmp/
+temp/
