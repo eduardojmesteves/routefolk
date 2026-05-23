@@ -45,18 +45,7 @@ import { setPendingGpxFile, getPendingGpxFile, byId } from './wizard-shared.js';
 //   is owning the wizard overlay (.rf-v2-wizard-host) only.
 
 function removeExisting() {
-  document.querySelectorAll('.rf-v2-wizard-host, .rf-v2-cost-cta, .rf-v2-stage-actions, .rf-v2-entry-actions').forEach((node) => node.remove());
-}
-
-function injectStageActions() {
-  const stage = selectedStage();
-  if (!stage || STATE.wizard || STATE.view !== 'detail') return;
-  const target = document.querySelector('.rf-d2-aside-head, .rf-m2-aside-head');
-  if (!target || target.querySelector('.rf-v2-stage-actions')) return;
-  const wrap = document.createElement('div');
-  wrap.className = 'rf-v2-stage-actions';
-  wrap.innerHTML = `<button class="rf-d2-btn" data-action="rf-v2-edit-stage" data-stage-id="${esc(stage.id)}" type="button">Edit stage</button><button class="rf-d2-btn is-danger" data-action="rf-v2-delete-stage" data-stage-id="${esc(stage.id)}" type="button">Delete</button>`;
-  target.appendChild(wrap);
+  document.querySelectorAll('.rf-v2-wizard-host, .rf-v2-cost-cta, .rf-v2-entry-actions').forEach((node) => node.remove());
 }
 
 function injectEntryActions() {
@@ -118,7 +107,6 @@ export function renderWizardLayer() {
 
   if (!STATE.user || !STATE.wizard || !WIZARDS.has(STATE.wizard)) {
     removeExisting();
-    injectStageActions();
     injectEntryActions();
     injectCostCta();
     return;
