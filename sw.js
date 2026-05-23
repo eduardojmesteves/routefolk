@@ -4,7 +4,7 @@
 // Bump CACHE whenever shell assets change.
 // ============================================================
 
-const CACHE = 'routefolk-shell-v122-action-modules';
+const CACHE = 'routefolk-shell-v123-wizard-split';
 
 const SHELL_ASSETS = [
   './',
@@ -30,7 +30,16 @@ const SHELL_ASSETS = [
   './actions/gpx-actions.js',
   './app.js?v=20260520-desktop-weather-02',
   './screens/app-renderer.js?v=20260520-desktop-weather-02',
-  './screens/wizards.js?v=20260522-journal-gpx-02',
+  './screens/wizards.js?v=20260522-wizard-split-01',
+  './screens/wizards/index.js?v=20260522-wizard-split-01',
+  './screens/wizards/wizard-shared.js?v=20260522-wizard-split-01',
+  './screens/wizards/wizard-host.js?v=20260522-wizard-split-01',
+  './screens/wizards/trip-wizard.js?v=20260522-wizard-split-01',
+  './screens/wizards/stage-wizard.js?v=20260522-wizard-split-01',
+  './screens/wizards/journal-wizard.js?v=20260522-wizard-split-01',
+  './screens/wizards/expense-wizard.js?v=20260522-wizard-split-01',
+  './screens/wizards/item-wizard.js?v=20260522-wizard-split-01',
+  './screens/wizards/gpx-wizard.js?v=20260522-wizard-split-01',
   './screens/extra-writes.js?v=20260520-mobile-fields-02',
   './screens/gpx-panel.js?v=20260522-stable-upload-01',
   './screens/archive-geo-map.js?v=20260519-local-map-01',
