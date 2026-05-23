@@ -1,0 +1,26 @@
+// ============================================================
+// routefolk — navigate-sheet.js
+// Mobile bottom sheet for choosing a navigation target.
+// ============================================================
+
+import { esc } from '../../utils/dom.js';
+
+export function navigateSheetHtml(stage, sheetState) {
+  if (!stage || !sheetState || sheetState.stageId !== stage.id) return '';
+  const remember = sheetState.remember ? 'checked' : '';
+  const waze = sheetState.wazeInstalled
+    ? `<button class="rf-m2-sheet-opt" data-action="rf-m2-nav-open" data-stage-id="${esc(stage.id)}" data-target="waze" type="button"><strong>Waze</strong><span>Navigate to the destination</span></button>`
+    : '';
+  return `<div class="rf-m2-sheet-backdrop" data-action="rf-m2-close-nav-sheet">
+    <section class="rf-m2-sheet" role="dialog" aria-modal="true" aria-label="Choose navigation app" onclick="event.stopPropagation()">
+      <div class="rf-m2-sheet-grabber" aria-hidden="true"></div>
+      <div class="rf-m2-sheet-kicker">Navigate</div>
+      <h2>Open route with</h2>
+      <button class="rf-m2-sheet-opt" data-action="rf-m2-nav-open" data-stage-id="${esc(stage.id)}" data-target="google" type="button"><strong>Google Maps</strong><span>Open the route URL</span></button>
+      ${waze}
+      <button class="rf-m2-sheet-opt" data-action="rf-m2-nav-open" data-stage-id="${esc(stage.id)}" data-target="copy" type="button"><strong>Copy route URL</strong><span>Copy the Google Maps route</span></button>
+      <label class="rf-m2-sheet-check"><input type="checkbox" data-action="rf-m2-toggle-nav-remember" ${remember}> Remember my choice</label>
+      <button class="rf-m2-sheet-row" data-action="rf-m2-close-nav-sheet" type="button">Cancel</button>
+    </section>
+  </div>`;
+}

@@ -214,18 +214,24 @@ async function addItem(event, form) {
   renderSoon();
 }
 
-document.addEventListener('click', async (event) => {
-  const target = event.target instanceof Element ? event.target : null;
-  const btn = target?.closest('[data-action]');
-  if (!btn) return;
-  const action = btn.dataset.action || '';
-
-  if (action === 'rf-palette-select') { claim(event); setPalette(btn.dataset.palette || 'midnight'); renderSoon(); return; }
-  if (action.endsWith('sign-in')) { claim(event); await appApi().handleSignIn?.(); return; }
-  if (action.endsWith('sign-out')) { claim(event); await appApi().handleSignOut?.(); window.location.reload(); return; }
-  if (action.endsWith('new-trip')) { claim(event); STATE.wizard = 'trip'; renderSoon(); return; }
-  if (action.endsWith('list-edit-trip')) { await editTripFromList(event, btn); return; }
-  if (action.endsWith('list-delete-trip')) { await deleteTripFromList(event, btn); return; }
+/**
+ * Dispatch a shell-level action (navigation, trip list, stages,
+ * journal, items, filters). Returns true if the action was recognised
+ * and handled. Shared by the legacy capture-phase listener below and
+ * the unified action-router domain modules (Tasks 4.2-4.8).
+ *
+ * @param {Event} event
+ * @param {Element} btn
+ * @param {string} action
+ * @returns {Promise<boolean>}
+ */
+export async function dispatchAppAction(event, btn, action) {
+  if (action === 'rf-palette-select') { claim(event); setPalette(btn.dataset.palette || 'midnight'); renderSoon(); return true; }
+  if (action.endsWith('sign-in')) { claim(event); await appApi().handleSignIn?.(); return true; }
+  if (action.endsWith('sign-out')) { claim(event); await appApi().handleSignOut?.(); window.location.reload(); return true; }
+  if (action.endsWith('new-trip')) { claim(event); STATE.wizard = 'trip'; renderSoon(); return true; }
+  if (action.endsWith('list-edit-trip')) { await editTripFromList(event, btn); return true; }
+  if (action.endsWith('list-delete-trip')) { await deleteTripFromList(event, btn); return true; }
 
   if (action.endsWith('nav')) {
     claim(event);
@@ -234,19 +240,19 @@ document.addEventListener('click', async (event) => {
     const id = STATE.viewTripId;
     if (id && STATE.tab !== 'account') await appApi().openTrip?.(id, STATE.view);
     renderSoon();
-    return;
+    return true;
   }
 
   if (action.endsWith('select-trip')) {
     claim(event);
     await openTripWithData(btn.dataset.tripId, 'detail', 'trips');
-    return;
+    return true;
   }
 
   if (action.endsWith('select-archived')) {
     claim(event);
     await openTripWithData(btn.dataset.tripId, 'summary', 'archive');
-    return;
+    return true;
   }
 
   if (action.endsWith('back-to-trips')) {
@@ -257,7 +263,7 @@ document.addEventListener('click', async (event) => {
     STATE.selectedStageId = null;
     STATE.wizard = null;
     renderSoon();
-    return;
+    return true;
   }
 
   if (action.endsWith('back-to-archive')) {
@@ -265,7 +271,7 @@ document.addEventListener('click', async (event) => {
     rememberArchiveContext(null, 'list');
     await appApi().ensureArchiveData?.();
     renderSoon();
-    return;
+    return true;
   }
 
   if (action.endsWith('tab')) {
@@ -274,7 +280,7 @@ document.addEventListener('click', async (event) => {
     const view = viewForTab(btn.dataset.value);
     if (trip?.id) await openTripWithData(trip.id, view, STATE.tab || 'trips');
     else { STATE.view = view; renderSoon(); }
-    return;
+    return true;
   }
 
   if (action.endsWith('select-stage')) {
@@ -283,7 +289,7 @@ document.addEventListener('click', async (event) => {
     STATE.wizard = null;
     await appApi().loadEntriesForStage?.(STATE.selectedStageId, { quiet: true });
     renderSoon();
-    return;
+    return true;
   }
 
   if (action.endsWith('open-stage')) {
@@ -293,26 +299,27 @@ document.addEventListener('click', async (event) => {
     STATE.lastTripView = 'journal';
     await appApi().loadEntriesForStage?.(STATE.selectedStageId, { quiet: true });
     renderSoon();
-    return;
+    return true;
   }
 
-  if (action.endsWith('back-to-stages')) { claim(event); STATE.view = 'detail'; STATE.lastTripView = 'detail'; renderSoon(); return; }
-  if (action.endsWith('add-stage')) { claim(event); STATE.wizard = 'stage'; renderSoon(); return; }
-  if (action.endsWith('add-journal')) { claim(event); STATE.wizard = 'journal'; renderSoon(); return; }
-  if (action.endsWith('add-item')) { claim(event); STATE.wizard = 'item'; renderSoon(); return; }
-  if (action.endsWith('cancel-wizard')) { claim(event); STATE.wizard = null; STATE.editTargetId = null; renderSoon(); return; }
-  if (action.endsWith('save-stage')) { await saveStage(event); return; }
-  if (action.endsWith('save-journal')) { await saveJournal(event); return; }
-  if (action.endsWith('journal-type')) { claim(event); STATE.journalType = btn.dataset.value || 'note'; renderSoon(); return; }
-  if (action.endsWith('status-filter')) { claim(event); if (STATE.tab === 'archive') STATE.archiveStatusFilter = btn.dataset.value; else STATE.tripStatusFilter = btn.dataset.value; renderSoon(); return; }
-  if (action.endsWith('item-view')) { claim(event); STATE.itemViewMode = btn.dataset.value === 'list' ? 'list' : 'categories'; renderSoon(); return; }
-  if (action.endsWith('item-filter')) { claim(event); STATE.itemStatusFilter = btn.dataset.value === 'done' ? 'done' : 'todo'; renderSoon(); return; }
-  if (action.endsWith('search-toggle')) { claim(event); if (STATE.tab === 'archive') STATE.archiveFiltersOpen = !STATE.archiveFiltersOpen; else STATE.tripFiltersOpen = !STATE.tripFiltersOpen; renderSoon(); return; }
-  if (action.endsWith('select-category')) { claim(event); STATE.selectedCategoryKey = btn.dataset.category; STATE.wizard = null; renderSoon(); return; }
-  if (action.endsWith('toggle-item')) { await toggleItem(event, btn); return; }
-  if (action.endsWith('edit-item')) { await editItem(event, btn); return; }
-  if (action.endsWith('delete-item')) { await removeItem(event, btn); return; }
-}, true);
+  if (action.endsWith('back-to-stages')) { claim(event); STATE.view = 'detail'; STATE.lastTripView = 'detail'; renderSoon(); return true; }
+  if (action.endsWith('add-stage')) { claim(event); STATE.wizard = 'stage'; renderSoon(); return true; }
+  if (action.endsWith('add-journal')) { claim(event); STATE.wizard = 'journal'; renderSoon(); return true; }
+  if (action.endsWith('add-item')) { claim(event); STATE.wizard = 'item'; renderSoon(); return true; }
+  if (action.endsWith('cancel-wizard')) { claim(event); STATE.wizard = null; STATE.editTargetId = null; renderSoon(); return true; }
+  if (action.endsWith('save-stage')) { await saveStage(event); return true; }
+  if (action.endsWith('save-journal')) { await saveJournal(event); return true; }
+  if (action.endsWith('journal-type')) { claim(event); STATE.journalType = btn.dataset.value || 'note'; renderSoon(); return true; }
+  if (action.endsWith('status-filter')) { claim(event); if (STATE.tab === 'archive') STATE.archiveStatusFilter = btn.dataset.value; else STATE.tripStatusFilter = btn.dataset.value; renderSoon(); return true; }
+  if (action.endsWith('item-view')) { claim(event); STATE.itemViewMode = btn.dataset.value === 'list' ? 'list' : 'categories'; renderSoon(); return true; }
+  if (action.endsWith('item-filter')) { claim(event); STATE.itemStatusFilter = btn.dataset.value === 'done' ? 'done' : 'todo'; renderSoon(); return true; }
+  if (action.endsWith('search-toggle')) { claim(event); if (STATE.tab === 'archive') STATE.archiveFiltersOpen = !STATE.archiveFiltersOpen; else STATE.tripFiltersOpen = !STATE.tripFiltersOpen; renderSoon(); return true; }
+  if (action.endsWith('select-category')) { claim(event); STATE.selectedCategoryKey = btn.dataset.category; STATE.wizard = null; renderSoon(); return true; }
+  if (action.endsWith('toggle-item')) { await toggleItem(event, btn); return true; }
+  if (action.endsWith('edit-item')) { await editItem(event, btn); return true; }
+  if (action.endsWith('delete-item')) { await removeItem(event, btn); return true; }
+  return false;
+}
 
 document.addEventListener('input', (event) => {
   const target = event.target instanceof HTMLInputElement ? event.target : null;

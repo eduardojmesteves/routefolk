@@ -6,7 +6,7 @@
 import { listTrips } from '../lib/trips.js';
 import { listExpensesForTrip } from '../lib/expenses.js';
 import { listStages } from '../lib/stages.js';
-import { fetchStageForecasts } from '../lib/weather.js';
+import { forecastForStage } from '../lib/weather.js';
 import { listEntriesForStage } from '../lib/journal.js';
 import { listProfiles } from '../lib/profiles.js';
 import { listActiveTripMembers, listTripMembersForTrip } from '../lib/trip-members.js';
@@ -130,11 +130,11 @@ export function createDataLoaders({ renderAll }) {
     STATE.forecastsByStage[stage.id] = 'loading';
 
     try {
-      const forecasts = await fetchStageForecasts(stage);
-      STATE.forecastsByStage[stage.id] = forecasts;
+      const forecast = await forecastForStage(stage);
+      STATE.forecastsByStage[stage.id] = forecast;
     } catch (err) {
       console.warn('Forecast load failed:', err);
-      STATE.forecastsByStage[stage.id] = [];
+      STATE.forecastsByStage[stage.id] = null;
     }
 
     if (STATE.viewTripId === stage.trip_id) renderAll();

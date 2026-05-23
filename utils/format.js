@@ -4,6 +4,7 @@
 // ============================================================
 
 export function fmtEuro(value, options = {}) {
+  if (value == null) return options.empty || '—';
   const n = Number(value);
   if (!Number.isFinite(n)) return options.empty || '—';
   const maximumFractionDigits = options.compact ? 0 : 2;
@@ -27,6 +28,7 @@ export function fmtDuration(seconds) {
 }
 
 export function fmtKm(value) {
+  if (value == null) return '—';
   const n = Number(value);
   if (!Number.isFinite(n)) return '—';
   return `${Math.round(n * 10) / 10} km`;
