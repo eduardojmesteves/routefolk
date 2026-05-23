@@ -6,7 +6,7 @@
 
 import { STATE } from '../../state/app-state.js';
 import { esc } from '../../utils/dom.js';
-import { fmtDate, fmtDateRange } from '../../utils/datetime.js';
+import { fmtDate } from '../../utils/datetime.js';
 import { STATUS_META } from '../../constants/app-constants.js';
 import {
   ARCHIVE_FILTERS,
@@ -34,10 +34,14 @@ import { renderAccount, renderSignedOutMarkup } from './account/account-desktop.
 import { renderCosts as renderCostsImpl } from './trip-detail/costs-desktop.js';
 import { renderItems as renderItemsImpl } from './trip-detail/packing-desktop.js';
 import { renderArchive as renderArchiveImpl } from './archive/archive-list-desktop.js';
+import {
+  renderTripList as renderTripListImpl,
+  renderLanding as renderLandingImpl,
+  activeTrips as activeTripsImpl,
+} from './trips/trips-desktop.js';
 
 export { renderSignedOutMarkup };
 
-const TRIP_FILTERS = [['all', 'All'], ['planning', 'Planning'], ['active', 'Active']];
 const rawStages = (tripId) => STATE.stagesByTrip[tripId];
 
 function tripView() { if (STATE.view === 'summary') return 'summary'; if (STATE.view === 'costs') return 'costs'; if (STATE.view === 'packing') return 'items'; if (STATE.view === 'journal') return 'journal'; return 'stages'; }
@@ -46,7 +50,7 @@ function loadingHtml(label = 'Loading…') { return `<div class="rf-d2-empty is-
 function errorHtml(error) { return error ? `<div class="rf-d2-empty is-error">${esc(error)}</div>` : ''; }
 function statePill(status) { return `<span class="rf-d2-state-pill is-${esc(status || 'planning')}"><span class="rf-d2-state-dot"></span>${esc(statusName(status))}</span>`; }
 function stamp(text, kind = 'primary') { return `<span class="rf-d2-stamp is-${esc(kind)}">${esc(text)}</span>`; }
-function activeTrips() { const q = (STATE.tripSearch || '').trim().toLowerCase(); const f = STATE.tripStatusFilter || 'all'; return STATE.trips.filter(t => ['planning','active'].includes(t.status)).filter(t => (f === 'all' || t.status === f) && (!q || `${t.title || ''} ${t.description || ''}`.toLowerCase().includes(q))); }
+const activeTrips = activeTripsImpl;
 function filters(options, active, action = 'status-filter') { return `<div class="rf-d2-pills">${options.map(([key, label]) => `<button class="rf-d2-pill ${active === key ? 'is-active' : ''}" data-action="rf-d2-${action}" data-value="${esc(key)}" type="button">${esc(label)}</button>`).join('')}</div>`; }
 function search(open, value) { return open ? `<div class="rf-d2-search"><input type="search" data-action="rf-d2-search-input" value="${esc(value || '')}" placeholder="Search by name"><button class="rf-d2-search-close" data-action="rf-d2-search-toggle" type="button">×</button></div>` : `<button class="rf-d2-search-btn" data-action="rf-d2-search-toggle" type="button" aria-label="Search">⌕</button>`; }
 function tabs(active) { return `<nav class="rf-d2-selector-tabs">${DETAIL_TABS.map(([key, label]) => `<button class="rf-d2-selector-tab ${active === key ? 'is-active' : ''}" data-action="rf-d2-tab" data-value="${key}" type="button">${esc(label)}</button>`).join('')}</nav>`; }
@@ -61,9 +65,8 @@ function desktopSkyHtml(stage) { const result = STATE.forecastsByStage[stage.id]
 
 export function renderDesktopMarkup() { if (STATE.tripsLoading && !STATE.trips.length) return `<div class="rf-d2-app"><main class="rf-d2-main">${loadingHtml('Loading trips…')}</main></div>`; if (STATE.tripsError) return `<div class="rf-d2-app"><main class="rf-d2-main">${errorHtml(STATE.tripsError)}</main></div>`; const trip = currentTrip(); const thirdPane = STATE.tab === 'trips' && trip && !['summary','costs','items'].includes(tripView()); let body = ''; if (STATE.tab === 'archive') body = renderArchive(); else if (STATE.tab === 'account') body = renderAccount(); else if (!trip) body = renderTripList(null) + renderLanding(); else body = renderTripList(trip.id) + renderTripView(trip); return `<div class="rf-d2-app ${thirdPane ? 'is-3-pane' : ''}">${renderSidebar(thirdPane)}${body}</div>`; }
 function renderSidebar(collapsed) { const l = lifetime(); return `<aside class="rf-d2-sidebar ${collapsed ? 'is-collapsed' : ''}"><div class="rf-d2-sidebar-head">${collapsed ? '<div class="rf-d2-sidebar-mark">r</div><div class="rf-d2-sidebar-mark-sub">routefolk</div>' : '<div class="rf-d2-sidebar-kicker">Routefolk</div><div class="rf-d2-sidebar-title">Field journal</div>'}</div><nav class="rf-d2-rail">${[['trips','T','Trips'],['archive','A','Archive'],['account','Y','You']].map(([key,glyph,label])=>`<button class="rf-d2-rail-item ${STATE.tab===key?'is-active':''}" data-action="rf-d2-nav" data-tab="${key}" type="button"><span class="rf-d2-rail-glyph">${glyph}</span><span class="rf-d2-rail-label">${label}</span></button>`).join('')}</nav><div class="rf-d2-sidebar-spacer"></div><div class="rf-d2-lifetime"><div class="rf-d2-lifetime-kicker">Lifetime</div><div class="rf-d2-lifetime-row"><span>${l.trips}</span><span>${Math.round(l.distance).toLocaleString()}</span></div><div class="rf-d2-lifetime-labels"><span>Trips</span><span>km</span></div></div><div class="rf-d2-user"><span class="rf-d2-user-avatar">${esc(initials())}</span><span class="rf-d2-user-meta"><strong>${esc(userName())}</strong></span></div></aside>`; }
-function renderTripList(selected) { return `<aside class="rf-d2-trips-col"><div class="rf-d2-trips-head"><div><div class="rf-d2-kicker">The road map</div><h1 class="rf-d2-col-title">Trips</h1><div class="rf-d2-col-sub">${activeTrips().length} on the road map · ${archiveTrips().length} in archive</div></div><button class="rf-d2-btn is-primary" data-action="rf-d2-new-trip" type="button">+ New</button></div><div class="rf-d2-filter-row">${filters(TRIP_FILTERS, STATE.tripStatusFilter || 'all')}${search(STATE.tripFiltersOpen || !!STATE.tripSearch, STATE.tripSearch)}</div><div class="rf-d2-master-list">${activeTrips().map(t => renderTripRow(t, selected)).join('') || '<div class="rf-d2-empty">No matching trips.</div>'}</div></aside>`; }
-function renderTripRow(trip, selected) { const s = stats(trip); return `<button class="rf-d2-trip-row ${selected === trip.id ? 'is-selected' : ''}" data-action="rf-d2-select-trip" data-trip-id="${esc(trip.id)}" type="button"><div class="rf-d2-trip-row-no">${esc(tripNo(trip))}</div><div class="rf-d2-trip-row-title">${esc(trip.title || 'Untitled trip')}</div><div class="rf-d2-trip-row-sub">${esc(subtitle(trip))}</div><div class="rf-d2-trip-row-meta"><span>${esc(fmtDateRange(trip.start_date, trip.end_date))}</span><span>${Math.round(s.distance).toLocaleString()} km</span><span>${s.stages} st</span></div>${statePill(trip.status)}</button>`; }
-function renderLanding() { const trip = activeTrips()[0]; return `<main class="rf-d2-main">${trip ? hero(trip,{withStats:true}) : '<div class="rf-d2-empty-card">No trips yet.</div>'}<div class="rf-d2-hint">Click a trip on the left to open it. The trip expands into stages and a detail pane.</div></main>`; }
+function renderTripList(selected) { return renderTripListImpl(selected, { filters, search, statePill }); }
+function renderLanding() { return renderLandingImpl({ hero }); }
 function renderTripView(trip) { const view = tripView(); if (view === 'summary') return renderSummary(trip); if (view === 'costs') return renderCosts(trip); if (view === 'items') return renderItems(trip); return renderStages(trip); }
 function renderStages(trip) { const raw = rawStages(trip.id); if (raw === 'loading' || STATE.stagesLoading) return `<main class="rf-d2-main">${hero(trip,{withStats:true})}${tabs('stages')}${loadingHtml('Loading stages…')}</main><aside class="rf-d2-aside">${loadingHtml('Loading detail…')}</aside>`; const st = stages(trip.id); const selected = st.find(stage => stage.id === STATE.selectedStageId) || st[0]; return `<main class="rf-d2-main">${hero(trip,{withStats:true})}${tabs('stages')}<div class="rf-d2-section-head"><div class="rf-d2-section-title">${st.length} stages</div><button class="rf-d2-btn is-primary" data-action="rf-d2-add-stage" type="button">+ Add stage</button></div><div class="rf-d2-stage-list">${st.map((stage,i)=>renderStageRow(stage,i,selected?.id)).join('')}<button class="rf-d2-btn is-dashed" data-action="rf-d2-add-stage" type="button">+ Add another stage</button></div></main>${renderAside(trip,selected)}`; }
 function renderStageRow(stage, index, selectedId) { return `<button class="rf-d2-stage-row ${selectedId === stage.id ? 'is-selected' : ''}" data-action="rf-d2-select-stage" data-stage-id="${esc(stage.id)}" type="button"><div class="rf-d2-stage-no-col"><div class="rf-d2-stage-no">${index + 1}</div><div class="rf-d2-stage-rule"></div><div class="rf-d2-stage-day">${esc(day(stage.planned_date))}</div></div><div class="rf-d2-stage-body"><div class="rf-d2-stage-row-head"><div class="rf-d2-stage-title">${esc(stage.start_location || 'Start')} <span class="rf-d2-stage-to">to</span> ${esc(stage.end_location || 'End')}</div></div><div class="rf-d2-stage-high">${esc(stage.notes || '')}</div><div class="rf-d2-stage-mono"><span><span class="rf-d2-stage-mono-label">dist</span> ${Math.round(Number(stage.distance_km) || 0)}km</span><span>${esc(fmtDate(stage.planned_date) || '')}</span></div></div></button>`; }
