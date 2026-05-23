@@ -38,6 +38,13 @@
     margin-top: 18px;
   }
 
+  .rf-d2-stage-actions .rf-d2-btn,
+  .rf-d2-stage-actions .rf-nav-btn {
+    height: 34px;
+    min-height: 34px;
+    padding: 0 12px;
+  }
+
   .rf-d2-hero-stamps {
     display: flex !important;
     flex-wrap: wrap !important;
@@ -49,25 +56,25 @@
 
   .rf-d2-hero-stamps > .rf-d2-state-pill,
   .rf-d2-hero-stamps > .rf-d2-stamp {
-    width: auto !important;
-    min-height: 0 !important;
-    height: auto !important;
-    box-sizing: border-box !important;
+    display: inline-flex !important;
+    align-items: center !important;
     justify-content: center !important;
+    width: auto !important;
+    min-height: 34px !important;
+    height: 34px !important;
+    box-sizing: border-box !important;
     white-space: nowrap !important;
   }
 
   .rf-d2-hero-stamps > .rf-d2-state-pill {
-    display: inline-flex !important;
-    align-items: center !important;
     gap: 6px !important;
-    padding: 3px 10px !important;
+    padding: 0 12px !important;
     border: 1px solid rgba(38,52,94,.2) !important;
     border-radius: 999px !important;
     background: var(--rf-m2-primary-soft, rgba(38,52,94,.12)) !important;
     color: var(--rf-m2-primary, var(--rf-d2-primary)) !important;
-    font: 800 10.5px/1 var(--rf-m2-font-ui, var(--rf-d2-font-ui)) !important;
-    letter-spacing: 0 !important;
+    font: 800 12px/1 var(--rf-m2-font-ui, var(--rf-d2-font-ui)) !important;
+    letter-spacing: .01em !important;
     text-transform: none !important;
   }
 
@@ -98,15 +105,13 @@
   }
 
   .rf-d2-hero-stamps > .rf-d2-stamp {
-    display: inline-flex !important;
-    align-items: center !important;
-    padding: 2px 8px !important;
+    padding: 0 12px !important;
     border: 1.2px solid var(--rf-m2-primary, var(--rf-d2-primary)) !important;
-    border-radius: 2px !important;
+    border-radius: 999px !important;
     background: rgba(255,255,255,.4) !important;
     color: var(--rf-m2-primary, var(--rf-d2-primary)) !important;
-    font: 900 9.5px/1 var(--rf-m2-font-mono, var(--rf-d2-font-mono)) !important;
-    letter-spacing: .16em !important;
+    font: 900 12px/1 var(--rf-m2-font-mono, var(--rf-d2-font-mono)) !important;
+    letter-spacing: .12em !important;
     text-transform: uppercase !important;
     transform: none !important;
   }
