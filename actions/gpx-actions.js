@@ -4,15 +4,13 @@
 // in-progress upload, and delete an attached GPX track.
 //
 // Upload handler logic lives here (migrated out of screens/wizards.js).
-// Track deletion still delegates to screens/gpx-panel.js. The
-// wizard-cancel action (rf-v2-cancel-gpx-upload) is routed straight to
-// screens/wizards.js by action-router before the domain loop runs, so
+// The wizard-cancel action (rf-v2-cancel-gpx-upload) is routed straight
+// to screens/wizards.js by action-router before the domain loop runs, so
 // it is not handled here.
 // ============================================================
 
 import { STATE } from '../state/app-state.js';
-import { uploadStageGpx } from '../lib/gpx.js';
-import { removeGpx } from '../screens/gpx-panel.js';
+import { uploadStageGpx, deleteGpxTrack, trackFileName } from '../lib/gpx.js';
 import {
   claim,
   renderAll,
@@ -34,7 +32,7 @@ const GPX_WIZARD_ACTIONS = new Set([
   'rf-v2-save-gpx-upload',
 ]);
 
-/** GPX track deletion action sourced from gpx-panel.js. */
+/** GPX track deletion action. */
 const GPX_DELETE_ACTION = 'rf-v2-delete-gpx';
 
 /**
@@ -63,13 +61,25 @@ export async function saveGpxUpload(event) {
 }
 
 /**
- * Delete an attached GPX track. Delegates to the legacy gpx-panel
- * sidecar (retired in a later phase).
+ * Delete an attached GPX track.
  * @param {Event} event
  * @param {string} trackId
  */
 export async function removeGpxUpload(event, trackId) {
-  await removeGpx(event, trackId);
+  claim(event);
+  const trip = activeTrip();
+  if (!trip) return;
+  const track = tracksForTrip(trip.id).find((candidate) => candidate.id === trackId);
+  if (!track) return;
+  if (!window.confirm(`Delete GPX track "${trackFileName(track)}"?`)) return;
+  try {
+    await deleteGpxTrack(track);
+    STATE.gpxByTrip[trip.id] = tracksForTrip(trip.id).filter((candidate) => candidate.id !== track.id);
+    delete STATE.gpxGeometryByTrack[track.id];
+    renderAll();
+  } catch (error) {
+    window.alert(error?.message || 'Could not delete GPX track.');
+  }
 }
 
 /**
