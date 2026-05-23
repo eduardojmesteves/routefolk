@@ -4,14 +4,12 @@
 // Bump CACHE whenever shell assets change.
 // ============================================================
 
-const CACHE = 'routefolk-shell-v129-weather-nav';
+const CACHE = 'routefolk-shell-v130-stages-reorder';
 
 const SHELL_ASSETS = [
   './',
   './index.html',
-  // CSS entry point (loaded by index.html)
-  './styles/index.css?v=20260523-weather-nav-01',
-  // Individual CSS files (fetched separately by browser via @import — must be cached for offline)
+  './styles/index.css?v=20260523-stages-reorder-01',
   './style.css?v=20260516-redesign-ink-rust-01',
   './style-fidelity.css?v=20260516-fidelity-01',
   './styles/shell.css?v=20260516-production-01',
@@ -21,6 +19,7 @@ const SHELL_ASSETS = [
   './styles/renderer-integration.css?v=20260518-production-01',
   './styles/packing-list.css?v=20260518-production-01',
   './styles/weather-nav.css',
+  './styles/stages-reorder.css',
   './styles/production-overrides.css?v=20260520-mobile-fields-02',
   './vendor/leaflet/leaflet.css?v=routefolk-local-01',
   './vendor/leaflet/leaflet.js?v=routefolk-local-01',
