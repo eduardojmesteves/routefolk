@@ -7,6 +7,7 @@
 
 import { STATE } from '../../state/app-state.js';
 import { esc } from '../../utils/dom.js';
+import { isArchivedTrip, writeDisabledAttr } from '../../utils/write-guards.js';
 import {
   WIZARDS,
   isDesktop,
@@ -46,25 +47,32 @@ function injectTripActions() {
   if (!['trips', 'archive'].includes(STATE.tab)) return;
   const target = document.querySelector('.rf-d2-hero .rf-d2-hero-stamps, .rf-clean-trip-head .rf-clean-stamps, .rf-m2-detail-hero');
   if (!target || target.querySelector('.rf-v2-hero-actions')) return;
+  const dis = writeDisabledAttr();
   const wrap = document.createElement('div');
   wrap.className = 'rf-v2-hero-actions';
-  wrap.innerHTML = `<button class="rf-d2-btn" data-action="rf-v2-edit-trip" type="button">Edit trip</button><button class="rf-d2-btn is-danger" data-action="rf-v2-delete-trip" type="button">Delete</button>`;
+  wrap.innerHTML = `<button class="rf-d2-btn" data-action="rf-v2-edit-trip" type="button"${dis}>Edit trip</button><button class="rf-d2-btn is-danger" data-action="rf-v2-delete-trip" type="button"${dis}>Delete</button>`;
   target.appendChild(wrap);
 }
 
 function injectStageActions() {
   const stage = selectedStage();
   if (!stage || STATE.wizard || STATE.view !== 'detail') return;
+  const trip = activeTrip();
+  if (isArchivedTrip(trip)) return;
   const target = document.querySelector('.rf-d2-aside-head, .rf-m2-aside-head');
   if (!target || target.querySelector('.rf-v2-stage-actions')) return;
+  const dis = writeDisabledAttr();
   const wrap = document.createElement('div');
   wrap.className = 'rf-v2-stage-actions';
-  wrap.innerHTML = `<button class="rf-d2-btn" data-action="rf-v2-edit-stage" data-stage-id="${esc(stage.id)}" type="button">Edit stage</button><button class="rf-d2-btn is-danger" data-action="rf-v2-delete-stage" data-stage-id="${esc(stage.id)}" type="button">Delete</button>`;
+  wrap.innerHTML = `<button class="rf-d2-btn" data-action="rf-v2-edit-stage" data-stage-id="${esc(stage.id)}" type="button"${dis}>Edit stage</button><button class="rf-d2-btn is-danger" data-action="rf-v2-delete-stage" data-stage-id="${esc(stage.id)}" type="button"${dis}>Delete</button>`;
   target.appendChild(wrap);
 }
 
 function injectEntryActions() {
   if (STATE.wizard) return;
+  const trip = activeTrip();
+  if (isArchivedTrip(trip)) return;
+  const dis = writeDisabledAttr();
   document.querySelectorAll('.rf-d2-entry, .rf-m2-entry').forEach((entryNode) => {
     if (entryNode.querySelector('.rf-v2-entry-actions')) return;
     const title = entryNode.querySelector('.rf-d2-entry-title, .rf-m2-entry-title')?.textContent?.trim();
@@ -73,7 +81,7 @@ function injectEntryActions() {
     if (!entry) return;
     const wrap = document.createElement('div');
     wrap.className = 'rf-v2-entry-actions';
-    wrap.innerHTML = `<button class="rf-d2-btn" data-action="rf-v2-edit-entry" data-entry-id="${esc(entry.id)}" type="button">Edit</button><button class="rf-d2-btn is-danger" data-action="rf-v2-delete-entry" data-entry-id="${esc(entry.id)}" type="button">Delete</button>`;
+    wrap.innerHTML = `<button class="rf-d2-btn" data-action="rf-v2-edit-entry" data-entry-id="${esc(entry.id)}" type="button"${dis}>Edit</button><button class="rf-d2-btn is-danger" data-action="rf-v2-delete-entry" data-entry-id="${esc(entry.id)}" type="button"${dis}>Delete</button>`;
     entryNode.appendChild(wrap);
   });
 }
@@ -81,11 +89,13 @@ function injectEntryActions() {
 function injectCostCta() {
   const trip = activeTrip();
   if (!trip || STATE.tab !== 'trips' || STATE.view !== 'costs' || STATE.wizard) return;
+  if (isArchivedTrip(trip)) return;
   const target = document.querySelector('.rf-d2-ledger-hero, .rf-m2-ledger-hero');
   if (!target || target.querySelector('.rf-v2-cost-cta')) return;
+  const dis = writeDisabledAttr();
   const wrap = document.createElement('div');
   wrap.className = 'rf-v2-cost-cta';
-  wrap.innerHTML = '<button class="rf-d2-btn rf-v2-add-expense-btn is-primary" data-action="rf-v2-add-expense" type="button">+ Log expense</button>';
+  wrap.innerHTML = `<button class="rf-d2-btn rf-v2-add-expense-btn is-primary" data-action="rf-v2-add-expense" type="button"${dis}>+ Log expense</button>`;
   target.appendChild(wrap);
 }
 
@@ -160,9 +170,6 @@ function scheduleRender() {
 setSignatureRefreshHandler(restampHostSignature);
 
 // ---- Document listeners ---------------------------------------------
-// The change listener and the render listeners are registered exactly
-// once at module load, so importing this module multiple times (it is a
-// singleton ES module) cannot introduce duplicate document listeners.
 document.addEventListener('change', (event) => {
   const target = event.target instanceof Element ? event.target : null;
   if (target?.id === 'v2-trip-visibility') {
@@ -179,21 +186,6 @@ document.addEventListener('change', (event) => {
   }
 }, true);
 
-/**
- * Dispatch the two shared wizard-cancel actions. The unified
- * action-router (actions/action-router.js) routes
- * `rf-v2-cancel-wizard` and `rf-v2-cancel-gpx-upload` straight here
- * before its domain loop, because cancelling closes the wizard host —
- * a concern owned by this rendering module rather than any one domain.
- *
- * All save/edit/delete handler logic now lives in the actions/* domain
- * modules.
- *
- * @param {Event} event
- * @param {Element} btn
- * @param {string} action
- * @returns {Promise<boolean>}
- */
 export async function dispatchWizardAction(event, btn, action) {
   if (action === 'rf-v2-cancel-wizard') { setDraftTripVisibility(null); claim(event); STATE.wizard = null; STATE.editTargetId = null; clearGpxUploadState(); renderAll(); return true; }
   if (action === 'rf-v2-cancel-gpx-upload') { claim(event); STATE.wizard = null; clearGpxUploadState(); renderAll(); return true; }
