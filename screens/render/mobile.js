@@ -13,7 +13,6 @@ import {
   aggregateExpense,
   archiveTrips,
   arr,
-  avatarUrl,
   categories,
   categoryLabel,
   currentPalette,
@@ -21,12 +20,9 @@ import {
   day,
   expenses,
   fmtEuro,
-  initials,
   items,
   lifetime,
-  memberSinceYear,
   metricGrid,
-  palettePanel,
   payerName,
   season,
   slug,
@@ -37,6 +33,7 @@ import {
   userName,
 } from './shared.js';
 import { gpxPanelHtml } from './trip-detail/gpx-panel.js';
+import { renderMobileAccount } from './account/account-mobile.js';
 
 const TRIP_FILTERS = [['all', 'All'], ['planning', 'Planning'], ['active', 'Active']];
 const ITEM_VIEWS = [['list', 'List'], ['categories', 'Categories']];
@@ -249,10 +246,7 @@ function mobileArchive() {
 }
 
 function mobileAccount() {
-  const l = lifetime();
-  const year = memberSinceYear();
-  const avatar = avatarUrl() ? `<img src="${esc(avatarUrl())}" alt="${esc(userName())}">` : esc(initials());
-  return screen(`<header class="rf-clean-trip-head"><div class="rf-clean-kicker">The bearer</div><h1>You</h1></header><main class="rf-clean-page"><section class="rf-clean-profile"><div>${avatar}</div><h2>${esc(userName())}</h2><p>${year ? `Routefolk member since ${year}` : 'Routefolk member'}</p><button data-action="rf-m2-sign-out">Sign out</button></section><h2>Mileage to date</h2>${metricGrid([['Trips', String(l.trips), 'finished + planned'], ['Distance', Math.round(l.distance).toLocaleString(), 'km'], ['Days', String(l.days), 'on the road'], ['Spent', fmtEuro(l.spent), 'across trips']])}${palettePanel()}</main>`, 'account');
+  return renderMobileAccount(screen);
 }
 
 export function renderMobileMarkup() {
