@@ -36,6 +36,7 @@ import {
   tripNo,
   userName,
 } from './shared.js';
+import { gpxPanelHtml } from './trip-detail/gpx-panel.js';
 
 const TRIP_FILTERS = [['all', 'All'], ['planning', 'Planning'], ['active', 'Active']];
 const ITEM_VIEWS = [['list', 'List'], ['categories', 'Categories']];
@@ -223,12 +224,18 @@ function mobileItems(trip) {
   return screen(`${tripHeader(trip, 'items')}<main class="rf-clean-page"><section class="rf-clean-ledger rf-clean-items-ledger"><div><small>The packing list</small><strong>${done}<span> / ${all.length}</span></strong><span>${todo} left · ${done} done</span></div><button data-action="rf-m2-add-item">+ Add item</button></section>${view === 'categories' ? categoryList : itemList}${viewToggle}</main>`);
 }
 
+function mobileStageTracks(tripId, stageId) {
+  const raw = STATE.gpxByTrip[tripId];
+  return Array.isArray(raw) ? raw.filter((track) => track.stage_id === stageId) : [];
+}
+
 function mobileJournal(trip) {
   const stage = selectedStage(trip);
   if (!stage) return screen('<main class="rf-clean-page"><div class="rf-clean-empty">No stage selected.</div></main>');
   const entries = arr(STATE.entriesByStage[stage.id]);
   const stageExpenses = expenses(trip.id).filter((expense) => expense.stage_id === stage.id);
-  return screen(`<main class="rf-clean-page"><button class="rf-clean-back" data-action="rf-m2-back-to-stages">← ${esc(trip.title || 'Trip')}</button><div class="rf-clean-kicker">Stage · ${esc(fmtDate(stage.planned_date) || '')}</div><h1 class="rf-clean-title">${esc(stage.start_location || 'Start')} <em>to</em> ${esc(stage.end_location || 'End')}</h1><p>${esc(stage.notes || '')}</p>${mobileSkyHtml(stage)}<div class="rf-clean-section-head"><h2>The day's notes</h2><button data-action="rf-m2-add-journal">+ Add</button></div>${entries.map((entry, i) => `<article class="rf-clean-note"><span>${i + 1}</span><div><small>A ${esc(entry.entry_type || 'note')}</small><strong>${esc(entry.title || 'Untitled')}</strong>${entry.location ? `<em>at ${esc(entry.location)}</em>` : ''}</div></article>`).join('') || '<div class="rf-clean-empty">No entries yet.</div>'}<div class="rf-clean-section-head"><h2>Stage costs</h2><button data-action="rf-v2-add-stage-expense" data-stage-id="${esc(stage.id)}">+ Add</button></div>${stageExpenses.map((expense) => `<article class="rf-clean-expense"><div><strong>${esc(categoryLabel(expense.category))}</strong><small>${esc(payerName(expense.user_id))}</small></div><b>${fmtEuro(expense.amount || 0)}</b></article>`).join('') || '<div class="rf-clean-empty">No costs assigned to this stage.</div>'}<h2>GPX tracks</h2><div class="rf-clean-empty">GPX management is available on desktop for now.</div></main>`);
+  const tracks = mobileStageTracks(trip.id, stage.id);
+  return screen(`<main class="rf-clean-page"><button class="rf-clean-back" data-action="rf-m2-back-to-stages">← ${esc(trip.title || 'Trip')}</button><div class="rf-clean-kicker">Stage · ${esc(fmtDate(stage.planned_date) || '')}</div><h1 class="rf-clean-title">${esc(stage.start_location || 'Start')} <em>to</em> ${esc(stage.end_location || 'End')}</h1><p>${esc(stage.notes || '')}</p>${mobileSkyHtml(stage)}<div class="rf-clean-section-head"><h2>The day's notes</h2><button data-action="rf-m2-add-journal">+ Add</button></div>${entries.map((entry, i) => `<article class="rf-clean-note"><span>${i + 1}</span><div><small>A ${esc(entry.entry_type || 'note')}</small><strong>${esc(entry.title || 'Untitled')}</strong>${entry.location ? `<em>at ${esc(entry.location)}</em>` : ''}</div></article>`).join('') || '<div class="rf-clean-empty">No entries yet.</div>'}<div class="rf-clean-section-head"><h2>Stage costs</h2><button data-action="rf-v2-add-stage-expense" data-stage-id="${esc(stage.id)}">+ Add</button></div>${stageExpenses.map((expense) => `<article class="rf-clean-expense"><div><strong>${esc(categoryLabel(expense.category))}</strong><small>${esc(payerName(expense.user_id))}</small></div><b>${fmtEuro(expense.amount || 0)}</b></article>`).join('') || '<div class="rf-clean-empty">No costs assigned to this stage.</div>'}<section class="rf-v2-gpx-section">${gpxPanelHtml(trip, stage, tracks)}</section></main>`);
 }
 
 function archiveTicket(trip) {
