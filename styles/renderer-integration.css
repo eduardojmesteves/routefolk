@@ -183,6 +183,42 @@
 .rf-clean-note-actions button:hover:not([disabled]){background:var(--rf-m2-surface);}
 
 /* ============================================================
+   v3 · Mobile stage drill-in action pills
+   Mockup: Mobile_redesign_v3/index.html · Scene D
+   The .rf-m2-stage-actions row holds [Edit stage] [Delete] [Navigate].
+   Specificity 0,0,2,0 beats the bare .rf-nav-btn in weather-nav.css.
+   ============================================================ */
+
+.rf-m2-stage-actions>button,
+.rf-m2-stage-actions>a{
+  text-transform:none;
+  letter-spacing:0;
+  font:600 11.5px var(--rf-m2-font-ui);
+  padding:6px 11px;
+  min-height:0;
+  border:1px solid var(--rf-m2-rule-2);
+  background:var(--rf-m2-surface);
+  color:var(--rf-m2-ink);
+  border-radius:999px;
+  gap:4px;
+}
+.rf-m2-stage-actions>button.is-danger{
+  color:var(--rf-d2-danger);
+  background:rgba(125,52,88,.1);
+  border-color:rgba(125,52,88,.25);
+}
+.rf-m2-stage-actions>.rf-nav-default{
+  margin-left:auto;
+  color:var(--rf-m2-primary);
+  background:rgba(38,52,94,.12);
+  border-color:rgba(38,52,94,.25);
+}
+.rf-m2-stage-actions>button[disabled]{
+  opacity:.5;
+  cursor:not-allowed;
+}
+
+/* ============================================================
    v3 · Desktop stage actions row · reorder pill atom
    Lives inside .rf-d2-stage-actions next to Navigate, Edit, Delete.
    ============================================================ */
