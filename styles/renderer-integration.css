@@ -67,6 +67,146 @@
   background:rgba(125,52,88,.05);
 }
 
+/* ============================================================
+   v3 · Mobile stage card: tap target + 4-button footer
+   Mockup: Mobile_redesign_v3/index.html · Scene A
+   ============================================================ */
+
+.rf-clean-stage-card{
+  padding:0;
+  margin:9px 0;
+  overflow:hidden;
+}
+.rf-clean-stage-tap{
+  width:100%;
+  display:grid;
+  grid-template-columns:38px 1fr;
+  gap:12px;
+  text-align:left;
+  padding:14px;
+  background:transparent;
+  border:0;
+  color:var(--rf-m2-ink);
+  cursor:pointer;
+  font:inherit;
+}
+.rf-clean-stage-tap>span:first-child{
+  font:italic 28px var(--rf-m2-font-serif);
+  color:var(--rf-m2-primary);
+}
+.rf-clean-stage-tap strong{
+  display:block;
+  font:500 20px/1.12 var(--rf-m2-font-serif);
+  color:var(--rf-m2-ink);
+}
+.rf-clean-stage-tap strong em{
+  font-family:var(--rf-m2-font-serif);
+  font-style:italic;
+  color:var(--rf-m2-muted);
+  font-weight:400;
+}
+.rf-clean-stage-tap small{
+  display:block;
+  margin-top:2px;
+  font:11px var(--rf-m2-font-mono);
+  letter-spacing:.07em;
+  color:var(--rf-m2-muted);
+}
+.rf-clean-stage-tap p{
+  margin:6px 0 0;
+  color:var(--rf-m2-muted);
+  font:italic 14px var(--rf-m2-font-serif);
+}
+
+.rf-clean-stage-foot{
+  display:grid;
+  grid-template-columns:40px 40px 1fr 1fr;
+  border-top:1px solid var(--rf-m2-rule);
+  background:rgba(0,0,0,.025);
+}
+.rf-clean-stage-foot button{
+  appearance:none;
+  border:0;
+  background:transparent;
+  font:600 11.5px var(--rf-m2-font-mono);
+  letter-spacing:.01em;
+  color:var(--rf-m2-ink);
+  padding:9px 0;
+  border-right:1px dotted var(--rf-m2-rule);
+  cursor:pointer;
+}
+.rf-clean-stage-foot button:last-child{border-right:0;}
+.rf-clean-stage-foot button.icon{
+  font-size:13px;
+  color:var(--rf-m2-muted);
+  padding:8px 0;
+}
+.rf-clean-stage-foot button.danger{color:var(--rf-d2-danger);}
+.rf-clean-stage-foot button[disabled]{
+  color:var(--rf-m2-rule-2);
+  cursor:not-allowed;
+}
+.rf-clean-stage-foot button.danger[disabled]{color:rgba(125,52,88,.35);}
+
+/* ============================================================
+   v3 · Mobile journal entry · icon buttons (✎ ✕)
+   Mockup: Mobile_redesign_v3/index.html · Scene D
+   ============================================================ */
+
+.rf-clean-note{grid-template-columns:30px 1fr auto;}
+.rf-clean-note-actions{
+  display:flex;
+  gap:4px;
+  align-items:center;
+}
+.rf-clean-note-actions button{
+  appearance:none;
+  width:26px;
+  height:26px;
+  border:1px solid var(--rf-m2-rule);
+  border-radius:999px;
+  background:transparent;
+  color:var(--rf-m2-muted);
+  font:12px var(--rf-m2-font-mono);
+  cursor:pointer;
+  display:inline-flex;
+  align-items:center;
+  justify-content:center;
+  padding:0;
+  line-height:1;
+}
+.rf-clean-note-actions button.danger{color:var(--rf-d2-danger);}
+.rf-clean-note-actions button[disabled]{
+  color:var(--rf-m2-rule-2);
+  cursor:not-allowed;
+}
+.rf-clean-note-actions button:hover:not([disabled]){background:var(--rf-m2-surface);}
+
+/* ============================================================
+   v3 · Desktop stage actions row · reorder pill atom
+   Lives inside .rf-d2-stage-actions next to Navigate, Edit, Delete.
+   ============================================================ */
+
+.rf-d2-stage-actions .rf-v2-stage-reorder{
+  display:inline-flex;
+  align-items:center;
+  justify-content:center;
+  width:36px;
+  min-height:36px;
+  padding:0;
+  border:1px solid currentColor;
+  border-radius:999px;
+  background:transparent;
+  color:var(--rf-d2-muted);
+  font:700 14px/1 var(--rf-d2-font-mono);
+  cursor:pointer;
+}
+.rf-d2-stage-actions .rf-v2-stage-reorder:hover:not([disabled]){filter:brightness(.96);}
+.rf-d2-stage-actions .rf-v2-stage-reorder[disabled]{
+  opacity:.45;
+  cursor:not-allowed;
+}
+
 @media(min-width:960px){
   html,body,#app,.rf-screen,.rf-v2-root-host{height:100%;min-height:100vh;overflow:hidden;}
   .rf-d2-app{height:100vh;min-height:0;overflow:hidden;}
