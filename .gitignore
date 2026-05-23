@@ -4,9 +4,14 @@
 
 # Local/private operational documentation.
 # The repository is public; keep admin docs and real user/admin notes local only.
-/docs/
+/docs/*
 # Exception: refactor planning docs tracked alongside the deep-refactor branch.
-!/docs/refactor/
+# Both forms needed: without trailing slash negates the directory match from /docs/*,
+# and the /** form ensures git traverses into the directory and sees its files.
+!/docs/refactor
+!/docs/refactor/**
+# Exception: PWA release checklist is part of the release workflow.
+!/docs/pwa-release-checklist.md
 
 # Local-only maintenance and development tooling.
 # The production repo should remain static-app-first unless this decision changes.
