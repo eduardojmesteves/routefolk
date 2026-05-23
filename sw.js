@@ -4,13 +4,13 @@
 // Bump CACHE whenever shell assets change.
 // ============================================================
 
-const CACHE = 'routefolk-shell-v128-pwa-hardening';
+const CACHE = 'routefolk-shell-v129-weather-nav';
 
 const SHELL_ASSETS = [
   './',
   './index.html',
   // CSS entry point (loaded by index.html)
-  './styles/index.css?v=20260523-css-index-01',
+  './styles/index.css?v=20260523-weather-nav-01',
   // Individual CSS files (fetched separately by browser via @import — must be cached for offline)
   './style.css?v=20260516-redesign-ink-rust-01',
   './style-fidelity.css?v=20260516-fidelity-01',
@@ -20,6 +20,7 @@ const SHELL_ASSETS = [
   './styles/interface-polish.css?v=20260518-production-01',
   './styles/renderer-integration.css?v=20260518-production-01',
   './styles/packing-list.css?v=20260518-production-01',
+  './styles/weather-nav.css',
   './styles/production-overrides.css?v=20260520-mobile-fields-02',
   './vendor/leaflet/leaflet.css?v=routefolk-local-01',
   './vendor/leaflet/leaflet.js?v=routefolk-local-01',
@@ -86,8 +87,14 @@ const SHELL_ASSETS = [
   './utils/trip-stats.js',
   './utils/state-selectors.js',
   './utils/write-guards.js',
+  './utils/navigation-url.js',
   './components/toast.js',
   './components/stats.js',
+  './components/atoms/wx-icon.js',
+  './components/atoms/wx-cell.js',
+  './components/atoms/weather-panel.js',
+  './components/atoms/navigate-button.js',
+  './components/atoms/navigate-sheet.js',
   './lib/config.js',
   './lib/supabase.js',
   './lib/auth.js',
@@ -98,6 +105,8 @@ const SHELL_ASSETS = [
   './lib/trip-members.js',
   './lib/geocoding.js',
   './lib/weather.js',
+  './lib/weather-rules.js',
+  './lib/weather-headline.js',
   './lib/journal.js',
   './lib/profiles.js',
   './lib/expenses.js',
