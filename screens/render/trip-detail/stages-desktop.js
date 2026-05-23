@@ -6,6 +6,7 @@
 import { STATE } from '../../../state/app-state.js';
 import { esc } from '../../../utils/dom.js';
 import { fmtDate } from '../../../utils/datetime.js';
+import { isArchivedTrip, writeDisabledAttr } from '../../../utils/write-guards.js';
 import {
   arr,
   categoryLabel,
@@ -44,7 +45,7 @@ function desktopNavigateHtml(trip, stage) {
   return navigateButtonHtml(stage, {
     online: STATE.isOnline !== false,
     kind: 'desktop',
-    archived: ['completed', 'cancelled'].includes(trip.status),
+    archived: isArchivedTrip(trip),
   });
 }
 
@@ -60,6 +61,17 @@ function renderJournalWizard() {
   return `<aside class="rf-d2-aside"><div class="rf-d2-aside-head"><div class="rf-d2-aside-kicker">New entry</div><h2 class="rf-d2-aside-title">A note from the road</h2></div><input class="rf-d2-input" id="v2-entry-title" placeholder="Title"><input class="rf-d2-input" id="v2-entry-place" placeholder="Place"><input class="rf-d2-input" id="v2-entry-time" type="time"><textarea class="rf-d2-textarea" id="v2-entry-note" placeholder="What happened here?"></textarea><div class="rf-d2-form-actions"><button class="rf-d2-btn" data-action="rf-d2-cancel-wizard">Cancel</button><button class="rf-d2-btn is-primary" data-action="rf-d2-save-journal">Save entry</button></div></aside>`;
 }
 
+function desktopReorderHtml(trip, stage) {
+  if (isArchivedTrip(trip)) return '';
+  const st = stages(trip.id);
+  const i = st.findIndex((candidate) => candidate.id === stage.id);
+  if (i < 0) return '';
+  const dis = writeDisabledAttr();
+  const upDisabled = i === 0 ? ' disabled' : dis;
+  const downDisabled = i === st.length - 1 ? ' disabled' : dis;
+  return `<button class="rf-v2-stage-reorder" data-action="rf-v2-reorder-stage" data-stage-id="${esc(stage.id)}" data-direction="up" type="button" title="Move up"${upDisabled}>↑</button><button class="rf-v2-stage-reorder" data-action="rf-v2-reorder-stage" data-stage-id="${esc(stage.id)}" data-direction="down" type="button" title="Move down"${downDisabled}>↓</button>`;
+}
+
 function renderAside(trip, stage, { loadingHtml }) {
   if (STATE.wizard === 'stage') return renderStageWizard(trip);
   if (STATE.wizard === 'journal') return renderJournalWizard();
@@ -68,7 +80,7 @@ function renderAside(trip, stage, { loadingHtml }) {
   const entries = arr(rawEntries);
   const stageExpenses = expenses(trip.id).filter((e) => e.stage_id === stage.id);
   const tracks = stageTracks(trip.id, stage.id);
-  return `<aside class="rf-d2-aside"><div class="rf-d2-aside-head"><div class="rf-d2-aside-kicker">Stage ${esc(stage.order_index || '')} · ${esc(fmtDate(stage.planned_date) || '')}</div><h2 class="rf-d2-aside-title">${esc(stage.start_location || 'Start')} <span style="font-style:italic;color:var(--rf-d2-muted)">to</span> ${esc(stage.end_location || 'End')}</h2><div class="rf-d2-aside-sub">${esc(stage.notes || '')}</div><div class="rf-d2-stage-actions">${desktopNavigateHtml(trip, stage)}</div></div>${desktopWeatherHtml(stage)}<div class="rf-d2-section-head"><div class="rf-d2-section-title">The day's notes</div><button class="rf-d2-btn is-primary" data-action="rf-d2-add-journal" type="button">+ Add</button></div>${rawEntries === 'loading' ? loadingHtml('Loading notes…') : entries.map(entryHtml).join('') || '<div class="rf-d2-mini-table">No entries yet.</div>'}<div class="rf-d2-section-head"><div class="rf-d2-section-title">Stage costs</div><button class="rf-d2-btn is-primary" data-action="rf-v2-add-stage-expense" data-stage-id="${esc(stage.id)}" type="button">+ Add</button></div><div class="rf-d2-mini-table">${stageExpenses.map(expenseMini).join('') || 'No costs assigned to this stage.'}</div><section class="rf-v2-gpx-section">${gpxPanelHtml(trip, stage, tracks)}</section></aside>`;
+  return `<aside class="rf-d2-aside"><div class="rf-d2-aside-head"><div class="rf-d2-aside-kicker">Stage ${esc(stage.order_index || '')} · ${esc(fmtDate(stage.planned_date) || '')}</div><h2 class="rf-d2-aside-title">${esc(stage.start_location || 'Start')} <span style="font-style:italic;color:var(--rf-d2-muted)">to</span> ${esc(stage.end_location || 'End')}</h2><div class="rf-d2-aside-sub">${esc(stage.notes || '')}</div><div class="rf-d2-stage-actions">${desktopNavigateHtml(trip, stage)}${desktopReorderHtml(trip, stage)}</div></div>${desktopWeatherHtml(stage)}<div class="rf-d2-section-head"><div class="rf-d2-section-title">The day's notes</div><button class="rf-d2-btn is-primary" data-action="rf-d2-add-journal" type="button">+ Add</button></div>${rawEntries === 'loading' ? loadingHtml('Loading notes…') : entries.map(entryHtml).join('') || '<div class="rf-d2-mini-table">No entries yet.</div>'}<div class="rf-d2-section-head"><div class="rf-d2-section-title">Stage costs</div><button class="rf-d2-btn is-primary" data-action="rf-v2-add-stage-expense" data-stage-id="${esc(stage.id)}" type="button">+ Add</button></div><div class="rf-d2-mini-table">${stageExpenses.map(expenseMini).join('') || 'No costs assigned to this stage.'}</div><section class="rf-v2-gpx-section">${gpxPanelHtml(trip, stage, tracks)}</section></aside>`;
 }
 
 export function renderStages(trip, { hero, tabs, loadingHtml }) {
