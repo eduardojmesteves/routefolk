@@ -1,0 +1,36 @@
+/* ============================================================
+   routefolk — styles/stages-reorder.css
+   Stage reorder ↑/↓ button atom (mobile + desktop).
+   Sits inside .rf-m2-stage-actions / .rf-d2-stage-actions next
+   to the Navigate button, so the local font + colour tokens
+   cascade from the surrounding context.
+   ============================================================ */
+
+.rf-v2-stage-reorder {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 36px;
+  min-height: 36px;
+  padding: 0;
+  border: 1px solid currentColor;
+  border-radius: 999px;
+  background: transparent;
+  color: inherit;
+  font: 700 14px/1 var(--rf-m2-font-mono, var(--rf-d2-font-mono));
+  cursor: pointer;
+}
+
+.rf-v2-stage-reorder:hover:not([disabled]) {
+  filter: brightness(0.96);
+}
+
+.rf-v2-stage-reorder[disabled] {
+  opacity: 0.45;
+  cursor: not-allowed;
+}
+
+.rf-m2-stage-actions .rf-v2-stage-reorder,
+.rf-d2-stage-actions .rf-v2-stage-reorder {
+  color: var(--rf-m2-muted, var(--rf-d2-muted));
+}
