@@ -36,20 +36,16 @@ import { gpxUploadWizardHtml, gpxWizardDataSignature } from './gpx-wizard.js';
 import { setPendingGpxFile, getPendingGpxFile, byId } from './wizard-shared.js';
 
 // ---- Contextual action injection ------------------------------------
-function removeExisting() {
-  document.querySelectorAll('.rf-v2-wizard-host, .rf-v2-cost-cta, .rf-v2-hero-actions, .rf-v2-stage-actions, .rf-v2-entry-actions').forEach((node) => node.remove());
-}
+//
+// Renderer-first architecture (see CLAUDE.md):
+//   Write affordances — trip Edit/Delete, stage Edit/Delete/Reorder,
+//   entry Edit/Delete, cost + Log expense — are emitted directly by
+//   the renderer modules in screens/render/. This host no longer
+//   injects them via DOM mutation. The remaining responsibility here
+//   is owning the wizard overlay (.rf-v2-wizard-host) only.
 
-function injectTripActions() {
-  const trip = activeTrip();
-  if (!trip || !STATE.viewTripId || STATE.wizard) return;
-  if (!['trips', 'archive'].includes(STATE.tab)) return;
-  const target = document.querySelector('.rf-d2-hero .rf-d2-hero-stamps, .rf-clean-trip-head .rf-clean-stamps, .rf-m2-detail-hero');
-  if (!target || target.querySelector('.rf-v2-hero-actions')) return;
-  const wrap = document.createElement('div');
-  wrap.className = 'rf-v2-hero-actions';
-  wrap.innerHTML = `<button class="rf-d2-btn" data-action="rf-v2-edit-trip" type="button">Edit trip</button><button class="rf-d2-btn is-danger" data-action="rf-v2-delete-trip" type="button">Delete</button>`;
-  target.appendChild(wrap);
+function removeExisting() {
+  document.querySelectorAll('.rf-v2-wizard-host, .rf-v2-cost-cta, .rf-v2-stage-actions, .rf-v2-entry-actions').forEach((node) => node.remove());
 }
 
 function injectStageActions() {
@@ -122,7 +118,6 @@ export function renderWizardLayer() {
 
   if (!STATE.user || !STATE.wizard || !WIZARDS.has(STATE.wizard)) {
     removeExisting();
-    injectTripActions();
     injectStageActions();
     injectEntryActions();
     injectCostCta();
