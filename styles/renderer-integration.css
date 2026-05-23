@@ -67,6 +67,25 @@
   background:rgba(125,52,88,.05);
 }
 
+.rf-v2-stage-reorder{
+  display:inline-flex;
+  align-items:center;
+  justify-content:center;
+  width:36px;
+  min-height:36px;
+  padding:0;
+  border:1px solid currentColor;
+  border-radius:999px;
+  background:transparent;
+  color:inherit;
+  font:700 14px/1 var(--rf-m2-font-mono,var(--rf-d2-font-mono));
+  cursor:pointer;
+}
+.rf-v2-stage-reorder:hover:not([disabled]){filter:brightness(.96);}
+.rf-v2-stage-reorder[disabled]{opacity:.45;cursor:not-allowed;}
+.rf-m2-stage-actions .rf-v2-stage-reorder,
+.rf-d2-stage-actions .rf-v2-stage-reorder{color:var(--rf-m2-muted,var(--rf-d2-muted));}
+
 @media(min-width:960px){
   html,body,#app,.rf-screen,.rf-v2-root-host{height:100%;min-height:100vh;overflow:hidden;}
   .rf-d2-app{height:100vh;min-height:0;overflow:hidden;}
@@ -85,10 +104,19 @@
   .rf-d2-filter-row .rf-d2-search input{height:34px;min-width:0;font-size:13px;padding:0 4px;border:0;background:transparent;}
   .rf-d2-filter-row .rf-d2-search-close{width:28px;height:28px;flex:0 0 28px;border:0;background:transparent;}
   .rf-d2-hero-top{display:grid!important;grid-template-columns:minmax(0,1fr) 230px;gap:28px;align-items:start!important;}
-  .rf-d2-hero-stamps{display:grid!important;grid-template-columns:1fr 1fr;gap:8px;justify-items:stretch;align-items:stretch;min-width:0;}
-  .rf-d2-hero-stamps>.rf-d2-state-pill,.rf-d2-hero-stamps>.rf-d2-stamp{width:100%;box-sizing:border-box;justify-content:center;min-height:30px;height:30px;padding:0 10px;}
+  .rf-d2-hero-stamps{display:grid!important;grid-template-columns:minmax(0,1fr) minmax(0,1fr)!important;gap:16px!important;align-items:center!important;width:100%!important;min-width:0!important;}
+  .rf-d2-hero-stamps>.rf-d2-state-pill,.rf-d2-hero-stamps>.rf-d2-stamp{display:inline-flex!important;align-items:center!important;justify-content:center!important;width:100%!important;min-width:0!important;min-height:34px!important;height:34px!important;box-sizing:border-box!important;white-space:nowrap!important;}
+  .rf-d2-hero-stamps>.rf-d2-state-pill{gap:6px!important;padding:0 12px!important;border:1px solid rgba(38,52,94,.2)!important;border-radius:999px!important;background:var(--rf-m2-primary-soft,rgba(38,52,94,.12))!important;color:var(--rf-m2-primary,var(--rf-d2-primary))!important;font:800 12px/1 var(--rf-m2-font-ui,var(--rf-d2-font-ui))!important;letter-spacing:.01em!important;text-transform:none!important;}
+  .rf-d2-hero-stamps>.rf-d2-state-pill.is-planning{border-color:rgba(184,90,46,.2)!important;background:var(--rf-m2-accent-soft,rgba(184,90,46,.14))!important;color:var(--rf-m2-accent,var(--rf-d2-accent))!important;}
+  .rf-d2-hero-stamps>.rf-d2-state-pill.is-completed,.rf-d2-hero-stamps>.rf-d2-state-pill.is-active{border-color:rgba(38,52,94,.2)!important;background:var(--rf-m2-primary-soft,rgba(38,52,94,.12))!important;color:var(--rf-m2-primary,var(--rf-d2-primary))!important;}
+  .rf-d2-hero-stamps>.rf-d2-state-pill.is-cancelled{border-color:rgba(125,52,88,.2)!important;background:rgba(125,52,88,.16)!important;color:var(--rf-d2-danger)!important;}
+  .rf-d2-hero-stamps .rf-d2-state-dot{width:5px!important;height:5px!important;border-radius:999px!important;background:currentColor!important;}
+  .rf-d2-hero-stamps>.rf-d2-stamp{padding:0 12px!important;border:1.2px solid var(--rf-m2-primary,var(--rf-d2-primary))!important;border-radius:999px!important;background:rgba(255,255,255,.4)!important;color:var(--rf-m2-primary,var(--rf-d2-primary))!important;font:900 12px/1 var(--rf-m2-font-mono,var(--rf-d2-font-mono))!important;letter-spacing:.12em!important;text-transform:uppercase!important;transform:none!important;}
+  .rf-d2-hero-stamps>.rf-d2-stamp.is-accent{border-color:var(--rf-m2-accent,var(--rf-d2-accent))!important;color:var(--rf-m2-accent,var(--rf-d2-accent))!important;}
   .rf-v2-hero-actions{display:grid!important;grid-template-columns:1fr 1fr;grid-column:1/-1;gap:8px;width:100%;margin-top:0!important;}
   .rf-v2-hero-actions .rf-d2-btn{width:100%;height:34px!important;padding:0 12px;white-space:nowrap;}
+  .rf-d2-stage-list>.rf-d2-btn.is-dashed{margin-top:18px;}
+  .rf-d2-stage-actions .rf-d2-btn,.rf-d2-stage-actions .rf-nav-btn{height:34px;min-height:34px;padding:0 12px;}
   .rf-d2-main.is-account{height:100vh;overflow-y:auto;padding:36px 44px 72px;}
   .rf-d2-main.is-account .rf-d2-account-card,
   .rf-d2-main.is-account .rf-d2-riders-card,
