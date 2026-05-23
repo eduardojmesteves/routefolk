@@ -72,6 +72,17 @@ function desktopReorderHtml(trip, stage) {
   return `<button class="rf-v2-stage-reorder" data-action="rf-v2-reorder-stage" data-stage-id="${esc(stage.id)}" data-direction="up" type="button" title="Move up"${upDisabled}>↑</button><button class="rf-v2-stage-reorder" data-action="rf-v2-reorder-stage" data-stage-id="${esc(stage.id)}" data-direction="down" type="button" title="Move down"${downDisabled}>↓</button>`;
 }
 
+function desktopWriteActionsHtml(trip, stage) {
+  if (isArchivedTrip(trip)) return '';
+  const dis = writeDisabledAttr();
+  return `<button class="rf-d2-btn" data-action="rf-v2-edit-stage" data-stage-id="${esc(stage.id)}" type="button"${dis}>Edit</button><button class="rf-d2-btn is-danger" data-action="rf-v2-delete-stage" data-stage-id="${esc(stage.id)}" type="button"${dis}>Delete</button>`;
+}
+
+function desktopStageActionsHtml(trip, stage) {
+  const html = `${desktopNavigateHtml(trip, stage)}${desktopReorderHtml(trip, stage)}${desktopWriteActionsHtml(trip, stage)}`;
+  return html ? `<div class="rf-d2-stage-actions">${html}</div>` : '';
+}
+
 function renderAside(trip, stage, { loadingHtml }) {
   if (STATE.wizard === 'stage') return renderStageWizard(trip);
   if (STATE.wizard === 'journal') return renderJournalWizard();
@@ -80,7 +91,7 @@ function renderAside(trip, stage, { loadingHtml }) {
   const entries = arr(rawEntries);
   const stageExpenses = expenses(trip.id).filter((e) => e.stage_id === stage.id);
   const tracks = stageTracks(trip.id, stage.id);
-  return `<aside class="rf-d2-aside"><div class="rf-d2-aside-head"><div class="rf-d2-aside-kicker">Stage ${esc(stage.order_index || '')} · ${esc(fmtDate(stage.planned_date) || '')}</div><h2 class="rf-d2-aside-title">${esc(stage.start_location || 'Start')} <span style="font-style:italic;color:var(--rf-d2-muted)">to</span> ${esc(stage.end_location || 'End')}</h2><div class="rf-d2-aside-sub">${esc(stage.notes || '')}</div><div class="rf-d2-stage-actions">${desktopNavigateHtml(trip, stage)}${desktopReorderHtml(trip, stage)}</div></div>${desktopWeatherHtml(stage)}<div class="rf-d2-section-head"><div class="rf-d2-section-title">The day's notes</div><button class="rf-d2-btn is-primary" data-action="rf-d2-add-journal" type="button">+ Add</button></div>${rawEntries === 'loading' ? loadingHtml('Loading notes…') : entries.map(entryHtml).join('') || '<div class="rf-d2-mini-table">No entries yet.</div>'}<div class="rf-d2-section-head"><div class="rf-d2-section-title">Stage costs</div><button class="rf-d2-btn is-primary" data-action="rf-v2-add-stage-expense" data-stage-id="${esc(stage.id)}" type="button">+ Add</button></div><div class="rf-d2-mini-table">${stageExpenses.map(expenseMini).join('') || 'No costs assigned to this stage.'}</div><section class="rf-v2-gpx-section">${gpxPanelHtml(trip, stage, tracks)}</section></aside>`;
+  return `<aside class="rf-d2-aside"><div class="rf-d2-aside-head"><div class="rf-d2-aside-kicker">Stage ${esc(stage.order_index || '')} · ${esc(fmtDate(stage.planned_date) || '')}</div><h2 class="rf-d2-aside-title">${esc(stage.start_location || 'Start')} <span style="font-style:italic;color:var(--rf-d2-muted)">to</span> ${esc(stage.end_location || 'End')}</h2><div class="rf-d2-aside-sub">${esc(stage.notes || '')}</div>${desktopStageActionsHtml(trip, stage)}</div>${desktopWeatherHtml(stage)}<div class="rf-d2-section-head"><div class="rf-d2-section-title">The day's notes</div><button class="rf-d2-btn is-primary" data-action="rf-d2-add-journal" type="button">+ Add</button></div>${rawEntries === 'loading' ? loadingHtml('Loading notes…') : entries.map(entryHtml).join('') || '<div class="rf-d2-mini-table">No entries yet.</div>'}<div class="rf-d2-section-head"><div class="rf-d2-section-title">Stage costs</div><button class="rf-d2-btn is-primary" data-action="rf-v2-add-stage-expense" data-stage-id="${esc(stage.id)}" type="button">+ Add</button></div><div class="rf-d2-mini-table">${stageExpenses.map(expenseMini).join('') || 'No costs assigned to this stage.'}</div><section class="rf-v2-gpx-section">${gpxPanelHtml(trip, stage, tracks)}</section></aside>`;
 }
 
 export function renderStages(trip, { hero, tabs, loadingHtml }) {
