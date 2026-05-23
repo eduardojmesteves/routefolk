@@ -14,6 +14,13 @@ export function canWrite() {
   return STATE.isOnline !== false;
 }
 
+/** A trip is archived when its status is completed or cancelled.
+ *  Archived trips render as view-only — no Edit/Delete on stages,
+ *  no Edit/Delete on journal entries, no Log Expense CTA. */
+export function isArchivedTrip(trip) {
+  return Boolean(trip && (trip.status === 'completed' || trip.status === 'cancelled'));
+}
+
 export function writeDisabledAttr() {
   return canWrite() ? '' : ' disabled';
 }
