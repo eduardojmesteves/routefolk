@@ -4,22 +4,21 @@
 // Bump CACHE whenever shell assets change.
 // ============================================================
 
-const CACHE = 'routefolk-shell-v130-stages-reorder';
+const CACHE = 'routefolk-shell-v131-renderer-stage-polish';
 
 const SHELL_ASSETS = [
   './',
   './index.html',
-  './styles/index.css?v=20260523-stages-reorder-01',
+  './styles/index.css?v=20260523-renderer-stage-polish-01',
   './style.css?v=20260516-redesign-ink-rust-01',
   './style-fidelity.css?v=20260516-fidelity-01',
   './styles/shell.css?v=20260516-production-01',
   './styles/app-ui.css?v=20260518-geo-map-01',
   './styles/wizards.css?v=20260520-stable-wizard-05',
   './styles/interface-polish.css?v=20260518-production-01',
-  './styles/renderer-integration.css?v=20260518-production-01',
+  './styles/renderer-integration.css?v=20260523-renderer-stage-polish-01',
   './styles/packing-list.css?v=20260518-production-01',
   './styles/weather-nav.css',
-  './styles/stages-reorder.css',
   './styles/production-overrides.css?v=20260520-mobile-fields-02',
   './vendor/leaflet/leaflet.css?v=routefolk-local-01',
   './vendor/leaflet/leaflet.js?v=routefolk-local-01',
