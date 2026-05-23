@@ -1,19 +1,17 @@
 // ============================================================
 // routefolk — screens/wizards/wizard-host.js
 // Wizard host container management: builds/removes the overlay,
-// injects contextual action buttons, owns the render loop and
-// the routefolk:v2-render listener.
+// dispatches wizard cancel actions, and owns the render loop +
+// routefolk:v2-render listener. Write-action buttons (Edit / Delete /
+// Reorder / + Log expense) are emitted by the renderer modules under
+// screens/render/ — this host no longer injects them via DOM mutation.
 // ============================================================
 
 import { STATE } from '../../state/app-state.js';
-import { esc } from '../../utils/dom.js';
 import {
   WIZARDS,
   isDesktop,
-  activeTrip,
-  selectedStage,
   selectedEntry,
-  entriesForStage,
   wizardHost,
   claim,
   renderAll,
@@ -45,18 +43,7 @@ import { setPendingGpxFile, getPendingGpxFile, byId } from './wizard-shared.js';
 //   is owning the wizard overlay (.rf-v2-wizard-host) only.
 
 function removeExisting() {
-  document.querySelectorAll('.rf-v2-wizard-host, .rf-v2-cost-cta').forEach((node) => node.remove());
-}
-
-function injectCostCta() {
-  const trip = activeTrip();
-  if (!trip || STATE.tab !== 'trips' || STATE.view !== 'costs' || STATE.wizard) return;
-  const target = document.querySelector('.rf-d2-ledger-hero, .rf-m2-ledger-hero');
-  if (!target || target.querySelector('.rf-v2-cost-cta')) return;
-  const wrap = document.createElement('div');
-  wrap.className = 'rf-v2-cost-cta';
-  wrap.innerHTML = '<button class="rf-d2-btn rf-v2-add-expense-btn is-primary" data-action="rf-v2-add-expense" type="button">+ Log expense</button>';
-  target.appendChild(wrap);
+  document.querySelectorAll('.rf-v2-wizard-host').forEach((node) => node.remove());
 }
 
 // ---- Host signature + markup dispatch -------------------------------
@@ -92,7 +79,6 @@ export function renderWizardLayer() {
 
   if (!STATE.user || !STATE.wizard || !WIZARDS.has(STATE.wizard)) {
     removeExisting();
-    injectCostCta();
     return;
   }
 
