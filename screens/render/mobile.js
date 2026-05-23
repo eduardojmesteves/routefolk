@@ -6,6 +6,7 @@
 
 import { STATE } from '../../state/app-state.js';
 import { esc } from '../../utils/dom.js';
+import { writeDisabledAttr } from '../../utils/write-guards.js';
 import {
   DETAIL_TABS,
   currentPalette,
@@ -34,11 +35,17 @@ function screen(inner, active = 'trips') {
   return `<div class="rf-clean-mobile"><div class="rf-clean-scroll">${inner}</div>${bottomNav(active)}</div>`;
 }
 
+function tripHeaderActions(trip) {
+  if (!trip || STATE.viewTripId !== trip.id) return '';
+  const dis = writeDisabledAttr();
+  return `<div class="rf-v2-hero-actions"><button class="rf-d2-btn" data-action="rf-v2-edit-trip" type="button"${dis}>Edit trip</button><button class="rf-d2-btn is-danger" data-action="rf-v2-delete-trip" type="button"${dis}>Delete</button></div>`;
+}
+
 function tripHeader(trip, active, backTo = 'trips', summaryOnly = false) {
   const backAction = backTo === 'archive' ? 'rf-m2-back-to-archive' : 'rf-m2-back-to-trips';
   const backLabel = backTo === 'archive' ? 'Archive' : 'Trips';
   const tabs = summaryOnly ? [['summary', 'Summary']] : DETAIL_TABS;
-  return `<header class="rf-clean-trip-head"><button class="rf-clean-back" data-action="${backAction}">← ${backLabel}</button><div class="rf-clean-kicker">${esc(tripNo(trip))} · ${esc(season(trip))}</div><h1>${esc(trip.title || 'Untitled trip')}</h1><p>${esc(subtitle(trip))}</p><div class="rf-m2-detail-stamps">${statePillHtml(trip.status)}${stampHtml(trip.visibility || 'group', 'accent')}</div></header><nav class="rf-clean-tabs">${tabs.map(([key, label]) => `<button class="${active === key ? 'is-active' : ''}" data-action="rf-m2-tab" data-value="${key}">${label}</button>`).join('')}</nav>`;
+  return `<header class="rf-clean-trip-head"><button class="rf-clean-back" data-action="${backAction}">← ${backLabel}</button><div class="rf-clean-kicker">${esc(tripNo(trip))} · ${esc(season(trip))}</div><h1>${esc(trip.title || 'Untitled trip')}</h1><p>${esc(subtitle(trip))}</p><div class="rf-m2-detail-stamps">${statePillHtml(trip.status)}${stampHtml(trip.visibility || 'group', 'accent')}</div>${tripHeaderActions(trip)}</header><nav class="rf-clean-tabs">${tabs.map(([key, label]) => `<button class="${active === key ? 'is-active' : ''}" data-action="rf-m2-tab" data-value="${key}">${label}</button>`).join('')}</nav>`;
 }
 
 function statusLabel(status) {
