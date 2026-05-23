@@ -16,6 +16,8 @@ import {
   stages,
 } from '../shared.js';
 import { gpxPanelHtml } from './gpx-panel.js';
+import { weatherPanelHtml } from '../../../components/atoms/weather-panel.js';
+import { navigateButtonHtml } from '../../../components/atoms/navigate-button.js';
 
 const rawStages = (tripId) => STATE.stagesByTrip[tripId];
 
@@ -33,44 +35,17 @@ function expenseMini(expense) {
   return `<div class="rf-d2-mini-table-row"><div><div class="rf-d2-mini-cat">${esc(categoryLabel(expense.category))}</div><div class="rf-d2-mini-meta">${esc(payerName(expense.user_id))}</div></div><div>${esc(fmtEuro(expense.amount || 0))}</div></div>`;
 }
 
-function numeric(value) { const number = Number(value); return Number.isFinite(number) ? number : null; }
-
-function stageHasCoords(stage) {
-  return (numeric(stage?.start_lat) !== null && numeric(stage?.start_lng) !== null)
-    || (numeric(stage?.end_lat) !== null && numeric(stage?.end_lng) !== null);
+function desktopWeatherHtml(stage) {
+  const wx = STATE.forecastsByStage[stage.id];
+  return weatherPanelHtml(stage, wx, { prefix: 'rf-d2' });
 }
 
-function forecastTempRange(forecast) {
-  if (forecast?.tempMin != null && forecast?.tempMax != null) return `${Math.round(forecast.tempMin)}–${Math.round(forecast.tempMax)}°`;
-  return '—';
-}
-
-function forecastMeta(forecast) {
-  const precip = forecast?.precipProb != null
-    ? `${Math.round(forecast.precipProb)}% rain`
-    : forecast?.precipMm != null ? `${forecast.precipMm} mm rain` : 'rain —';
-  const wind = forecast?.windKmh != null ? `${Math.round(forecast.windKmh)} km/h wind` : 'wind —';
-  return `${precip} · ${wind}`;
-}
-
-function desktopSkyPoint(point) {
-  const forecast = point?.forecast || null;
-  return `<div><strong>${esc(point?.label || 'Point')}</strong><br>${esc(forecast?.icon || '·')}<br><span>${esc(forecastTempRange(forecast))}</span><small>${esc(forecastMeta(forecast))}</small></div>`;
-}
-
-function desktopSkyMessage(message) {
-  return `<div class="rf-d2-sky"><div class="rf-d2-sky-tag">Sky advisory</div><div class="rf-d2-mini-table">${esc(message)}</div></div>`;
-}
-
-function desktopSkyHtml(stage) {
-  const result = STATE.forecastsByStage[stage.id];
-  if (!stage?.planned_date) return desktopSkyMessage('Set a planned date to see the weather forecast.');
-  if (!stageHasCoords(stage)) return desktopSkyMessage('Weather unavailable. Edit the stage location so routefolk can store coordinates.');
-  if (result === 'loading' || result === undefined) return desktopSkyMessage('Loading weather…');
-  if (!Array.isArray(result) || !result.length) return desktopSkyMessage('Weather unavailable for this stage.');
-  const usable = result.filter((point) => point.forecast);
-  if (!usable.length) return desktopSkyMessage('No forecast available for this date.');
-  return `<div class="rf-d2-sky"><div class="rf-d2-sky-tag">Sky advisory</div><div class="rf-d2-sky-grid">${result.map(desktopSkyPoint).join('')}</div><div class="rf-v2-archive-map-status">Weather by Open-Meteo</div></div>`;
+function desktopNavigateHtml(trip, stage) {
+  return navigateButtonHtml(stage, {
+    online: STATE.isOnline !== false,
+    kind: 'desktop',
+    archived: ['completed', 'cancelled'].includes(trip.status),
+  });
 }
 
 function renderStageRow(stage, index, selectedId) {
@@ -93,7 +68,7 @@ function renderAside(trip, stage, { loadingHtml }) {
   const entries = arr(rawEntries);
   const stageExpenses = expenses(trip.id).filter((e) => e.stage_id === stage.id);
   const tracks = stageTracks(trip.id, stage.id);
-  return `<aside class="rf-d2-aside"><div class="rf-d2-aside-head"><div class="rf-d2-aside-kicker">Stage ${esc(stage.order_index || '')} · ${esc(fmtDate(stage.planned_date) || '')}</div><h2 class="rf-d2-aside-title">${esc(stage.start_location || 'Start')} <span style="font-style:italic;color:var(--rf-d2-muted)">to</span> ${esc(stage.end_location || 'End')}</h2><div class="rf-d2-aside-sub">${esc(stage.notes || '')}</div></div>${desktopSkyHtml(stage)}<div class="rf-d2-section-head"><div class="rf-d2-section-title">The day's notes</div><button class="rf-d2-btn is-primary" data-action="rf-d2-add-journal" type="button">+ Add</button></div>${rawEntries === 'loading' ? loadingHtml('Loading notes…') : entries.map(entryHtml).join('') || '<div class="rf-d2-mini-table">No entries yet.</div>'}<div class="rf-d2-section-head"><div class="rf-d2-section-title">Stage costs</div><button class="rf-d2-btn is-primary" data-action="rf-v2-add-stage-expense" data-stage-id="${esc(stage.id)}" type="button">+ Add</button></div><div class="rf-d2-mini-table">${stageExpenses.map(expenseMini).join('') || 'No costs assigned to this stage.'}</div><section class="rf-v2-gpx-section">${gpxPanelHtml(trip, stage, tracks)}</section></aside>`;
+  return `<aside class="rf-d2-aside"><div class="rf-d2-aside-head"><div class="rf-d2-aside-kicker">Stage ${esc(stage.order_index || '')} · ${esc(fmtDate(stage.planned_date) || '')}</div><h2 class="rf-d2-aside-title">${esc(stage.start_location || 'Start')} <span style="font-style:italic;color:var(--rf-d2-muted)">to</span> ${esc(stage.end_location || 'End')}</h2><div class="rf-d2-aside-sub">${esc(stage.notes || '')}</div><div class="rf-d2-stage-actions">${desktopNavigateHtml(trip, stage)}</div></div>${desktopWeatherHtml(stage)}<div class="rf-d2-section-head"><div class="rf-d2-section-title">The day's notes</div><button class="rf-d2-btn is-primary" data-action="rf-d2-add-journal" type="button">+ Add</button></div>${rawEntries === 'loading' ? loadingHtml('Loading notes…') : entries.map(entryHtml).join('') || '<div class="rf-d2-mini-table">No entries yet.</div>'}<div class="rf-d2-section-head"><div class="rf-d2-section-title">Stage costs</div><button class="rf-d2-btn is-primary" data-action="rf-v2-add-stage-expense" data-stage-id="${esc(stage.id)}" type="button">+ Add</button></div><div class="rf-d2-mini-table">${stageExpenses.map(expenseMini).join('') || 'No costs assigned to this stage.'}</div><section class="rf-v2-gpx-section">${gpxPanelHtml(trip, stage, tracks)}</section></aside>`;
 }
 
 export function renderStages(trip, { hero, tabs, loadingHtml }) {
