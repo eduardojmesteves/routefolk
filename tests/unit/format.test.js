@@ -31,19 +31,12 @@ describe('fmtEuro', () => {
     expect(fmtEuro('abc')).toBe('—');
   });
 
-  // SOURCE BUG: Number(null) === 0, which is finite, so fmtEuro(null) returns
-  // "€0.00" instead of "—". The guard `!Number.isFinite(Number(value))` does
-  // not treat null as non-numeric because JS coerces null to 0.
-  it('BUG: fmtEuro(null) returns €0.00 instead of the empty fallback', () => {
-    const result = fmtEuro(null);
-    // Documents actual (incorrect) behaviour — should be '—' but is '€0.00'
-    expect(result).toMatch(/0/);
+  it('returns the em-dash fallback for null', () => {
+    expect(fmtEuro(null)).toBe('—');
   });
 
-  // SOURCE BUG: same null-coercion issue — custom empty option is never used for null.
-  it('BUG: fmtEuro(null, {empty}) returns €0.00 not the custom fallback', () => {
-    const result = fmtEuro(null, { empty: 'N/A' });
-    expect(result).toMatch(/0/); // documents actual behaviour
+  it('returns the custom empty option for null', () => {
+    expect(fmtEuro(null, { empty: 'N/A' })).toBe('N/A');
   });
 
   it('formats with 2 decimal places by default', () => {
@@ -128,10 +121,8 @@ describe('fmtKm', () => {
     expect(fmtKm(0)).toBe('0 km');
   });
 
-  // SOURCE BUG: Number(null) === 0, which is finite, so fmtKm(null) returns
-  // "0 km" instead of "—". Same null-coercion issue as fmtEuro.
-  it('BUG: fmtKm(null) returns "0 km" instead of em-dash', () => {
-    expect(fmtKm(null)).toBe('0 km'); // documents actual (incorrect) behaviour
+  it('returns em-dash for null', () => {
+    expect(fmtKm(null)).toBe('—');
   });
 
   it('returns em-dash for undefined', () => {
