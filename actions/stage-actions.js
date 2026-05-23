@@ -8,7 +8,7 @@
 // ============================================================
 
 import { STATE } from '../state/app-state.js';
-import { createStage, updateStage, deleteStage } from '../lib/stages.js';
+import { createStage, updateStage, deleteStage, swapStageOrder } from '../lib/stages.js';
 import { dispatchAppAction } from '../screens/app-actions.js';
 import {
   claim,
@@ -36,6 +36,7 @@ const STAGE_WIZARD_ACTIONS = new Set([
   'rf-v2-edit-stage',
   'rf-v2-delete-stage',
   'rf-v2-update-stage',
+  'rf-v2-reorder-stage',
 ]);
 
 /**
