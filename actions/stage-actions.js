@@ -189,5 +189,9 @@ export async function handle(event, btn, action) {
     await removeStage(event, btn.dataset.stageId);
     return true;
   }
+  if (action === 'rf-v2-reorder-stage') {
+    await reorderStage(event, btn.dataset.stageId, btn.dataset.direction);
+    return true;
+  }
   return dispatchAppAction(event, btn, action);
 }
