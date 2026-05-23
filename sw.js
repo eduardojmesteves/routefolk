@@ -4,7 +4,7 @@
 // Bump CACHE whenever shell assets change.
 // ============================================================
 
-const CACHE = 'routefolk-shell-v127-css-consolidation';
+const CACHE = 'routefolk-shell-v128-pwa-hardening';
 
 const SHELL_ASSETS = [
   './',
@@ -95,6 +95,7 @@ const SHELL_ASSETS = [
   './lib/access.js',
   './lib/trips.js',
   './lib/stages.js',
+  './lib/trip-members.js',
   './lib/geocoding.js',
   './lib/weather.js',
   './lib/journal.js',

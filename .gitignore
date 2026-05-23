@@ -10,9 +10,12 @@
 
 # Local-only maintenance and development tooling.
 # The production repo should remain static-app-first unless this decision changes.
-/tools/
 /test-tools/
 /local-tests/
+# Most files in /tools/ stay local; the SW asset helper is part of the release workflow.
+# Ignore everything in tools/ except generate-sw-assets.js.
+/tools/*
+!/tools/generate-sw-assets.js
 
 # Environment and secrets
 .env
