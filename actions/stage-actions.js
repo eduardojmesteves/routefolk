@@ -116,6 +116,43 @@ export async function removeStage(event, stageId) {
 }
 
 /**
+ * Swap an adjacent pair of stages via the atomic Postgres RPC.
+ *
+ * Optimistic: STATE.stagesByTrip[trip.id] is swapped in place and
+ * re-rendered immediately. On RPC failure the original order is
+ * restored and showError surfaces a friendly toast.
+ *
+ * @param {Event} event
+ * @param {string} stageId
+ * @param {'up' | 'down'} direction
+ */
+export async function reorderStage(event, stageId, direction) {
+  claim(event);
+  if (direction !== 'up' && direction !== 'down') return;
+  const trip = activeTrip();
+  if (!trip) return;
+  const list = stagesForTrip(trip.id);
+  const i = list.findIndex((candidate) => candidate.id === stageId);
+  if (i < 0) return;
+  const j = direction === 'up' ? i - 1 : i + 1;
+  if (j < 0 || j >= list.length) return;
+
+  const swapped = list.slice();
+  [swapped[i], swapped[j]] = [swapped[j], swapped[i]];
+  STATE.stagesByTrip[trip.id] = swapped;
+  renderAll();
+
+  try {
+    await swapStageOrder(list[i], list[j]);
+    await api().loadStagesForTrip?.(trip.id, { quiet: true });
+  } catch (error) {
+    STATE.stagesByTrip[trip.id] = list;
+    renderAll();
+    showError('v2-stage-error', error);
+  }
+}
+
+/**
  * @param {string} action
  * @returns {boolean} true if this action belongs to the stage domain
  */
