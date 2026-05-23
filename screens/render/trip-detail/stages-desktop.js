@@ -101,5 +101,5 @@ export function renderStages(trip, { hero, tabs, loadingHtml }) {
   }
   const st = stages(trip.id);
   const selected = st.find((stage) => stage.id === STATE.selectedStageId) || st[0];
-  return `<main class="rf-d2-main">${hero(trip, { withStats: true })}${tabs('stages')}<div class="rf-d2-section-head"><div class="rf-d2-section-title">${st.length} stages</div><button class="rf-d2-btn is-primary" data-action="rf-d2-add-stage" type="button">+ Add stage</button></div><div class="rf-d2-stage-list">${st.map((stage, i) => renderStageRow(stage, i, selected?.id)).join('')}<button class="rf-d2-btn is-dashed" data-action="rf-d2-add-stage" type="button">+ Add another stage</button></div></main>${renderAside(trip, selected, { loadingHtml })}`;
+  return `<main class="rf-d2-main">${hero(trip, { withStats: true })}${tabs('stages')}<div class="rf-d2-stage-list">${st.map((stage, i) => renderStageRow(stage, i, selected?.id)).join('')}<button class="rf-d2-btn is-dashed" data-action="rf-d2-add-stage" type="button">+ Add another stage</button></div></main>${renderAside(trip, selected, { loadingHtml })}`;
 }
