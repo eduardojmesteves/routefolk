@@ -55,17 +55,9 @@ function injectTripActions() {
 }
 
 function injectStageActions() {
-  const stage = selectedStage();
-  if (!stage || STATE.wizard || STATE.view !== 'detail') return;
-  const trip = activeTrip();
-  if (isArchivedTrip(trip)) return;
-  const target = document.querySelector('.rf-d2-aside-head, .rf-m2-aside-head');
-  if (!target || target.querySelector('.rf-v2-stage-actions')) return;
-  const dis = writeDisabledAttr();
-  const wrap = document.createElement('div');
-  wrap.className = 'rf-v2-stage-actions';
-  wrap.innerHTML = `<button class="rf-d2-btn" data-action="rf-v2-edit-stage" data-stage-id="${esc(stage.id)}" type="button"${dis}>Edit stage</button><button class="rf-d2-btn is-danger" data-action="rf-v2-delete-stage" data-stage-id="${esc(stage.id)}" type="button"${dis}>Delete</button>`;
-  target.appendChild(wrap);
+  // Stage header controls are now owned by the stage renderer. Do not
+  // inject the legacy Edit/Delete row here, otherwise desktop receives a
+  // duplicate action block underneath the new Navigate/Reorder controls.
 }
 
 function injectEntryActions() {
