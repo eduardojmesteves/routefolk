@@ -1,7 +1,7 @@
 // ============================================================
 // routefolk — actions/navigation-actions.js
 // Navigation domain: primary tab switching, trip selection,
-// archived trip selection, and back navigation.
+// archived trip selection, back navigation, and Navigate sheet.
 //
 // Task 4.2 wrapper: delegates to the shared dispatcher exported by
 // screens/app-actions.js. Task 4.9 will move the underlying logic
@@ -27,7 +27,15 @@ const NAVIGATION_SUFFIXES = [
 ];
 
 /** Exact-match actions owned by the navigation domain. */
-const NAVIGATION_EXACT = new Set(['rf-palette-select']);
+const NAVIGATION_EXACT = new Set([
+  'rf-palette-select',
+  'rf-m2-open-nav-sheet',
+  'rf-m2-close-nav-sheet',
+  'rf-m2-nav-open',
+  'rf-m2-nav-direct',
+  'rf-m2-toggle-nav-remember',
+  'rf-m2-add-route',
+]);
 
 /**
  * @param {string} action
