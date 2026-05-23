@@ -1,9 +1,7 @@
 /* ============================================================
    routefolk — styles/stages-reorder.css
-   Stage reorder ↑/↓ button atom (mobile + desktop).
-   Sits inside .rf-m2-stage-actions / .rf-d2-stage-actions next
-   to the Navigate button, so the local font + colour tokens
-   cascade from the surrounding context.
+   Stage reorder ↑/↓ button atom (mobile + desktop) and desktop
+   stage-detail polish introduced with the improved-ui branch.
    ============================================================ */
 
 .rf-v2-stage-reorder {
@@ -33,4 +31,88 @@
 .rf-m2-stage-actions .rf-v2-stage-reorder,
 .rf-d2-stage-actions .rf-v2-stage-reorder {
   color: var(--rf-m2-muted, var(--rf-d2-muted));
+}
+
+@media (min-width: 960px) {
+  .rf-d2-stage-list > .rf-d2-btn.is-dashed {
+    margin-top: 18px;
+  }
+
+  .rf-d2-hero-stamps {
+    display: flex !important;
+    flex-wrap: wrap !important;
+    align-items: center !important;
+    justify-content: flex-end !important;
+    gap: 8px !important;
+    min-width: 0 !important;
+  }
+
+  .rf-d2-hero-stamps > .rf-d2-state-pill,
+  .rf-d2-hero-stamps > .rf-d2-stamp {
+    width: auto !important;
+    min-height: 0 !important;
+    height: auto !important;
+    box-sizing: border-box !important;
+    justify-content: center !important;
+    white-space: nowrap !important;
+  }
+
+  .rf-d2-hero-stamps > .rf-d2-state-pill {
+    display: inline-flex !important;
+    align-items: center !important;
+    gap: 6px !important;
+    padding: 3px 10px !important;
+    border: 1px solid rgba(38,52,94,.2) !important;
+    border-radius: 999px !important;
+    background: var(--rf-m2-primary-soft, rgba(38,52,94,.12)) !important;
+    color: var(--rf-m2-primary, var(--rf-d2-primary)) !important;
+    font: 800 10.5px/1 var(--rf-m2-font-ui, var(--rf-d2-font-ui)) !important;
+    letter-spacing: 0 !important;
+    text-transform: none !important;
+  }
+
+  .rf-d2-hero-stamps > .rf-d2-state-pill.is-planning {
+    border-color: rgba(184,90,46,.2) !important;
+    background: var(--rf-m2-accent-soft, rgba(184,90,46,.14)) !important;
+    color: var(--rf-m2-accent, var(--rf-d2-accent)) !important;
+  }
+
+  .rf-d2-hero-stamps > .rf-d2-state-pill.is-completed,
+  .rf-d2-hero-stamps > .rf-d2-state-pill.is-active {
+    border-color: rgba(38,52,94,.2) !important;
+    background: var(--rf-m2-primary-soft, rgba(38,52,94,.12)) !important;
+    color: var(--rf-m2-primary, var(--rf-d2-primary)) !important;
+  }
+
+  .rf-d2-hero-stamps > .rf-d2-state-pill.is-cancelled {
+    border-color: rgba(125,52,88,.2) !important;
+    background: rgba(125,52,88,.16) !important;
+    color: var(--rf-d2-danger) !important;
+  }
+
+  .rf-d2-hero-stamps .rf-d2-state-dot {
+    width: 5px !important;
+    height: 5px !important;
+    border-radius: 999px !important;
+    background: currentColor !important;
+  }
+
+  .rf-d2-hero-stamps > .rf-d2-stamp {
+    display: inline-flex !important;
+    align-items: center !important;
+    padding: 2px 8px !important;
+    border: 1.2px solid var(--rf-m2-primary, var(--rf-d2-primary)) !important;
+    border-radius: 2px !important;
+    background: rgba(255,255,255,.4) !important;
+    color: var(--rf-m2-primary, var(--rf-d2-primary)) !important;
+    font: 900 9.5px/1 var(--rf-m2-font-mono, var(--rf-d2-font-mono)) !important;
+    letter-spacing: .16em !important;
+    text-transform: uppercase !important;
+    transform: none !important;
+  }
+
+  .rf-d2-hero-stamps > .rf-d2-stamp.is-accent {
+    border-color: var(--rf-m2-accent, var(--rf-d2-accent)) !important;
+    color: var(--rf-m2-accent, var(--rf-d2-accent)) !important;
+  }
 }
