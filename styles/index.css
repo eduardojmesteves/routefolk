@@ -1,0 +1,17 @@
+/* ============================================================
+   routefolk — styles/index.css
+   Single entry point for all application styles.
+   Load order matters: tokens → base → shell → components →
+   wizards → polish → renderer integration → overrides.
+   Vendor CSS (Leaflet) is loaded separately in index.html.
+   ============================================================ */
+
+@import "../style.css";
+@import "../style-fidelity.css";
+@import "./shell.css";
+@import "./app-ui.css";
+@import "./wizards.css";
+@import "./interface-polish.css";
+@import "./renderer-integration.css";
+@import "./packing-list.css";
+@import "./production-overrides.css";

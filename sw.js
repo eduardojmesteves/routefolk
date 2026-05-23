@@ -4,11 +4,14 @@
 // Bump CACHE whenever shell assets change.
 // ============================================================
 
-const CACHE = 'routefolk-shell-v126-renderer-split';
+const CACHE = 'routefolk-shell-v127-css-consolidation';
 
 const SHELL_ASSETS = [
   './',
   './index.html',
+  // CSS entry point (loaded by index.html)
+  './styles/index.css?v=20260523-css-index-01',
+  // Individual CSS files (fetched separately by browser via @import — must be cached for offline)
   './style.css?v=20260516-redesign-ink-rust-01',
   './style-fidelity.css?v=20260516-fidelity-01',
   './styles/shell.css?v=20260516-production-01',
