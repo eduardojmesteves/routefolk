@@ -6,6 +6,7 @@
 import { STATE } from '../../../state/app-state.js';
 import { esc } from '../../../utils/dom.js';
 import { fmtDate } from '../../../utils/datetime.js';
+import { isArchivedTrip, writeDisabledAttr } from '../../../utils/write-guards.js';
 import {
   arr,
   categoryLabel,
@@ -39,13 +40,29 @@ function mobileNavigateHtml(trip, stage) {
   return navigateButtonHtml(stage, {
     online: STATE.isOnline !== false,
     kind: 'mobile',
-    archived: ['completed', 'cancelled'].includes(trip.status),
+    archived: isArchivedTrip(trip),
   });
+}
+
+/** 4-button footer (↑ ↓ Edit Delete) for an active-trip stage card.
+ *  Returns '' when the trip is archived so the .rf-clean-stage-card
+ *  collapses to just the tap target — matching Scene C of the v3
+ *  mobile mockup. */
+function stageFootHtml(trip, stage, index, total) {
+  if (isArchivedTrip(trip)) return '';
+  const dis = writeDisabledAttr();
+  const upDisabled = index === 0 ? ' disabled' : dis;
+  const downDisabled = index === total - 1 ? ' disabled' : dis;
+  return `<div class="rf-clean-stage-foot"><button class="icon" data-action="rf-v2-reorder-stage" data-stage-id="${esc(stage.id)}" data-direction="up" type="button" title="Move up"${upDisabled}>↑</button><button class="icon" data-action="rf-v2-reorder-stage" data-stage-id="${esc(stage.id)}" data-direction="down" type="button" title="Move down"${downDisabled}>↓</button><button data-action="rf-v2-edit-stage" data-stage-id="${esc(stage.id)}" type="button"${dis}>Edit</button><button class="danger" data-action="rf-v2-delete-stage" data-stage-id="${esc(stage.id)}" type="button"${dis}>Delete</button></div>`;
 }
 
 export function renderMobileStages(trip, { screen, tripHeader }) {
   const st = stages(trip.id);
-  return screen(`${tripHeader(trip, 'stages')}<main class="rf-clean-page">${st.map((stage, index) => `<button class="rf-clean-stage" data-action="rf-m2-open-stage" data-stage-id="${esc(stage.id)}"><span>${index + 1}</span><div><strong>${esc(stage.start_location || 'Start')} <em>to</em> ${esc(stage.end_location || 'End')}</strong><small>${esc(day(stage.planned_date))} · ${Math.round(Number(stage.distance_km) || 0)} km · ${esc(fmtDate(stage.planned_date) || '')}</small>${stage.notes ? `<p>${esc(stage.notes)}</p>` : ''}</div></button>`).join('') || '<div class="rf-clean-empty">No stages yet.</div>'}<button class="rf-m2-btn is-dashed" data-action="rf-m2-add-stage">+ Add another stage</button></main>`);
+  const archived = isArchivedTrip(trip);
+  const dis = writeDisabledAttr();
+  const cards = st.map((stage, index) => `<article class="rf-clean-stage-card"><button class="rf-clean-stage-tap" data-action="rf-m2-open-stage" data-stage-id="${esc(stage.id)}" type="button"><span>${index + 1}</span><div><strong>${esc(stage.start_location || 'Start')} <em>to</em> ${esc(stage.end_location || 'End')}</strong><small>${esc(day(stage.planned_date))} · ${Math.round(Number(stage.distance_km) || 0)} km · ${esc(fmtDate(stage.planned_date) || '')}</small>${stage.notes ? `<p>${esc(stage.notes)}</p>` : ''}</div></button>${stageFootHtml(trip, stage, index, st.length)}</article>`).join('') || '<div class="rf-clean-empty">No stages yet.</div>';
+  const addBtn = archived ? '' : `<button class="rf-m2-btn is-dashed" data-action="rf-m2-add-stage" type="button"${dis}>+ Add another stage</button>`;
+  return screen(`${tripHeader(trip, 'stages')}<main class="rf-clean-page">${cards}${addBtn}</main>`);
 }
 
 export function renderMobileJournal(trip, { screen }) {
