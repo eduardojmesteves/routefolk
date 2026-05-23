@@ -4,7 +4,7 @@
 // Bump CACHE whenever shell assets change.
 // ============================================================
 
-const CACHE = 'routefolk-shell-v125-archive-split';
+const CACHE = 'routefolk-shell-v126-renderer-split';
 
 const SHELL_ASSETS = [
   './',
@@ -50,6 +50,20 @@ const SHELL_ASSETS = [
   './screens/render/mobile.js',
   './screens/render/desktop.js',
   './screens/render/trip-detail/gpx-panel.js',
+  './screens/render/trip-detail/costs-desktop.js?v=20260523-renderer-split-01',
+  './screens/render/trip-detail/costs-mobile.js?v=20260523-renderer-split-01',
+  './screens/render/trip-detail/packing-desktop.js?v=20260523-renderer-split-01',
+  './screens/render/trip-detail/packing-mobile.js?v=20260523-renderer-split-01',
+  './screens/render/trip-detail/stages-desktop.js?v=20260523-renderer-split-01',
+  './screens/render/trip-detail/stages-mobile.js?v=20260523-renderer-split-01',
+  './screens/render/trip-detail/summary-desktop.js?v=20260523-renderer-split-01',
+  './screens/render/trip-detail/summary-mobile.js?v=20260523-renderer-split-01',
+  './screens/render/account/account-desktop.js?v=20260523-renderer-split-01',
+  './screens/render/account/account-mobile.js?v=20260523-renderer-split-01',
+  './screens/render/archive/archive-list-desktop.js?v=20260523-renderer-split-01',
+  './screens/render/archive/archive-list-mobile.js?v=20260523-renderer-split-01',
+  './screens/render/trips/trips-desktop.js?v=20260523-renderer-split-01',
+  './screens/render/trips/trips-mobile.js?v=20260523-renderer-split-01',
   './screens/app-actions.js?v=20260520-wizard-loop-04',
   './manifest.json',
   './icons/icon-192.png',
