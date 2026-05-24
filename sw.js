@@ -4,7 +4,7 @@
 // Bump CACHE whenever shell assets change.
 // ============================================================
 
-const CACHE = 'routefolk-shell-v130-renderer-first';
+const CACHE = 'routefolk-shell-v131-pixel-faithful-trip-actions';
 
 const SHELL_ASSETS = [
   './',
@@ -51,8 +51,8 @@ const SHELL_ASSETS = [
   './screens/render/archive/archive-map-fallback.js?v=20260523-archive-split-01',
   './screens/render/archive/archive-map-geometry.js?v=20260523-archive-split-01',
   './screens/render/shared.js',
-  './screens/render/mobile.js',
-  './screens/render/desktop.js',
+  './screens/render/mobile.js?v=20260524-pixel-faithful-trip-actions-01',
+  './screens/render/desktop.js?v=20260524-pixel-faithful-trip-actions-01',
   './screens/render/trip-detail/gpx-panel.js',
   './screens/render/trip-detail/costs-desktop.js?v=20260523-renderer-split-01',
   './screens/render/trip-detail/costs-mobile.js?v=20260523-renderer-split-01',
@@ -65,9 +65,9 @@ const SHELL_ASSETS = [
   './screens/render/account/account-desktop.js?v=20260523-renderer-split-01',
   './screens/render/account/account-mobile.js?v=20260523-renderer-split-01',
   './screens/render/archive/archive-list-desktop.js?v=20260523-renderer-split-01',
-  './screens/render/archive/archive-list-mobile.js?v=20260523-renderer-split-01',
+  './screens/render/archive/archive-list-mobile.js?v=20260524-pixel-faithful-trip-actions-01',
   './screens/render/trips/trips-desktop.js?v=20260523-renderer-split-01',
-  './screens/render/trips/trips-mobile.js?v=20260523-renderer-split-01',
+  './screens/render/trips/trips-mobile.js?v=20260524-pixel-faithful-trip-actions-01',
   './screens/app-actions.js?v=20260520-wizard-loop-04',
   './manifest.json',
   './icons/icon-192.png',
