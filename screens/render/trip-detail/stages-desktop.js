@@ -30,7 +30,7 @@ function stageTracks(tripId, stageId) {
 function entryHtml(entry, index, opts = {}) {
   const { stageId = '', archived = false, dis = '' } = opts;
   const time = entry.timestamp ? new Date(entry.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : '';
-  const actions = archived ? '' : `<div class="rf-v2-entry-actions"><button class="rf-d2-btn" data-action="rf-v2-edit-entry" data-entry-id="${esc(entry.id)}" data-stage-id="${esc(stageId)}" type="button"${dis}>Edit</button><button class="rf-d2-btn is-danger" data-action="rf-v2-delete-entry" data-entry-id="${esc(entry.id)}" data-stage-id="${esc(stageId)}" type="button"${dis}>Delete</button></div>`;
+  const actions = archived ? '' : `<div class="rf-d2-entry-actions"><button class="rf-d2-entry-icon" data-action="rf-v2-edit-entry" data-entry-id="${esc(entry.id)}" data-stage-id="${esc(stageId)}" title="Edit entry" type="button"${dis}>✎</button><button class="rf-d2-entry-icon is-danger" data-action="rf-v2-delete-entry" data-entry-id="${esc(entry.id)}" data-stage-id="${esc(stageId)}" title="Delete entry" type="button"${dis}>✕</button></div>`;
   return `<div class="rf-d2-entry"><div class="rf-d2-entry-bullet">${index + 1}</div><div><div class="rf-d2-entry-head"><div class="rf-d2-entry-type">A ${esc(entry.entry_type || 'note')}</div><div class="rf-d2-entry-when">${esc(time)}</div></div><div class="rf-d2-entry-title">${esc(entry.title || 'Untitled')}</div><div class="rf-d2-entry-loc">${entry.location ? `at ${esc(entry.location)}` : ''}</div></div>${actions}</div>`;
 }
 
@@ -89,7 +89,8 @@ function renderAside(trip, stage, { loadingHtml }) {
   const addJournal = archived ? '' : `<button class="rf-d2-btn is-primary" data-action="rf-d2-add-journal" type="button"${dis}>+ Add</button>`;
   const addExpense = archived ? '' : `<button class="rf-d2-btn is-primary" data-action="rf-v2-add-stage-expense" data-stage-id="${esc(stage.id)}" type="button"${dis}>+ Add</button>`;
   const entryOpts = { stageId: stage.id, archived, dis };
-  return `<aside class="rf-d2-aside"><div class="rf-d2-aside-head"><div class="rf-d2-aside-kicker">Stage ${esc(stage.order_index || '')} · ${esc(fmtDate(stage.planned_date) || '')}</div><h2 class="rf-d2-aside-title">${esc(stage.start_location || 'Start')} <span style="font-style:italic;color:var(--rf-d2-muted)">to</span> ${esc(stage.end_location || 'End')}</h2><div class="rf-d2-aside-sub">${esc(stage.notes || '')}</div><div class="rf-d2-stage-actions">${desktopStageActionsHtml(trip, stage)}</div></div>${desktopWeatherHtml(stage)}<div class="rf-d2-section-head"><div class="rf-d2-section-title">The day's notes</div>${addJournal}</div>${rawEntries === 'loading' ? loadingHtml('Loading notes…') : entries.map((entry, i) => entryHtml(entry, i, entryOpts)).join('') || '<div class="rf-d2-mini-table">No entries yet.</div>'}<div class="rf-d2-section-head"><div class="rf-d2-section-title">Stage costs</div>${addExpense}</div><div class="rf-d2-mini-table">${stageExpenses.map(expenseMini).join('') || 'No costs assigned to this stage.'}</div><section class="rf-v2-gpx-section">${gpxPanelHtml(trip, stage, tracks)}</section></aside>`;
+  const actions = desktopStageActionsHtml(trip, stage);
+  return `<aside class="rf-d2-aside"><div class="rf-d2-aside-head"><div class="rf-d2-aside-kicker">Stage ${esc(stage.order_index || '')} · ${esc(fmtDate(stage.planned_date) || '')}</div><h2 class="rf-d2-aside-title">${esc(stage.start_location || 'Start')} <span style="font-style:italic;color:var(--rf-d2-muted)">to</span> ${esc(stage.end_location || 'End')}</h2><div class="rf-d2-aside-sub">${esc(stage.notes || '')}</div>${actions ? `<div class="rf-d2-stage-actions">${actions}</div>` : ''}</div>${desktopWeatherHtml(stage)}<div class="rf-d2-section-head"><div class="rf-d2-section-title">The day's notes</div>${addJournal}</div>${rawEntries === 'loading' ? loadingHtml('Loading notes…') : entries.map((entry, i) => entryHtml(entry, i, entryOpts)).join('') || '<div class="rf-d2-mini-table">No entries yet.</div>'}<div class="rf-d2-section-head"><div class="rf-d2-section-title">Stage costs</div>${addExpense}</div><div class="rf-d2-mini-table">${stageExpenses.map(expenseMini).join('') || 'No costs assigned to this stage.'}</div><section class="rf-v2-gpx-section">${gpxPanelHtml(trip, stage, tracks)}</section></aside>`;
 }
 
 export function renderStages(trip, { hero, tabs, loadingHtml }) {
@@ -99,5 +100,9 @@ export function renderStages(trip, { hero, tabs, loadingHtml }) {
   }
   const st = stages(trip.id);
   const selected = st.find((stage) => stage.id === STATE.selectedStageId) || st[0];
-  return `<main class="rf-d2-main">${hero(trip, { withStats: true })}${tabs('stages')}<div class="rf-d2-section-head"><div class="rf-d2-section-title">${st.length} stages</div><button class="rf-d2-btn is-primary" data-action="rf-d2-add-stage" type="button">+ Add stage</button></div><div class="rf-d2-stage-list">${st.map((stage, i) => renderStageRow(stage, i, selected?.id)).join('')}<button class="rf-d2-btn is-dashed" data-action="rf-d2-add-stage" type="button">+ Add another stage</button></div></main>${renderAside(trip, selected, { loadingHtml })}`;
+  const archived = isArchivedTrip(trip);
+  const dis = writeDisabledAttr();
+  const addTop = archived ? '' : `<button class="rf-d2-btn is-primary" data-action="rf-d2-add-stage" type="button"${dis}>+ Add stage</button>`;
+  const addBottom = archived ? '' : `<button class="rf-d2-btn is-dashed" data-action="rf-d2-add-stage" type="button"${dis}>+ Add another stage</button>`;
+  return `<main class="rf-d2-main">${hero(trip, { withStats: true })}${tabs('stages')}<div class="rf-d2-section-head"><div class="rf-d2-section-title">${st.length} stages</div>${addTop}</div><div class="rf-d2-stage-list">${st.map((stage, i) => renderStageRow(stage, i, selected?.id)).join('')}${addBottom}</div></main>${renderAside(trip, selected, { loadingHtml })}`;
 }
