@@ -17,7 +17,7 @@ import {
 } from '../shared.js';
 
 function archiveTicket(trip) {
-  return `<article class="rf-clean-archive-card"><button class="rf-clean-archive-row" data-action="rf-m2-select-archived" data-trip-id="${esc(trip.id)}"><div><small>${esc(tripNo(trip))}</small><strong>${esc(trip.title || 'Untitled')}</strong><span>${esc(season(trip))}</span></div><b>${fmtEuro(stats(trip).spent)}</b></button><div class="rf-clean-trip-card-footer"><button data-action="rf-m2-list-edit-trip" data-source="archive" data-trip-id="${esc(trip.id)}">Edit</button><button data-action="rf-m2-list-delete-trip" data-source="archive" data-trip-id="${esc(trip.id)}">Delete</button></div></article>`;
+  return `<article class="rf-clean-archive-card"><button class="rf-clean-archive-row" data-action="rf-m2-select-archived" data-trip-id="${esc(trip.id)}"><div><small>${esc(tripNo(trip))}</small><strong>${esc(trip.title || 'Untitled')}</strong><span>${esc(season(trip))}</span></div><b>${fmtEuro(stats(trip).spent)}</b></button></article>`;
 }
 
 export function renderMobileArchive(screen) {
