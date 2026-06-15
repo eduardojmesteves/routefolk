@@ -112,7 +112,7 @@ export async function removeEntry(event, entryId) {
   const stage = selectedStage();
   const entry = entriesForStage(stage?.id).find((candidate) => candidate.id === entryId);
   if (!stage || !entry) return;
-  if (!window.confirm(`Delete journal entry “${entry.title || 'Untitled'}”?`)) return;
+  if (!window.confirm(`Delete "${entry.title || 'this entry'}" from the journal?`)) return;
   await deleteEntry(entry.id);
   STATE.entriesByStage[stage.id] = entriesForStage(stage.id).filter((candidate) => candidate.id !== entry.id);
   STATE.wizard = null;
