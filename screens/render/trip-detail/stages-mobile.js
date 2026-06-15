@@ -13,7 +13,9 @@ import {
   expenses,
   fmtEuro,
   payerName,
+  showStageActions,
   stages,
+  writeDisabledAttr,
 } from '../shared.js';
 import { gpxPanelHtml } from './gpx-panel.js';
 import { weatherPanelHtml } from '../../../components/atoms/weather-panel.js';
@@ -43,9 +45,23 @@ function mobileNavigateHtml(trip, stage) {
   });
 }
 
+// M2 — stage action footer (↑ ↓ Edit Delete). Hidden on archived trips (F1);
+// reorder bounds disable ↑ on first / ↓ on last; offline disables all (F1).
+function stageActionFooterHtml(stage, { index, total, trip }) {
+  if (!showStageActions(trip)) return '';
+  const w = writeDisabledAttr(trip);
+  return `<div class="rf-clean-stage-foot">`
+    + `<button class="icon" data-action="rf-v2-stage-up" data-stage-id="${esc(stage.id)}" ${index === 0 ? 'disabled' : w}>↑</button>`
+    + `<button class="icon" data-action="rf-v2-stage-down" data-stage-id="${esc(stage.id)}" ${index === total - 1 ? 'disabled' : w}>↓</button>`
+    + `<button data-action="rf-v2-edit-stage" data-stage-id="${esc(stage.id)}"${w}>Edit</button>`
+    + `<button class="danger" data-action="rf-v2-delete-stage" data-stage-id="${esc(stage.id)}"${w}>Delete</button>`
+    + `</div>`;
+}
+
 export function renderMobileStages(trip, { screen, tripHeader }) {
   const st = stages(trip.id);
-  return screen(`${tripHeader(trip, 'stages')}<main class="rf-clean-page">${st.map((stage, index) => `<button class="rf-clean-stage" data-action="rf-m2-open-stage" data-stage-id="${esc(stage.id)}"><span>${index + 1}</span><div><strong>${esc(stage.start_location || 'Start')} <em>to</em> ${esc(stage.end_location || 'End')}</strong><small>${esc(day(stage.planned_date))} · ${Math.round(Number(stage.distance_km) || 0)} km · ${esc(fmtDate(stage.planned_date) || '')}</small>${stage.notes ? `<p>${esc(stage.notes)}</p>` : ''}</div></button>`).join('') || '<div class="rf-clean-empty">No stages yet.</div>'}<button class="rf-m2-btn is-dashed" data-action="rf-m2-add-stage">+ Add another stage</button></main>`);
+  const total = st.length;
+  return screen(`${tripHeader(trip, 'stages')}<main class="rf-clean-page">${st.map((stage, index) => `<article class="rf-clean-stage-card"><button class="rf-clean-stage-tap" data-action="rf-m2-open-stage" data-stage-id="${esc(stage.id)}"><span>${index + 1}</span><div><strong>${esc(stage.start_location || 'Start')} <em>to</em> ${esc(stage.end_location || 'End')}</strong><small>${esc(day(stage.planned_date))} · ${Math.round(Number(stage.distance_km) || 0)} km · ${esc(fmtDate(stage.planned_date) || '')}</small>${stage.notes ? `<p>${esc(stage.notes)}</p>` : ''}</div></button>${stageActionFooterHtml(stage, { index, total, trip })}</article>`).join('') || '<div class="rf-clean-empty">No stages yet.</div>'}<button class="rf-m2-btn is-dashed" data-action="rf-m2-add-stage">+ Add another stage</button></main>`);
 }
 
 export function renderMobileJournal(trip, { screen }) {
