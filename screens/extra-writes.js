@@ -71,28 +71,9 @@ function injectExpenseActions() {
   });
 }
 
-function injectItemActions() {
-  const trip = activeTrip();
-  if (!trip || STATE.view !== 'packing' || STATE.wizard) return;
-  document.querySelectorAll('.rf-d2-item-row, .rf-m2-item-row').forEach((row) => {
-    if (row.querySelector('.rf-v2-item-actions')) return;
-    const toggle = row.querySelector('[data-action$="toggle-item"]');
-    const itemId = toggle?.dataset?.itemId;
-    if (!itemId) return;
-    const wrap = document.createElement('div');
-    wrap.className = 'rf-v2-item-actions';
-    wrap.innerHTML = `
-      <button class="rf-d2-btn" data-action="rf-v2-edit-item" data-item-id="${esc(itemId)}" type="button">Edit</button>
-      <button class="rf-d2-btn is-danger" data-action="rf-v2-delete-item" data-item-id="${esc(itemId)}" type="button">Delete</button>
-    `;
-    row.appendChild(wrap);
-  });
-}
-
 function renderExtraWritesLayer() {
   removeLayer();
   injectExpenseActions();
-  injectItemActions();
   if (!STATE.user || !['expense-edit', 'item-edit'].includes(STATE.wizard)) return;
 
   const host = document.createElement('div');
