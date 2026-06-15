@@ -23,3 +23,17 @@
 .rf-clean-stage-foot button[disabled]{color:var(--rf-m2-rule-2);cursor:not-allowed}
 .rf-clean-stage-foot button.danger[disabled]{color:var(--rf-m2-danger);opacity:.4}
 .rf-clean-stage-foot button:hover:not([disabled]){background:rgba(0,0,0,.04)}
+
+/* ---- M3: mobile drill-in stage action pills ---- */
+.rf-m2-stage-actions{display:flex;gap:7px;flex-wrap:wrap;align-items:center;margin:10px 0}
+.rf-m2-stage-actions .rf-m2-pill-action{border:1px solid var(--rf-m2-rule-2);background:transparent;border-radius:999px;padding:6px 12px;font:800 12px var(--rf-m2-font-ui);color:var(--rf-m2-ink);cursor:pointer}
+.rf-m2-stage-actions .rf-m2-pill-action.danger{color:var(--rf-m2-danger);background:var(--rf-m2-danger-soft);border-color:transparent}
+.rf-m2-stage-actions .rf-m2-pill-action[disabled]{opacity:.45;cursor:not-allowed}
+
+/* ---- M4: mobile journal entry ✎ ✕ ---- */
+.rf-clean-note{grid-template-columns:30px 1fr auto}
+.rf-clean-note-acts{display:flex;gap:4px;align-items:start}
+.rf-clean-note-acts button{width:26px;height:26px;border:0;border-radius:999px;background:transparent;color:var(--rf-m2-muted);font:14px var(--rf-m2-font-ui);cursor:pointer}
+.rf-clean-note-acts button:hover:not([disabled]){background:var(--rf-m2-surface-2)}
+.rf-clean-note-acts button.danger{color:var(--rf-m2-danger)}
+.rf-clean-note-acts button[disabled]{opacity:.45;cursor:not-allowed}

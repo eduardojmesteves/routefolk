@@ -64,6 +64,25 @@ export function renderMobileStages(trip, { screen, tripHeader }) {
   return screen(`${tripHeader(trip, 'stages')}<main class="rf-clean-page">${st.map((stage, index) => `<article class="rf-clean-stage-card"><button class="rf-clean-stage-tap" data-action="rf-m2-open-stage" data-stage-id="${esc(stage.id)}"><span>${index + 1}</span><div><strong>${esc(stage.start_location || 'Start')} <em>to</em> ${esc(stage.end_location || 'End')}</strong><small>${esc(day(stage.planned_date))} · ${Math.round(Number(stage.distance_km) || 0)} km · ${esc(fmtDate(stage.planned_date) || '')}</small>${stage.notes ? `<p>${esc(stage.notes)}</p>` : ''}</div></button>${stageActionFooterHtml(stage, { index, total, trip })}</article>`).join('') || '<div class="rf-clean-empty">No stages yet.</div>'}<button class="rf-m2-btn is-dashed" data-action="rf-m2-add-stage">+ Add another stage</button></main>`);
 }
 
+// M3 — drill-in stage action pills (Edit stage · Delete) next to Navigate.
+function mobileStageActionsHtml(trip, stage) {
+  let html = mobileNavigateHtml(trip, stage);
+  if (showStageActions(trip)) {
+    const w = writeDisabledAttr(trip);
+    html += `<button class="rf-m2-pill-action" data-action="rf-v2-edit-stage" data-stage-id="${esc(stage.id)}"${w}>Edit stage</button>`
+          + `<button class="rf-m2-pill-action danger" data-action="rf-v2-delete-stage" data-stage-id="${esc(stage.id)}"${w}>Delete</button>`;
+  }
+  return `<div class="rf-m2-stage-actions">${html}</div>`;
+}
+
+// M4 — journal entry row with ✎ ✕ icon actions (hidden on archived trips).
+function mobileNoteHtml(entry, index, trip) {
+  const acts = showStageActions(trip)
+    ? `<div class="rf-clean-note-acts"><button data-action="rf-v2-edit-entry" data-entry-id="${esc(entry.id)}"${writeDisabledAttr(trip)} aria-label="Edit entry">✎</button><button class="danger" data-action="rf-v2-delete-entry" data-entry-id="${esc(entry.id)}"${writeDisabledAttr(trip)} aria-label="Delete entry">✕</button></div>`
+    : '';
+  return `<article class="rf-clean-note"><span>${index + 1}</span><div><small>A ${esc(entry.entry_type || 'note')}</small><strong>${esc(entry.title || 'Untitled')}</strong>${entry.location ? `<em>at ${esc(entry.location)}</em>` : ''}</div>${acts}</article>`;
+}
+
 export function renderMobileJournal(trip, { screen }) {
   const stage = selectedStage(trip);
   if (!stage) return screen('<main class="rf-clean-page"><div class="rf-clean-empty">No stage selected.</div></main>');
@@ -71,5 +90,5 @@ export function renderMobileJournal(trip, { screen }) {
   const stageExpenses = expenses(trip.id).filter((expense) => expense.stage_id === stage.id);
   const tracks = mobileStageTracks(trip.id, stage.id);
   const sheetStage = STATE.navSheet ? selectedStage(trip) : null;
-  return screen(`<main class="rf-clean-page"><button class="rf-clean-back" data-action="rf-m2-back-to-stages">← ${esc(trip.title || 'Trip')}</button><div class="rf-clean-kicker">Stage · ${esc(fmtDate(stage.planned_date) || '')}</div><h1 class="rf-clean-title">${esc(stage.start_location || 'Start')} <em>to</em> ${esc(stage.end_location || 'End')}</h1><div class="rf-m2-stage-actions">${mobileNavigateHtml(trip, stage)}</div><p>${esc(stage.notes || '')}</p>${mobileWeatherHtml(stage)}<div class="rf-clean-section-head"><h2>The day's notes</h2><button data-action="rf-m2-add-journal">+ Add</button></div>${entries.map((entry, i) => `<article class="rf-clean-note"><span>${i + 1}</span><div><small>A ${esc(entry.entry_type || 'note')}</small><strong>${esc(entry.title || 'Untitled')}</strong>${entry.location ? `<em>at ${esc(entry.location)}</em>` : ''}</div></article>`).join('') || '<div class="rf-clean-empty">No entries yet.</div>'}<div class="rf-clean-section-head"><h2>Stage costs</h2><button data-action="rf-v2-add-stage-expense" data-stage-id="${esc(stage.id)}">+ Add</button></div>${stageExpenses.map((expense) => `<article class="rf-clean-expense"><div><strong>${esc(categoryLabel(expense.category))}</strong><small>${esc(payerName(expense.user_id))}</small></div><b>${fmtEuro(expense.amount || 0)}</b></article>`).join('') || '<div class="rf-clean-empty">No costs assigned to this stage.</div>'}<section class="rf-v2-gpx-section">${gpxPanelHtml(trip, stage, tracks)}</section></main>${STATE.navSheet && sheetStage ? navigateSheetHtml(sheetStage, STATE.navSheet) : ''}`);
+  return screen(`<main class="rf-clean-page"><button class="rf-clean-back" data-action="rf-m2-back-to-stages">← ${esc(trip.title || 'Trip')}</button><div class="rf-clean-kicker">Stage · ${esc(fmtDate(stage.planned_date) || '')}</div><h1 class="rf-clean-title">${esc(stage.start_location || 'Start')} <em>to</em> ${esc(stage.end_location || 'End')}</h1>${mobileStageActionsHtml(trip, stage)}<p>${esc(stage.notes || '')}</p>${mobileWeatherHtml(stage)}<div class="rf-clean-section-head"><h2>The day's notes</h2><button data-action="rf-m2-add-journal">+ Add</button></div>${entries.map((entry, i) => mobileNoteHtml(entry, i, trip)).join('') || '<div class="rf-clean-empty">No entries yet.</div>'}<div class="rf-clean-section-head"><h2>Stage costs</h2><button data-action="rf-v2-add-stage-expense" data-stage-id="${esc(stage.id)}">+ Add</button></div>${stageExpenses.map((expense) => `<article class="rf-clean-expense"><div><strong>${esc(categoryLabel(expense.category))}</strong><small>${esc(payerName(expense.user_id))}</small></div><b>${fmtEuro(expense.amount || 0)}</b></article>`).join('') || '<div class="rf-clean-empty">No costs assigned to this stage.</div>'}<section class="rf-v2-gpx-section">${gpxPanelHtml(trip, stage, tracks)}</section></main>${STATE.navSheet && sheetStage ? navigateSheetHtml(sheetStage, STATE.navSheet) : ''}`);
 }
