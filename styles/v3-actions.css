@@ -70,3 +70,8 @@
 .rf-d2-breakdown .bar{height:3px;background:var(--rf-d2-rule);border-radius:999px;margin:2px 0 8px;overflow:hidden}
 .rf-d2-breakdown .bar>i{display:block;height:100%;background:var(--rf-d2-primary);border-radius:999px}
 .rf-d2-breakdown.is-payer .bar>i{background:var(--rf-d2-accent)}
+
+/* ---- Packing items — Edit/Delete footer reusing the M2 stage-foot design ---- */
+.rf-clean-stage-foot.is-pair{grid-template-columns:1fr 1fr}
+.rf-clean-item-card.is-split{display:block;padding:0;overflow:hidden}
+.rf-clean-item-card.is-split .rf-clean-item-tap{display:grid;grid-template-columns:28px minmax(0,1fr);gap:10px;align-items:center;padding:13px}
