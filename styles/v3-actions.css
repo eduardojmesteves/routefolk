@@ -52,3 +52,19 @@
 .rf-d2-entry-acts button:hover:not([disabled]){background:var(--rf-d2-surface-2)}
 .rf-d2-entry-acts button.danger{color:var(--rf-d2-danger)}
 .rf-d2-entry-acts button[disabled]{opacity:.45;cursor:not-allowed}
+
+/* ---- S1: costs breakdown card + proportional bars (mobile) ---- */
+.rf-clean-breakdown{background:var(--rf-m2-surface);border:1px solid var(--rf-m2-rule);border-radius:6px;padding:10px 12px;margin-top:6px}
+.rf-clean-breakdown>strong{display:block;font:700 10px var(--rf-m2-font-ui);letter-spacing:.12em;text-transform:uppercase;color:var(--rf-m2-ink);margin-bottom:6px}
+.rf-clean-breakdown .br-row{display:grid;grid-template-columns:1fr auto;gap:8px;align-items:center;padding:4px 0 2px;font:13px var(--rf-m2-font-serif);color:var(--rf-m2-ink-2)}
+.rf-clean-breakdown .br-row b{font:600 13px var(--rf-m2-font-serif);color:var(--rf-m2-ink)}
+.rf-clean-breakdown .bar{height:4px;background:var(--rf-m2-bg);border-radius:999px;margin:0 0 6px;overflow:hidden}
+.rf-clean-breakdown .bar>i{display:block;height:100%;background:var(--rf-m2-primary);border-radius:999px}
+.rf-clean-breakdown.is-payer .bar>i{background:var(--rf-m2-accent)}
+
+/* ---- S1: costs breakdown bars (desktop) ---- */
+.rf-d2-breakdown .br-row{display:grid;grid-template-columns:1fr auto;gap:10px;align-items:center;font:16px var(--rf-d2-font-serif);color:var(--rf-d2-ink-2)}
+.rf-d2-breakdown .br-row b{font:600 16px var(--rf-d2-font-serif);color:var(--rf-d2-ink)}
+.rf-d2-breakdown .bar{height:3px;background:var(--rf-d2-rule);border-radius:999px;margin:2px 0 8px;overflow:hidden}
+.rf-d2-breakdown .bar>i{display:block;height:100%;background:var(--rf-d2-primary);border-radius:999px}
+.rf-d2-breakdown.is-payer .bar>i{background:var(--rf-d2-accent)}
