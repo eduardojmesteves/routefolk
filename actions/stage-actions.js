@@ -8,7 +8,7 @@
 // ============================================================
 
 import { STATE } from '../state/app-state.js';
-import { createStage, updateStage, deleteStage } from '../lib/stages.js';
+import { createStage, updateStage, deleteStage, swapStageOrder } from '../lib/stages.js';
 import { dispatchAppAction } from '../screens/app-actions.js';
 import {
   claim,
@@ -36,6 +36,8 @@ const STAGE_WIZARD_ACTIONS = new Set([
   'rf-v2-edit-stage',
   'rf-v2-delete-stage',
   'rf-v2-update-stage',
+  'rf-v2-stage-up',
+  'rf-v2-stage-down',
 ]);
 
 /**
@@ -105,13 +107,66 @@ export async function removeStage(event, stageId) {
   const trip = activeTrip();
   const stage = stagesForTrip(trip?.id).find((candidate) => candidate.id === stageId);
   if (!trip || !stage) return;
-  if (!window.confirm(`Delete stage “${stage.start_location || 'Start'} to ${stage.end_location || 'End'}”?`)) return;
+  if (!window.confirm(`Delete stage "${stage.start_location || 'Start'} to ${stage.end_location || 'End'}"? This also deletes its journal entries.`)) return;
   await deleteStage(stage.id);
   STATE.stagesByTrip[trip.id] = stagesForTrip(trip.id).filter((candidate) => candidate.id !== stage.id);
   STATE.selectedStageId = stagesForTrip(trip.id)[0]?.id || null;
   STATE.wizard = null;
   STATE.editTargetId = null;
   renderAll();
+}
+
+// Snapshot the active scroll container so a re-render (which rebuilds the DOM
+// and resets scrollTop to 0) can restore the viewport position — e.g. after a
+// reorder, the list stays where the user was looking.
+function captureScrollPosition() {
+  const el = document.querySelector('.rf-clean-scroll, .rf-d2-main');
+  if (!el) return null;
+  return { selector: el.classList.contains('rf-clean-scroll') ? '.rf-clean-scroll' : '.rf-d2-main', top: el.scrollTop };
+}
+
+function restoreScrollPosition(snap) {
+  if (!snap) return;
+  const apply = () => { const el = document.querySelector(snap.selector); if (el) el.scrollTop = snap.top; };
+  apply();                          // renderAll() rebuilds synchronously
+  requestAnimationFrame(apply);     // cover any deferred relayout
+}
+
+/**
+ * Reorder a stage up (-1) or down (+1) by swapping order_index with its
+ * neighbour. Optimistic swap in STATE, then the atomic swap_stage_order RPC;
+ * restores the prior order if the RPC fails. Preserves scroll position so the
+ * list does not jump to the top on re-render.
+ * @param {Event} event
+ * @param {string} stageId
+ * @param {number} dir -1 (up) or +1 (down)
+ */
+export async function reorderStage(event, stageId, dir) {
+  claim(event);
+  const trip = activeTrip();
+  const list = stagesForTrip(trip?.id);
+  const i = list.findIndex((candidate) => candidate.id === stageId);
+  const j = i + dir;
+  if (!trip || i < 0 || j < 0 || j >= list.length) return;
+  const a = list[i];
+  const b = list[j];
+  const snap = captureScrollPosition();
+  const next = list.slice();
+  next[i] = b;
+  next[j] = a;
+  STATE.stagesByTrip[trip.id] = next;
+  renderAll();
+  restoreScrollPosition(snap);
+  try {
+    await swapStageOrder(a, b);
+    await api().loadStagesForTrip?.(trip.id, { quiet: true });
+    restoreScrollPosition(snap);
+  } catch (error) {
+    STATE.stagesByTrip[trip.id] = list;
+    renderAll();
+    restoreScrollPosition(snap);
+    throw error;
+  }
 }
 
 /**
@@ -149,6 +204,10 @@ export async function handle(event, btn, action) {
   }
   if (action === 'rf-v2-delete-stage') {
     await removeStage(event, btn.dataset.stageId);
+    return true;
+  }
+  if (action === 'rf-v2-stage-up' || action === 'rf-v2-stage-down') {
+    await reorderStage(event, btn.dataset.stageId, action === 'rf-v2-stage-up' ? -1 : 1);
     return true;
   }
   return dispatchAppAction(event, btn, action);

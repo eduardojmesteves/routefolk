@@ -48,51 +48,15 @@ function selectedItem() {
   return itemsForTrip(trip.id).find((item) => item.id === STATE.editTargetId) || null;
 }
 
+// Only the edit overlay (appended to <body>) needs explicit teardown; the
+// inline expense/item action buttons are part of the main render and are
+// rebuilt with it, so they are no longer stripped + re-injected here.
 function removeLayer() {
-  document.querySelectorAll('.rf-v2-extra-host, .rf-v2-expense-actions, .rf-v2-item-actions').forEach((node) => node.remove());
-}
-
-function injectExpenseActions() {
-  const trip = activeTrip();
-  if (!trip || STATE.view !== 'costs' || STATE.wizard) return;
-  const expenses = expensesForTrip(trip.id);
-  if (!expenses.length) return;
-  const rows = [...document.querySelectorAll('.rf-d2-table .rf-d2-table-row, .rf-m2-table .rf-m2-table-row')];
-  rows.forEach((row, index) => {
-    const expense = expenses[index];
-    if (!expense || row.querySelector('.rf-v2-expense-actions')) return;
-    const wrap = document.createElement('div');
-    wrap.className = 'rf-v2-expense-actions';
-    wrap.innerHTML = `
-      <button class="rf-d2-btn" data-action="rf-v2-edit-expense" data-expense-id="${esc(expense.id)}" type="button">Edit</button>
-      <button class="rf-d2-btn is-danger" data-action="rf-v2-delete-expense" data-expense-id="${esc(expense.id)}" type="button">Delete</button>
-    `;
-    row.appendChild(wrap);
-  });
-}
-
-function injectItemActions() {
-  const trip = activeTrip();
-  if (!trip || STATE.view !== 'packing' || STATE.wizard) return;
-  document.querySelectorAll('.rf-d2-item-row, .rf-m2-item-row').forEach((row) => {
-    if (row.querySelector('.rf-v2-item-actions')) return;
-    const toggle = row.querySelector('[data-action$="toggle-item"]');
-    const itemId = toggle?.dataset?.itemId;
-    if (!itemId) return;
-    const wrap = document.createElement('div');
-    wrap.className = 'rf-v2-item-actions';
-    wrap.innerHTML = `
-      <button class="rf-d2-btn" data-action="rf-v2-edit-item" data-item-id="${esc(itemId)}" type="button">Edit</button>
-      <button class="rf-d2-btn is-danger" data-action="rf-v2-delete-item" data-item-id="${esc(itemId)}" type="button">Delete</button>
-    `;
-    row.appendChild(wrap);
-  });
+  document.querySelectorAll('.rf-v2-extra-host').forEach((node) => node.remove());
 }
 
 function renderExtraWritesLayer() {
   removeLayer();
-  injectExpenseActions();
-  injectItemActions();
   if (!STATE.user || !['expense-edit', 'item-edit'].includes(STATE.wizard)) return;
 
   const host = document.createElement('div');

@@ -1,0 +1,77 @@
+/* ============================================================
+   routefolk — v3 action affordances
+   Edit/delete/reorder controls for stages and journal entries,
+   plus cost breakdown bars. Imported LAST so the few overrides of
+   existing .rf-clean-* / .rf-d2-* rules win the cascade.
+   Tokens only (+ neutral rgba overlays); no brand hex.
+   ============================================================ */
+
+/* ---- M1: mobile stage card split (tap-body + footer) ----
+   Scoped to .is-split so the summary's plain .rf-clean-stage-card keeps
+   its own padding. */
+.rf-clean-stage-card.is-split{padding:0;overflow:hidden;margin:16px 0}
+.rf-clean-stage-tap{width:100%;display:grid;grid-template-columns:38px 1fr;gap:12px;text-align:left;padding:14px;border:0;background:transparent;color:var(--rf-m2-ink)}
+.rf-clean-stage-tap>span{font:italic 28px var(--rf-m2-font-serif);color:var(--rf-m2-primary)}
+.rf-clean-stage-tap strong{font:500 20px/1.12 var(--rf-m2-font-serif)}
+.rf-clean-stage-tap small{display:block;color:var(--rf-m2-muted);font:11px var(--rf-m2-font-mono);letter-spacing:.07em}
+.rf-clean-stage-tap p{margin:6px 0 0;color:var(--rf-m2-muted);font-size:14px}
+
+/* ---- M2: mobile stage action footer (↑ ↓ Edit Delete) ---- */
+.rf-clean-stage-foot{display:grid;grid-template-columns:40px 40px 1fr 1fr;border-top:1px solid var(--rf-m2-rule);background:rgba(0,0,0,.025)}
+.rf-clean-stage-foot button{appearance:none;border:0;background:transparent;font:600 12px var(--rf-m2-font-ui);color:var(--rf-m2-ink);padding:9px 0;border-right:1px dotted var(--rf-m2-rule);cursor:pointer;letter-spacing:.01em}
+.rf-clean-stage-foot button:last-child{border-right:0}
+.rf-clean-stage-foot button.icon{font-size:13px;color:var(--rf-m2-muted);padding:8px 0}
+.rf-clean-stage-foot button.danger{color:var(--rf-m2-danger)}
+.rf-clean-stage-foot button[disabled]{color:var(--rf-m2-rule-2);cursor:not-allowed}
+.rf-clean-stage-foot button.danger[disabled]{color:var(--rf-m2-danger);opacity:.4}
+.rf-clean-stage-foot button:hover:not([disabled]){background:rgba(0,0,0,.04)}
+
+/* ---- M3: mobile drill-in stage action pills ---- */
+.rf-m2-stage-actions{display:flex;gap:7px;flex-wrap:wrap;align-items:center;margin:10px 0}
+.rf-m2-stage-actions .rf-m2-pill-action{border:1px solid var(--rf-m2-rule-2);background:transparent;border-radius:999px;padding:6px 12px;font:800 12px var(--rf-m2-font-ui);color:var(--rf-m2-ink);cursor:pointer}
+.rf-m2-stage-actions .rf-m2-pill-action.danger{color:var(--rf-m2-danger);background:var(--rf-m2-danger-soft);border-color:transparent}
+.rf-m2-stage-actions .rf-m2-pill-action[disabled]{opacity:.45;cursor:not-allowed}
+
+/* ---- M4: mobile journal entry ✎ ✕ ---- */
+.rf-clean-note{grid-template-columns:30px 1fr auto}
+.rf-clean-note-acts{display:flex;gap:4px;align-items:start}
+.rf-clean-note-acts button{width:26px;height:26px;border:0;border-radius:999px;background:transparent;color:var(--rf-m2-muted);font:14px var(--rf-m2-font-ui);cursor:pointer}
+.rf-clean-note-acts button:hover:not([disabled]){background:var(--rf-m2-surface-2)}
+.rf-clean-note-acts button.danger{color:var(--rf-m2-danger)}
+.rf-clean-note-acts button[disabled]{opacity:.45;cursor:not-allowed}
+
+/* ---- D1: desktop aside stage actions ---- */
+.rf-d2-stage-actions{display:flex;gap:8px;flex-wrap:wrap;align-items:center;margin-top:10px}
+.rf-d2-stage-actions .rf-d2-act{border:1px solid var(--rf-d2-rule-2);background:transparent;border-radius:999px;padding:6px 12px;font:800 13px var(--rf-d2-font-ui);color:var(--rf-d2-ink);cursor:pointer}
+.rf-d2-stage-actions .rf-d2-act.icon{padding:6px 10px;color:var(--rf-d2-muted)}
+.rf-d2-stage-actions .rf-d2-act.danger{color:var(--rf-d2-danger);background:var(--rf-d2-danger-soft);border-color:transparent}
+.rf-d2-stage-actions .rf-d2-act[disabled]{opacity:.45;cursor:not-allowed}
+
+/* ---- D2: desktop journal entry ✎ ✕ ---- */
+.rf-d2-entry{grid-template-columns:28px 1fr auto}
+.rf-d2-entry-acts{display:flex;gap:4px;align-items:start}
+.rf-d2-entry-acts button{width:26px;height:26px;border:0;border-radius:999px;background:transparent;color:var(--rf-d2-muted);font:14px var(--rf-d2-font-ui);cursor:pointer}
+.rf-d2-entry-acts button:hover:not([disabled]){background:var(--rf-d2-surface-2)}
+.rf-d2-entry-acts button.danger{color:var(--rf-d2-danger)}
+.rf-d2-entry-acts button[disabled]{opacity:.45;cursor:not-allowed}
+
+/* ---- S1: costs breakdown card + proportional bars (mobile) ---- */
+.rf-clean-breakdown{background:var(--rf-m2-surface);border:1px solid var(--rf-m2-rule);border-radius:6px;padding:10px 12px;margin-top:6px}
+.rf-clean-breakdown>strong{display:block;font:700 10px var(--rf-m2-font-ui);letter-spacing:.12em;text-transform:uppercase;color:var(--rf-m2-ink);margin-bottom:6px}
+.rf-clean-breakdown .br-row{display:grid;grid-template-columns:1fr auto;gap:8px;align-items:center;padding:4px 0 2px;font:13px var(--rf-m2-font-serif);color:var(--rf-m2-ink-2)}
+.rf-clean-breakdown .br-row b{font:600 13px var(--rf-m2-font-serif);color:var(--rf-m2-ink)}
+.rf-clean-breakdown .bar{height:4px;background:var(--rf-m2-bg);border-radius:999px;margin:0 0 6px;overflow:hidden}
+.rf-clean-breakdown .bar>i{display:block;height:100%;background:var(--rf-m2-primary);border-radius:999px}
+.rf-clean-breakdown.is-payer .bar>i{background:var(--rf-m2-accent)}
+
+/* ---- S1: costs breakdown bars (desktop) ---- */
+.rf-d2-breakdown .br-row{display:grid;grid-template-columns:1fr auto;gap:10px;align-items:center;font:16px var(--rf-d2-font-serif);color:var(--rf-d2-ink-2)}
+.rf-d2-breakdown .br-row b{font:600 16px var(--rf-d2-font-serif);color:var(--rf-d2-ink)}
+.rf-d2-breakdown .bar{height:3px;background:var(--rf-d2-rule);border-radius:999px;margin:2px 0 8px;overflow:hidden}
+.rf-d2-breakdown .bar>i{display:block;height:100%;background:var(--rf-d2-primary);border-radius:999px}
+.rf-d2-breakdown.is-payer .bar>i{background:var(--rf-d2-accent)}
+
+/* ---- Packing items — Edit/Delete footer reusing the M2 stage-foot design ---- */
+.rf-clean-stage-foot.is-pair{grid-template-columns:1fr 1fr}
+.rf-clean-item-card.is-split{display:block;padding:0;overflow:hidden}
+.rf-clean-item-card.is-split .rf-clean-item-tap{display:grid;grid-template-columns:28px minmax(0,1fr);gap:10px;align-items:center;padding:13px}

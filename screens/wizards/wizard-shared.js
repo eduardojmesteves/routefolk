@@ -22,7 +22,11 @@ export const tracksForTrip = (tripId) => Array.isArray(STATE.gpxByTrip[tripId]) 
 export const selectedStage = () => {
   const trip = activeTrip();
   if (!trip) return null;
-  return stagesForTrip(trip.id).find((stage) => stage.id === (STATE.editTargetId || STATE.selectedStageId)) || stagesForTrip(trip.id)[0] || null;
+  const list = stagesForTrip(trip.id);
+  // editTargetId only identifies a stage during stage-edit; in journal-edit /
+  // item-edit it holds an entry/item id, so fall back to the open stage.
+  const wantId = STATE.wizard === 'stage-edit' ? (STATE.editTargetId || STATE.selectedStageId) : STATE.selectedStageId;
+  return list.find((stage) => stage.id === wantId) || list[0] || null;
 };
 export const entriesForStage = (stageId) => Array.isArray(STATE.entriesByStage[stageId]) ? STATE.entriesByStage[stageId] : [];
 export const selectedEntry = () => {

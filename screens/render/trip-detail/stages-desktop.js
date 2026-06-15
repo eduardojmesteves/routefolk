@@ -13,7 +13,9 @@ import {
   expenses,
   fmtEuro,
   payerName,
+  showStageActions,
   stages,
+  writeDisabledAttr,
 } from '../shared.js';
 import { gpxPanelHtml } from './gpx-panel.js';
 import { weatherPanelHtml } from '../../../components/atoms/weather-panel.js';
@@ -26,9 +28,26 @@ function stageTracks(tripId, stageId) {
   return Array.isArray(raw) ? raw.filter((track) => track.stage_id === stageId) : [];
 }
 
-function entryHtml(entry, index) {
+// D2 — desktop journal entry with ✎ ✕ icon actions (hidden on archived trips).
+function entryHtml(entry, index, trip) {
   const time = entry.timestamp ? new Date(entry.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : '';
-  return `<div class="rf-d2-entry"><div class="rf-d2-entry-bullet">${index + 1}</div><div><div class="rf-d2-entry-head"><div class="rf-d2-entry-type">A ${esc(entry.entry_type || 'note')}</div><div class="rf-d2-entry-when">${esc(time)}</div></div><div class="rf-d2-entry-title">${esc(entry.title || 'Untitled')}</div><div class="rf-d2-entry-loc">${entry.location ? `at ${esc(entry.location)}` : ''}</div></div></div>`;
+  const acts = showStageActions(trip)
+    ? `<div class="rf-d2-entry-acts"><button data-action="rf-v2-edit-entry" data-entry-id="${esc(entry.id)}" type="button"${writeDisabledAttr(trip)} aria-label="Edit entry">✎</button><button class="danger" data-action="rf-v2-delete-entry" data-entry-id="${esc(entry.id)}" type="button"${writeDisabledAttr(trip)} aria-label="Delete entry">✕</button></div>`
+    : '';
+  return `<div class="rf-d2-entry"><div class="rf-d2-entry-bullet">${index + 1}</div><div><div class="rf-d2-entry-head"><div class="rf-d2-entry-type">A ${esc(entry.entry_type || 'note')}</div><div class="rf-d2-entry-when">${esc(time)}</div></div><div class="rf-d2-entry-title">${esc(entry.title || 'Untitled')}</div><div class="rf-d2-entry-loc">${entry.location ? `at ${esc(entry.location)}` : ''}</div></div>${acts}</div>`;
+}
+
+// D1 — desktop aside stage actions (Edit · Delete · ↑ · ↓) beside Navigate.
+function desktopStageActionsHtml(trip, stage, { index, total }) {
+  let html = desktopNavigateHtml(trip, stage);
+  if (showStageActions(trip)) {
+    const w = writeDisabledAttr(trip);
+    html += `<button class="rf-d2-act" data-action="rf-v2-edit-stage" data-stage-id="${esc(stage.id)}" type="button"${w}>Edit stage</button>`
+          + `<button class="rf-d2-act danger" data-action="rf-v2-delete-stage" data-stage-id="${esc(stage.id)}" type="button"${w}>Delete</button>`
+          + `<button class="rf-d2-act icon" data-action="rf-v2-stage-up" data-stage-id="${esc(stage.id)}" type="button" ${index === 0 ? 'disabled' : w} aria-label="Move up">↑</button>`
+          + `<button class="rf-d2-act icon" data-action="rf-v2-stage-down" data-stage-id="${esc(stage.id)}" type="button" ${index === total - 1 ? 'disabled' : w} aria-label="Move down">↓</button>`;
+  }
+  return `<div class="rf-d2-stage-actions">${html}</div>`;
 }
 
 function expenseMini(expense) {
@@ -68,7 +87,10 @@ function renderAside(trip, stage, { loadingHtml }) {
   const entries = arr(rawEntries);
   const stageExpenses = expenses(trip.id).filter((e) => e.stage_id === stage.id);
   const tracks = stageTracks(trip.id, stage.id);
-  return `<aside class="rf-d2-aside"><div class="rf-d2-aside-head"><div class="rf-d2-aside-kicker">Stage ${esc(stage.order_index || '')} · ${esc(fmtDate(stage.planned_date) || '')}</div><h2 class="rf-d2-aside-title">${esc(stage.start_location || 'Start')} <span style="font-style:italic;color:var(--rf-d2-muted)">to</span> ${esc(stage.end_location || 'End')}</h2><div class="rf-d2-aside-sub">${esc(stage.notes || '')}</div><div class="rf-d2-stage-actions">${desktopNavigateHtml(trip, stage)}</div></div>${desktopWeatherHtml(stage)}<div class="rf-d2-section-head"><div class="rf-d2-section-title">The day's notes</div><button class="rf-d2-btn is-primary" data-action="rf-d2-add-journal" type="button">+ Add</button></div>${rawEntries === 'loading' ? loadingHtml('Loading notes…') : entries.map(entryHtml).join('') || '<div class="rf-d2-mini-table">No entries yet.</div>'}<div class="rf-d2-section-head"><div class="rf-d2-section-title">Stage costs</div><button class="rf-d2-btn is-primary" data-action="rf-v2-add-stage-expense" data-stage-id="${esc(stage.id)}" type="button">+ Add</button></div><div class="rf-d2-mini-table">${stageExpenses.map(expenseMini).join('') || 'No costs assigned to this stage.'}</div><section class="rf-v2-gpx-section">${gpxPanelHtml(trip, stage, tracks)}</section></aside>`;
+  const allStages = stages(trip.id);
+  const stageIndex = allStages.findIndex((s) => s.id === stage.id);
+  const stageTotal = allStages.length;
+  return `<aside class="rf-d2-aside"><div class="rf-d2-aside-head"><div class="rf-d2-aside-kicker">Stage ${esc(stage.order_index || '')} · ${esc(fmtDate(stage.planned_date) || '')}</div><h2 class="rf-d2-aside-title">${esc(stage.start_location || 'Start')} <span style="font-style:italic;color:var(--rf-d2-muted)">to</span> ${esc(stage.end_location || 'End')}</h2><div class="rf-d2-aside-sub">${esc(stage.notes || '')}</div>${desktopStageActionsHtml(trip, stage, { index: stageIndex, total: stageTotal })}</div>${desktopWeatherHtml(stage)}<div class="rf-d2-section-head"><div class="rf-d2-section-title">The day's notes</div><button class="rf-d2-btn is-primary" data-action="rf-d2-add-journal" type="button">+ Add</button></div>${rawEntries === 'loading' ? loadingHtml('Loading notes…') : entries.map((e, i) => entryHtml(e, i, trip)).join('') || '<div class="rf-d2-mini-table">No entries yet.</div>'}<div class="rf-d2-section-head"><div class="rf-d2-section-title">Stage costs</div><button class="rf-d2-btn is-primary" data-action="rf-v2-add-stage-expense" data-stage-id="${esc(stage.id)}" type="button">+ Add</button></div><div class="rf-d2-mini-table">${stageExpenses.map(expenseMini).join('') || 'No costs assigned to this stage.'}</div><section class="rf-v2-gpx-section">${gpxPanelHtml(trip, stage, tracks)}</section></aside>`;
 }
 
 export function renderStages(trip, { hero, tabs, loadingHtml }) {
