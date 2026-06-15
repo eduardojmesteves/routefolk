@@ -39,6 +39,26 @@ export function currentTrip() {
   return STATE.trips.find((trip) => trip.id === id) || null;
 }
 
+// F1 — write/visibility guards. Centralize the archived-view-only and
+// offline-disabled rules so action atoms read them from one place instead of
+// re-deriving ['completed','cancelled'].includes(trip.status) inline.
+
+/** True when the trip is editable (not archived). */
+export function canWriteToTrip(trip) {
+  return !!trip && !['completed', 'cancelled'].includes(trip.status);
+}
+
+/** True when stage/entry action affordances should render at all. */
+export function showStageActions(trip) {
+  return canWriteToTrip(trip);
+}
+
+/** Disabled-attribute fragment for write actions: '' or ' disabled'
+ *  (leading space). Append directly: `<button ...${writeDisabledAttr(trip)}>`. */
+export function writeDisabledAttr(trip) {
+  return (canWriteToTrip(trip) && STATE.isOnline) ? '' : ' disabled';
+}
+
 export function currentPalette() {
   try { return localStorage.getItem('rf.palette') || 'midnight'; } catch { return 'midnight'; }
 }
