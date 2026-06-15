@@ -37,3 +37,18 @@
 .rf-clean-note-acts button:hover:not([disabled]){background:var(--rf-m2-surface-2)}
 .rf-clean-note-acts button.danger{color:var(--rf-m2-danger)}
 .rf-clean-note-acts button[disabled]{opacity:.45;cursor:not-allowed}
+
+/* ---- D1: desktop aside stage actions ---- */
+.rf-d2-stage-actions{display:flex;gap:8px;flex-wrap:wrap;align-items:center;margin-top:10px}
+.rf-d2-stage-actions .rf-d2-act{border:1px solid var(--rf-d2-rule-2);background:transparent;border-radius:999px;padding:6px 12px;font:800 13px var(--rf-d2-font-ui);color:var(--rf-d2-ink);cursor:pointer}
+.rf-d2-stage-actions .rf-d2-act.icon{padding:6px 10px;color:var(--rf-d2-muted)}
+.rf-d2-stage-actions .rf-d2-act.danger{color:var(--rf-d2-danger);background:var(--rf-d2-danger-soft);border-color:transparent}
+.rf-d2-stage-actions .rf-d2-act[disabled]{opacity:.45;cursor:not-allowed}
+
+/* ---- D2: desktop journal entry ✎ ✕ ---- */
+.rf-d2-entry{grid-template-columns:28px 1fr auto}
+.rf-d2-entry-acts{display:flex;gap:4px;align-items:start}
+.rf-d2-entry-acts button{width:26px;height:26px;border:0;border-radius:999px;background:transparent;color:var(--rf-d2-muted);font:14px var(--rf-d2-font-ui);cursor:pointer}
+.rf-d2-entry-acts button:hover:not([disabled]){background:var(--rf-d2-surface-2)}
+.rf-d2-entry-acts button.danger{color:var(--rf-d2-danger)}
+.rf-d2-entry-acts button[disabled]{opacity:.45;cursor:not-allowed}
