@@ -51,6 +51,13 @@ CSS block (append to `styles/app-ui.css`, namespaced `.rf-clean-*`):
 
 ### 3 · Markup contract
 
+> **⚠️ Correction (`00b-STATUS-AUDIT.md §B`).** Stage actions are matched by
+> **exact name** (`STAGE_WIZARD_ACTIONS.has(action)`, `stage-actions.js:34`),
+> **not** `endsWith()`. Names below were corrected `rf-m2-*` → routed `rf-v2-*`.
+> `rf-v2-edit-stage`/`rf-v2-delete-stage` already ship (H1);
+> `rf-v2-stage-up`/`rf-v2-stage-down` are the genuinely-missing reorder
+> handler added in **H1**.
+
 **Factory** (new; export from `stages-mobile.js` or an atom file imported
 by it):
 
@@ -60,10 +67,10 @@ export function stageActionFooterHtml(stage, { index, total, trip }) {
   if (!showStageActions(trip)) return '';            // F1 — archived ⇒ no footer
   const w = writeDisabledAttr(trip);                 // F1 — '' or ' disabled'
   return `<div class="rf-clean-stage-foot">`
-    + `<button class="icon" data-action="rf-m2-stage-up" data-stage-id="${esc(stage.id)}" ${index === 0 ? 'disabled' : w}>↑</button>`
-    + `<button class="icon" data-action="rf-m2-stage-down" data-stage-id="${esc(stage.id)}" ${index === total - 1 ? 'disabled' : w}>↓</button>`
-    + `<button data-action="rf-m2-edit-stage" data-stage-id="${esc(stage.id)}"${w}>Edit</button>`
-    + `<button class="danger" data-action="rf-m2-delete-stage" data-stage-id="${esc(stage.id)}"${w}>Delete</button>`
+    + `<button class="icon" data-action="rf-v2-stage-up" data-stage-id="${esc(stage.id)}" ${index === 0 ? 'disabled' : w}>↑</button>`
+    + `<button class="icon" data-action="rf-v2-stage-down" data-stage-id="${esc(stage.id)}" ${index === total - 1 ? 'disabled' : w}>↓</button>`
+    + `<button data-action="rf-v2-edit-stage" data-stage-id="${esc(stage.id)}"${w}>Edit</button>`
+    + `<button class="danger" data-action="rf-v2-delete-stage" data-stage-id="${esc(stage.id)}"${w}>Delete</button>`
   + `</div>`;
 }
 ```
@@ -72,10 +79,10 @@ export function stageActionFooterHtml(stage, { index, total, trip }) {
 
 ```
 div.rf-clean-stage-foot                (grid 40 40 1fr 1fr)
-├─ button.icon         [rf-m2-stage-up]    "↑"   disabled if index===0
-├─ button.icon         [rf-m2-stage-down]  "↓"   disabled if index===total-1
-├─ button              [rf-m2-edit-stage]  "Edit"
-└─ button.danger       [rf-m2-delete-stage]"Delete"
+├─ button.icon         [rf-v2-stage-up]    "↑"   disabled if index===0
+├─ button.icon         [rf-v2-stage-down]  "↓"   disabled if index===total-1
+├─ button              [rf-v2-edit-stage]  "Edit"
+└─ button.danger       [rf-v2-delete-stage]"Delete"
 ```
 
 **Anchor.** Inside `renderMobileStages(trip,…)` in
@@ -107,12 +114,12 @@ not the footer.
 ### 5 · Interaction (Given/When/Then)
 
 - **Reorder up.** *Given* an enabled `↑` on a non-first row, *when* tapped,
-  *then* handler H1 (`rf-m2-stage-up`) optimistically swaps this stage with
+  *then* handler H1 (`rf-v2-stage-up`) optimistically swaps this stage with
   the previous in `STATE.stagesByTrip[trip.id]`, calls
   `swapStageOrder(prev, this)` (RPC), re-syncs via
   `appApi().loadStagesForTrip?.(trip.id,{quiet:true})`, and `renderSoon()`.
   On RPC error it restores the previous array and rethrows.
-- **Reorder down.** Symmetric for `rf-m2-stage-down` (swap with next).
+- **Reorder down.** Symmetric for `rf-v2-stage-down` (swap with next).
 - **Edit.** *Given* an enabled `Edit`, *when* tapped, *then* H1 sets
   `STATE.selectedStageId = id`, `STATE.wizard = 'stage-edit'`,
   `STATE.editTargetId = id`, `renderSoon()` → M6 renders the prefilled

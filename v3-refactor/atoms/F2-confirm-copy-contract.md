@@ -4,15 +4,23 @@
 
 | ID | Title | Surface | State | Builds in | Depends on | Reuses |
 |----|-------|---------|-------|-----------|------------|--------|
-| F2 | Confirm-dialog copy contract | ♊ shared | 🔴 missing | `screens/app-actions.js` | — | existing `window.confirm` voice (`app-actions.js:118`, `:197`) |
+| F2 | Confirm-dialog copy contract | ♊ shared | 🟠 differs (align code→package) | `actions/stage-actions.js` · `actions/journal-actions.js` | — | existing `window.confirm` voice (`app-actions.js:118`, `:197`) |
 
 **Intent.** Fix the **exact, character-for-character** destructive-confirm
 strings for stage and journal-entry deletes so H1/H2 quote one canonical
 source and the copy stays consistent with the house voice already shipping
 for trips and packing-list items.
 
-> **🔴 Missing.** No stage/entry delete copy exists yet. The two shipping
-> confirms (verified in source) set the tone F2 must match:
+> **🟠 Exists but differs — decision: align code → package** (see
+> `00b-STATUS-AUDIT.md §C`). Stage/entry delete confirms already ship, but
+> with different wording, and live in the **domain modules**, not
+> `app-actions.js`:
+> - shipped stage: `Delete stage "<start> to <end>"?` — curly quotes, **no**
+>   cascade clause (`stage-actions.js:108`). **Change to** the F2 string below.
+> - shipped entry: `Delete journal entry "<title>"?` (`journal-actions.js:115`).
+>   **Change to** the F2 string below.
+>
+> House-voice anchors F2 stays consistent with:
 > - trip: `Delete trip "${trip.title || 'Untitled'}"? This cannot be undone.` (`app-actions.js:118`)
 > - item: `Delete "${item.name || 'this item'}" from the packing list?` (`app-actions.js:197`)
 
@@ -53,11 +61,12 @@ Concrete example (the M2 acceptance case):
 Concrete example:
 `Delete "Lunch at the pass" from the journal?`
 
-**Anchor.** Consumed inside `dispatchAppAction` (`app-actions.js:228`) by the
-H1 (`*-delete-stage`) and H2 (`*-delete-entry`) branches, mirroring the
-existing item-delete confirm at `app-actions.js:197`. Define once (a small
-copy map or inline literal in each handler) — do not let the two surfaces
-drift, since `action.endsWith()` already routes both to one handler.
+**Anchor.** Replace the `window.confirm(...)` literals in `removeStage`
+(`actions/stage-actions.js:108`) and `removeEntry`
+(`actions/journal-actions.js:115`). One handler serves both surfaces (the
+render affordances on mobile and desktop emit the same exact `rf-v2-delete-stage`
+/ `rf-v2-delete-entry`), so a single literal per handler keeps the surfaces
+from drifting — no per-surface copy.
 
 ---
 
