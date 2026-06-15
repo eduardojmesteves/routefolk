@@ -23,5 +23,5 @@ export function summaryTable(trip) {
 
 export function renderSummary(trip, { hero, tabs }) {
   const s = stats(trip);
-  return `<main class="rf-d2-main is-wide">${hero(trip)}${tabs('summary')}<div class="rf-d2-section-title">By stage</div>${summaryTable(trip)}<div class="rf-d2-total-strip"><div><span>Total distance</span><strong>${Math.round(s.distance).toLocaleString()} km</strong></div><div><span>Total spent</span><strong>${fmtEuro(s.spent)}</strong></div><div><span>Journal</span><strong>${s.entries} entries</strong></div></div></main>`;
+  return `<main class="rf-d2-main is-wide">${hero(trip)}${tabs('summary')}${summaryTable(trip)}<div class="rf-d2-total-strip"><div><span>Total distance</span><strong>${Math.round(s.distance).toLocaleString()} km</strong></div><div><span>Total spent</span><strong>${fmtEuro(s.spent)}</strong></div><div><span>Journal</span><strong>${s.entries} entries</strong></div></div></main>`;
 }
