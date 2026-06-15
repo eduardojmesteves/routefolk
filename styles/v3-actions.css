@@ -9,7 +9,7 @@
 /* ---- M1: mobile stage card split (tap-body + footer) ----
    Scoped to .is-split so the summary's plain .rf-clean-stage-card keeps
    its own padding. */
-.rf-clean-stage-card.is-split{padding:0;overflow:hidden}
+.rf-clean-stage-card.is-split{padding:0;overflow:hidden;margin:16px 0}
 .rf-clean-stage-tap{width:100%;display:grid;grid-template-columns:38px 1fr;gap:12px;text-align:left;padding:14px;border:0;background:transparent;color:var(--rf-m2-ink)}
 .rf-clean-stage-tap>span{font:italic 28px var(--rf-m2-font-serif);color:var(--rf-m2-primary)}
 .rf-clean-stage-tap strong{font:500 20px/1.12 var(--rf-m2-font-serif)}

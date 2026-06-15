@@ -116,10 +116,27 @@ export async function removeStage(event, stageId) {
   renderAll();
 }
 
+// Snapshot the active scroll container so a re-render (which rebuilds the DOM
+// and resets scrollTop to 0) can restore the viewport position — e.g. after a
+// reorder, the list stays where the user was looking.
+function captureScrollPosition() {
+  const el = document.querySelector('.rf-clean-scroll, .rf-d2-main');
+  if (!el) return null;
+  return { selector: el.classList.contains('rf-clean-scroll') ? '.rf-clean-scroll' : '.rf-d2-main', top: el.scrollTop };
+}
+
+function restoreScrollPosition(snap) {
+  if (!snap) return;
+  const apply = () => { const el = document.querySelector(snap.selector); if (el) el.scrollTop = snap.top; };
+  apply();                          // renderAll() rebuilds synchronously
+  requestAnimationFrame(apply);     // cover any deferred relayout
+}
+
 /**
  * Reorder a stage up (-1) or down (+1) by swapping order_index with its
  * neighbour. Optimistic swap in STATE, then the atomic swap_stage_order RPC;
- * restores the prior order if the RPC fails.
+ * restores the prior order if the RPC fails. Preserves scroll position so the
+ * list does not jump to the top on re-render.
  * @param {Event} event
  * @param {string} stageId
  * @param {number} dir -1 (up) or +1 (down)
@@ -133,17 +150,21 @@ export async function reorderStage(event, stageId, dir) {
   if (!trip || i < 0 || j < 0 || j >= list.length) return;
   const a = list[i];
   const b = list[j];
+  const snap = captureScrollPosition();
   const next = list.slice();
   next[i] = b;
   next[j] = a;
   STATE.stagesByTrip[trip.id] = next;
   renderAll();
+  restoreScrollPosition(snap);
   try {
     await swapStageOrder(a, b);
     await api().loadStagesForTrip?.(trip.id, { quiet: true });
+    restoreScrollPosition(snap);
   } catch (error) {
     STATE.stagesByTrip[trip.id] = list;
     renderAll();
+    restoreScrollPosition(snap);
     throw error;
   }
 }
