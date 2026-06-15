@@ -6,14 +6,10 @@
 // ============================================================
 
 import { STATE } from '../../state/app-state.js';
-import { esc } from '../../utils/dom.js';
 import {
   WIZARDS,
   isDesktop,
   activeTrip,
-  selectedStage,
-  selectedEntry,
-  entriesForStage,
   wizardHost,
   claim,
   renderAll,
@@ -52,31 +48,10 @@ function injectTripActions() {
   target.appendChild(wrap);
 }
 
-function injectStageActions() {
-  const stage = selectedStage();
-  if (!stage || STATE.wizard || STATE.view !== 'detail') return;
-  const target = document.querySelector('.rf-d2-aside-head, .rf-m2-aside-head');
-  if (!target || target.querySelector('.rf-v2-stage-actions')) return;
-  const wrap = document.createElement('div');
-  wrap.className = 'rf-v2-stage-actions';
-  wrap.innerHTML = `<button class="rf-d2-btn" data-action="rf-v2-edit-stage" data-stage-id="${esc(stage.id)}" type="button">Edit stage</button><button class="rf-d2-btn is-danger" data-action="rf-v2-delete-stage" data-stage-id="${esc(stage.id)}" type="button">Delete</button>`;
-  target.appendChild(wrap);
-}
-
-function injectEntryActions() {
-  if (STATE.wizard) return;
-  document.querySelectorAll('.rf-d2-entry, .rf-m2-entry').forEach((entryNode) => {
-    if (entryNode.querySelector('.rf-v2-entry-actions')) return;
-    const title = entryNode.querySelector('.rf-d2-entry-title, .rf-m2-entry-title')?.textContent?.trim();
-    const stage = selectedStage();
-    const entry = stage ? entriesForStage(stage.id).find((candidate) => (candidate.title || 'Untitled') === title) : null;
-    if (!entry) return;
-    const wrap = document.createElement('div');
-    wrap.className = 'rf-v2-entry-actions';
-    wrap.innerHTML = `<button class="rf-d2-btn" data-action="rf-v2-edit-entry" data-entry-id="${esc(entry.id)}" type="button">Edit</button><button class="rf-d2-btn is-danger" data-action="rf-v2-delete-entry" data-entry-id="${esc(entry.id)}" type="button">Delete</button>`;
-    entryNode.appendChild(wrap);
-  });
-}
+// Stage and journal-entry edit/delete affordances now render in the
+// declarative render path (atoms M2/M3/M4 mobile, D1/D2 desktop), so the
+// former injectStageActions/injectEntryActions injectors were removed to
+// avoid duplicate controls on desktop. Trip + cost-CTA injection remain.
 
 function injectCostCta() {
   const trip = activeTrip();
@@ -123,8 +98,6 @@ export function renderWizardLayer() {
   if (!STATE.user || !STATE.wizard || !WIZARDS.has(STATE.wizard)) {
     removeExisting();
     injectTripActions();
-    injectStageActions();
-    injectEntryActions();
     injectCostCta();
     return;
   }
