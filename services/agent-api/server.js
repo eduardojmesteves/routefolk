@@ -3,6 +3,9 @@ import pg from 'pg';
 
 const { Pool } = pg;
 const app = express();
+// The only direct caller is the controlled Nginx gateway. Trust one proxy hop
+// so generated OpenAPI server URLs retain the external HTTPS scheme.
+app.set('trust proxy', 1);
 const pool = new Pool({ connectionString: process.env.DATABASE_URL });
 const apiKey = process.env.AGENT_API_KEY;
 const agentUserId = process.env.AGENT_USER_ID;

@@ -35,7 +35,12 @@ Docker stores runtime data in the named volumes declared by Compose.
 
 ## Current state: no cutover
 
-No server, hostname, tunnel, or backup destination has been selected. No DNS or Cloudflare Pages setting has changed, and no hosted Supabase data has been copied. The committed PWA configuration still points at the existing hosted Supabase project, so deploying the current Cloudflare Pages source does not switch production unexpectedly.
+An Ubuntu 22.04 home server and Cloudflare Tunnel have been selected, and the
+local Compose preflight has passed. No tunnel route, production DNS, Cloudflare
+Pages setting, or Google OAuth callback has changed, and no hosted Supabase data
+has been copied. The committed PWA configuration still points at the existing
+hosted Supabase project, so deploying the current Cloudflare Pages source does
+not switch production unexpectedly.
 
 The Docker stack is therefore an unvalidated candidate backend. It must not become authoritative until the stages below pass.
 
@@ -77,17 +82,10 @@ Before changing code or production:
 
 ## Stage 1 — validate only the backend locally
 
-Run the Docker backend on a development machine first:
+Generate the environment and validate the Docker backend definition first:
 
 ```sh
 ./infrastructure/docker/setup-env.sh
-docker compose up --build
-curl http://127.0.0.1:18080/health
-```
-
-Before starting containers, validate the resolved definition:
-
-```sh
 docker compose config --quiet
 docker compose config --services
 ```
@@ -95,6 +93,36 @@ docker compose config --services
 This is the **next step after merging the backend files**. Stop if Compose
 reports a missing variable or configuration error; do not add the tunnel or
 change Cloudflare Pages to work around a failed preflight.
+
+After that preflight succeeds, pull/build and start the private backend:
+
+```sh
+docker compose pull
+docker compose build agent-api
+docker compose up -d
+sleep 30
+docker compose ps -a
+docker compose logs migrate
+curl --fail-with-body http://127.0.0.1:18080/health
+```
+
+The gateway health endpoint checks the Agent API and its database connection;
+it is not a static Nginx success response. The expected migration state is
+`Exited (0)`, while the six long-running services should be healthy or running.
+Do not configure the public tunnel yet. Stop and inspect logs if migration exits
+non-zero, a service restarts, or the health request fails.
+
+If the first launch fails, keep the volumes and collect all relevant service
+logs before retrying:
+
+```sh
+docker compose logs --tail=200 migrate auth rest storage
+docker compose down
+```
+
+`docker compose down` removes containers and the private Compose network but
+preserves the named database and Storage volumes. Never add `--volumes` unless
+you have explicitly decided to destroy the disposable database and GPX data.
 
 Serve a separate local copy of the PWA and temporarily point that copy—not `main` and not Cloudflare Pages—at the generated backend URL/key. Configure a separate Google OAuth test client with the backend callback `http://127.0.0.1:18080/auth/v1/callback` and the local PWA as its site/redirect origin.
 

@@ -5,7 +5,7 @@ services:
     image: supabase/postgres:15.8.1.060
     restart: unless-stopped
     environment:
-      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-routefolk-local-password}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?Run ./infrastructure/docker/setup-env.sh first}
       POSTGRES_DB: postgres
     volumes:
       - routefolk-db:/var/lib/postgresql/data
@@ -26,11 +26,11 @@ services:
       GOTRUE_API_HOST: 0.0.0.0
       GOTRUE_API_PORT: 9999
       GOTRUE_DB_DRIVER: postgres
-      GOTRUE_DB_DATABASE_URL: postgres://supabase_auth_admin:${POSTGRES_PASSWORD:-routefolk-local-password}@db:5432/postgres
+      GOTRUE_DB_DATABASE_URL: postgres://supabase_auth_admin:${POSTGRES_PASSWORD:?POSTGRES_PASSWORD is required}@db:5432/postgres
       GOTRUE_SITE_URL: ${SITE_URL:-http://localhost:8788}
       GOTRUE_URI_ALLOW_LIST: ${SITE_URL:-http://localhost:8788}/*
       GOTRUE_DISABLE_SIGNUP: ${DISABLE_SIGNUP:-false}
-      GOTRUE_JWT_SECRET: ${JWT_SECRET:-super-secret-jwt-token-with-at-least-32-characters-long}
+      GOTRUE_JWT_SECRET: ${JWT_SECRET:?JWT_SECRET is required}
       GOTRUE_JWT_EXP: 3600
       GOTRUE_EXTERNAL_GOOGLE_ENABLED: ${GOOGLE_ENABLED:-false}
       GOTRUE_EXTERNAL_GOOGLE_CLIENT_ID: ${GOOGLE_CLIENT_ID:-}
@@ -45,10 +45,10 @@ services:
       db:
         condition: service_healthy
     environment:
-      PGRST_DB_URI: postgres://authenticator:${POSTGRES_PASSWORD:-routefolk-local-password}@db:5432/postgres
+      PGRST_DB_URI: postgres://authenticator:${POSTGRES_PASSWORD:?POSTGRES_PASSWORD is required}@db:5432/postgres
       PGRST_DB_SCHEMAS: public,storage
       PGRST_DB_ANON_ROLE: anon
-      PGRST_JWT_SECRET: ${JWT_SECRET:-super-secret-jwt-token-with-at-least-32-characters-long}
+      PGRST_JWT_SECRET: ${JWT_SECRET:?JWT_SECRET is required}
 
   storage:
     image: supabase/storage-api:v1.25.7
@@ -59,11 +59,11 @@ services:
       rest:
         condition: service_started
     environment:
-      ANON_KEY: ${ANON_KEY:-eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJyb2xlIjoiYW5vbiIsImlzcyI6InN1cGFiYXNlIiwiaWF0IjoxNzAwMDAwMDAwLCJleHAiOjIwMTUzNjAwMDB9.signature-replace-me}
-      SERVICE_KEY: ${SERVICE_ROLE_KEY:-replace-with-a-valid-service-role-jwt}
+      ANON_KEY: ${ANON_KEY:?ANON_KEY is required}
+      SERVICE_KEY: ${SERVICE_ROLE_KEY:?SERVICE_ROLE_KEY is required}
       POSTGREST_URL: http://rest:3000
-      PGRST_JWT_SECRET: ${JWT_SECRET:-super-secret-jwt-token-with-at-least-32-characters-long}
-      DATABASE_URL: postgres://supabase_storage_admin:${POSTGRES_PASSWORD:-routefolk-local-password}@db:5432/postgres
+      PGRST_JWT_SECRET: ${JWT_SECRET:?JWT_SECRET is required}
+      DATABASE_URL: postgres://supabase_storage_admin:${POSTGRES_PASSWORD:?POSTGRES_PASSWORD is required}@db:5432/postgres
       FILE_SIZE_LIMIT: 8388608
       STORAGE_BACKEND: file
       FILE_STORAGE_BACKEND_PATH: /var/lib/storage
@@ -81,25 +81,30 @@ services:
       storage:
         condition: service_started
     environment:
-      PGPASSWORD: ${POSTGRES_PASSWORD:-routefolk-local-password}
+      PGPASSWORD: ${POSTGRES_PASSWORD:?POSTGRES_PASSWORD is required}
     volumes:
       - ./schema.sql:/schema.sql:ro
-      - ./docker/migrate.sh:/migrate.sh:ro
+      - ./infrastructure/docker/migrate.sh:/migrate.sh:ro
       - ./migrations:/migrations:ro
     entrypoint: ["/bin/sh", "/migrate.sh"]
     restart: "no"
 
   agent-api:
-    build: ./agent-api
+    build: ./services/agent-api
     restart: unless-stopped
     depends_on:
       migrate:
         condition: service_completed_successfully
     environment:
-      DATABASE_URL: postgres://postgres:${POSTGRES_PASSWORD:-routefolk-local-password}@db:5432/postgres
-      AGENT_API_KEY: ${AGENT_API_KEY:-change-me-before-exposing}
-      AGENT_USER_ID: ${AGENT_USER_ID:-00000000-0000-4000-8000-000000000001}
+      DATABASE_URL: postgres://postgres:${POSTGRES_PASSWORD:?POSTGRES_PASSWORD is required}@db:5432/postgres
+      AGENT_API_KEY: ${AGENT_API_KEY:?AGENT_API_KEY is required}
+      AGENT_USER_ID: ${AGENT_USER_ID:?Set AGENT_USER_ID to an existing approved Auth user UUID}
       PORT: 3001
+    healthcheck:
+      test: ["CMD", "node", "-e", "fetch('http://127.0.0.1:3001/health').then(r => { if (!r.ok) process.exit(1) }).catch(() => process.exit(1))"]
+      interval: 5s
+      timeout: 5s
+      retries: 20
 
   gateway:
     image: nginx:1.27-alpine
@@ -108,11 +113,16 @@ services:
       migrate:
         condition: service_completed_successfully
       agent-api:
-        condition: service_started
+        condition: service_healthy
     ports:
       - "${BIND_ADDRESS:-127.0.0.1}:${PORT:-18080}:80"
     volumes:
-      - ./docker/nginx.conf:/etc/nginx/conf.d/default.conf:ro
+      - ./infrastructure/docker/nginx.conf:/etc/nginx/conf.d/default.conf:ro
+    healthcheck:
+      test: ["CMD", "wget", "-qO-", "http://127.0.0.1/health"]
+      interval: 5s
+      timeout: 5s
+      retries: 20
 
 volumes:
   routefolk-db:
