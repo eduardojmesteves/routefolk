@@ -106,6 +106,11 @@ Access is limited to the intended group. New users must be approved by the app a
 
 ```text
 routefolk/
+├── docs/                  # Indexed architecture and operator documentation
+├── infrastructure/       # Deployment support, including Docker assets
+├── services/             # Independently deployable server-side services
+├── docker-compose.yml     # Self-hosted backend stack entry point
+├── .env.example           # Non-secret backend configuration template
 ├── _headers
 ├── index.html
 ├── style.css
@@ -125,7 +130,7 @@ routefolk/
 └── README.md
 ```
 
-`docs/`, `tools/`, and `local-tests/` are intended for local/private development or administration and should not be committed to the public production repo unless that decision changes.
+Application code, deployable services, infrastructure definitions, and operator documentation are kept in separate top-level areas. `tools/`, tests, generated environment files, and runtime data remain untracked.
 
 ---
 
