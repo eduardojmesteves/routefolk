@@ -77,10 +77,12 @@ blank until the later OAuth stage, and `AGENT_USER_ID` remains a non-secret
 placeholder until an approved Auth user exists.
 
 The PostgreSQL image creates internal roles for Auth, PostgREST, and Storage.
-The one-shot `bootstrap` service changes those roles to the generated
-`POSTGRES_PASSWORD` before the services connect. This synchronization is
-required because setting PostgreSQL's main password does not automatically
-change the passwords of the three existing service roles.
+The one-shot `bootstrap` service uses the image's `supabase_admin` superuser to
+change those reserved roles to the generated `POSTGRES_PASSWORD` before the
+services connect. The regular `postgres` role cannot perform this operation in
+the hardened Supabase image. This synchronization is required because setting
+the main password does not automatically change the passwords of the three
+existing service roles.
 
 ## Stage 0 — decide the home-server boundary
 
