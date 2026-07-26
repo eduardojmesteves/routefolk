@@ -59,6 +59,7 @@ application query, so normal row-level security remains authoritative.
 |---|---|---|
 | `gateway` | One public entry point for `/auth/v1`, `/rest/v1`, `/storage/v1`, and `/agent/v1` | Loopback port 18080 by default; put HTTPS/tunnel in front |
 | `db` | PostgreSQL for Routefolk, Auth, and Storage metadata | Internal; `routefolk-db` volume |
+| `bootstrap` | Synchronizes internal Supabase role passwords | One-shot, internal process |
 | `auth` | Supabase GoTrue and Google OAuth callbacks | Internal via gateway |
 | `rest` | PostgREST used by the existing browser client | Internal via gateway |
 | `storage` | Private GPX object service | Internal; `routefolk-storage` volume |
@@ -66,6 +67,20 @@ application query, so normal row-level security remains authoritative.
 | `agent-api` | Key-protected automation API | Internal via gateway |
 
 There is deliberately no PWA/web container. Cloudflare Pages continues to serve the frontend.
+
+## Generated secrets
+
+`setup-env.sh` creates the untracked, mode-600 `.env` file. It generates the
+PostgreSQL password, JWT signing secret, anonymous and service-role JWTs, and
+Agent API key. Do not print or share that file. Google OAuth credentials remain
+blank until the later OAuth stage, and `AGENT_USER_ID` remains a non-secret
+placeholder until an approved Auth user exists.
+
+The PostgreSQL image creates internal roles for Auth, PostgREST, and Storage.
+The one-shot `bootstrap` service changes those roles to the generated
+`POSTGRES_PASSWORD` before the services connect. This synchronization is
+required because setting PostgreSQL's main password does not automatically
+change the passwords of the three existing service roles.
 
 ## Stage 0 — decide the home-server boundary
 
@@ -107,8 +122,9 @@ curl --fail-with-body http://127.0.0.1:18080/health
 ```
 
 The gateway health endpoint checks the Agent API and its database connection;
-it is not a static Nginx success response. The expected migration state is
-`Exited (0)`, while the six long-running services should be healthy or running.
+it is not a static Nginx success response. The expected `bootstrap` and
+`migrate` states are `Exited (0)`, while the six long-running services should
+be healthy or running.
 Do not configure the public tunnel yet. Stop and inspect logs if migration exits
 non-zero, a service restarts, or the health request fails.
 
