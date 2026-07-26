@@ -2,15 +2,14 @@
 # routefolk — .gitignore
 # ============================================================
 
-# Documentation and tooling — local only, never deploy
-/docs/
+# Local administration tooling — never deploy
 /tools/
 
 # Test infrastructure — run locally, never commit
 /tests/
 /node_modules/
-package.json
-package-lock.json
+/package.json
+/package-lock.json
 vitest.config.js
 playwright.config.js
 .eslintrc.cjs
