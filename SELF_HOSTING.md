@@ -17,36 +17,11 @@ Browser ──HTTPS──> Cloudflare Pages (HTML/CSS/JavaScript PWA)
 
 The repository does not deploy to a home server by itself. `docker compose up` starts the backend on whichever Docker host executes it. A public HTTPS hostname or secure tunnel must route to the `gateway` container on that home server. Only the gateway port is published; PostgreSQL and the internal services remain on the Docker network.
 
-## Repository impact
-
-```text
-routefolk/
-├── docs/deployment/       # Operator runbooks
-├── infrastructure/docker/ # Container configuration and lifecycle scripts
-├── services/agent-api/    # Independently containerised Agent API
-├── docker-compose.yml     # Backend stack entry point
-├── actions/, lib/, …      # Existing Cloudflare Pages PWA
-└── migrations/            # Existing database migrations
-```
-
-Merging these definitions does not move or rebuild the existing PWA. Generated
-secrets, database contents, GPX objects, and container state stay outside Git;
-Docker stores runtime data in the named volumes declared by Compose.
-
 ## Current state: no cutover
 
 No server, hostname, tunnel, or backup destination has been selected. No DNS or Cloudflare Pages setting has changed, and no hosted Supabase data has been copied. The committed PWA configuration still points at the existing hosted Supabase project, so deploying the current Cloudflare Pages source does not switch production unexpectedly.
 
 The Docker stack is therefore an unvalidated candidate backend. It must not become authoritative until the stages below pass.
-
-## Preflight safeguards
-
-The stack intentionally refuses to render without generated database, JWT,
-Storage, and Agent API secrets. Run `setup-env.sh` rather than relying on sample
-credentials. The migration container applies every numbered migration newer
-than the schema snapshot, in order. The Agent API establishes the configured
-user's JWT claims and changes to the `authenticated` database role before any
-application query, so normal row-level security remains authoritative.
 
 ## What runs on the home server
 
@@ -80,21 +55,10 @@ Before changing code or production:
 Run the Docker backend on a development machine first:
 
 ```sh
-./infrastructure/docker/setup-env.sh
+./docker/setup-env.sh
 docker compose up --build
 curl http://127.0.0.1:18080/health
 ```
-
-Before starting containers, validate the resolved definition:
-
-```sh
-docker compose config --quiet
-docker compose config --services
-```
-
-This is the **next step after merging the backend files**. Stop if Compose
-reports a missing variable or configuration error; do not add the tunnel or
-change Cloudflare Pages to work around a failed preflight.
 
 Serve a separate local copy of the PWA and temporarily point that copy—not `main` and not Cloudflare Pages—at the generated backend URL/key. Configure a separate Google OAuth test client with the backend callback `http://127.0.0.1:18080/auth/v1/callback` and the local PWA as its site/redirect origin.
 

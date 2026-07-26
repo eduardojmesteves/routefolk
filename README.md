@@ -201,11 +201,13 @@ The app has been split into focused modules while keeping `app.js` as the contro
 The PWA remains deployed on Cloudflare Pages. Docker Compose is only for replacing the hosted Supabase backend on an operator-controlled home server; it runs PostgreSQL, Auth, PostgREST, Storage, the Agent API, and an Nginx API gateway. It does **not** containerise or replace the Cloudflare Pages frontend.
 
 Nothing is deployed automatically. Read the [staged backend migration plan](./docs/deployment/self-hosting.md) before running the stack or changing the production frontend configuration. The existing hosted Supabase URL remains in `lib/config.js` until the new backend has passed local testing, a data-migration rehearsal, and a controlled cutover.
+Nothing is deployed automatically. Read the [staged backend migration plan](./SELF_HOSTING.md) before running the stack or changing the production frontend configuration. The existing hosted Supabase URL remains in `lib/config.js` until the new backend has passed local testing, a data-migration rehearsal, and a controlled cutover.
 
 For a disposable backend test:
 
 ```sh
 ./infrastructure/docker/setup-env.sh
+./docker/setup-env.sh
 docker compose up --build
 ```
 
