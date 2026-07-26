@@ -84,6 +84,11 @@ the hardened Supabase image. This synchronization is required because setting
 the main password does not automatically change the passwords of the three
 existing service roles.
 
+GoTrue is configured to issue normal user access tokens with audience and role
+`authenticated`; PostgREST uses that role claim to select the PostgreSQL role
+that enforces Routefolk RLS. After changing Auth JWT settings, obtain a new
+access token—tokens issued before the change retain their old claims.
+
 ## Stage 0 — decide the home-server boundary
 
 Before changing code or production:
