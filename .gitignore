@@ -67,3 +67,7 @@ supabase/.temp/
 .tmp/
 tmp/
 temp/
+
+# The containerised Agent API is production source, not local test tooling.
+!/agent-api/package.json
+!/agent-api/package-lock.json
