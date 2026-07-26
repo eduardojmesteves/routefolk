@@ -190,3 +190,20 @@ See [`LICENSE`](./LICENSE) for the full terms.
 ## Final stability closure
 
 The app has been split into focused modules while keeping `app.js` as the controller. Stage handlers and the direct stage fallback intentionally remain in `app.js` because that path is sensitive and has been stabilised there.
+
+## Self-hosted backend for the Cloudflare Pages PWA
+
+The PWA remains deployed on Cloudflare Pages. Docker Compose is only for replacing the hosted Supabase backend on an operator-controlled home server; it runs PostgreSQL, Auth, PostgREST, Storage, the Agent API, and an Nginx API gateway. It does **not** containerise or replace the Cloudflare Pages frontend.
+
+Nothing is deployed automatically. Read the [staged backend migration plan](./SELF_HOSTING.md) before running the stack or changing the production frontend configuration. The existing hosted Supabase URL remains in `lib/config.js` until the new backend has passed local testing, a data-migration rehearsal, and a controlled cutover.
+
+For a disposable backend test:
+
+```sh
+./docker/setup-env.sh
+docker compose up --build
+```
+
+The backend gateway then listens at <http://127.0.0.1:18080>. The PWA must be served separately (as it is in production by Cloudflare Pages) and configured to use that backend during testing. Production requires an HTTPS hostname that securely reaches the home-server gateway; PostgreSQL and internal services must not be exposed directly.
+
+The Agent API is available through the backend origin at `/agent/v1`, with its OpenAPI document at `/agent/v1/openapi.json`. Configure a real approved Routefolk UUID as `AGENT_USER_ID` and keep `AGENT_API_KEY` in the agent's secret store before enabling writes.
