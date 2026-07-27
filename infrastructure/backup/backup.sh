@@ -114,6 +114,7 @@ docker run --rm \
   -v "$backup_dir:/backup" \
   postgres:15-alpine \
   tar -C /source -czf /backup/storage.tar.gz .
+chmod 600 "$backup_dir/storage.tar.gz"
 
 git_commit="$(git rev-parse HEAD 2>/dev/null || printf unknown)"
 compose_version="$(docker compose version --short 2>/dev/null || printf unknown)"

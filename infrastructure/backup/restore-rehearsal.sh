@@ -66,8 +66,14 @@ if compose ps -aq | grep -q .; then
   exit 1
 fi
 
-echo "Creating isolated database project $project..." >&2
-compose up -d db bootstrap
+echo "Initializing the isolated application project $project..." >&2
+# pg_restore --clean emits DROP POLICY statements before recreating the dumped
+# tables. Start the full stack once so every current Auth, Storage, and Routefolk
+# relation exists as a valid cleanup target in the otherwise empty database.
+compose up -d
+
+echo "Entering the isolated restore write-freeze..." >&2
+compose stop gateway agent-api auth rest storage >/dev/null
 
 echo "Restoring PostgreSQL schemas..." >&2
 compose exec -T db pg_restore \
@@ -79,8 +85,7 @@ compose exec -T db pg_restore \
   --exit-on-error \
   < "$backup_dir/database.dump"
 
-echo "Creating and restoring the isolated Storage volume..." >&2
-compose create storage >/dev/null
+echo "Restoring the isolated Storage volume..." >&2
 storage_container="$(compose ps -aq storage)"
 storage_volume="$(
   docker inspect "$storage_container" \
@@ -90,6 +95,13 @@ test -n "$storage_volume" || {
   echo "Could not identify the rehearsal Storage volume." >&2
   exit 1
 }
+
+# The initialized Storage service may have created local scaffolding. Empty only
+# the isolated rehearsal volume before extracting the authoritative archive.
+docker run --rm \
+  -v "$storage_volume:/restore" \
+  postgres:15-alpine \
+  sh -c 'find /restore -mindepth 1 -maxdepth 1 -exec rm -rf -- {} +'
 
 docker run --rm \
   -v "$storage_volume:/restore" \

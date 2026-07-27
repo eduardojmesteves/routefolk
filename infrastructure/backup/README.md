@@ -40,9 +40,10 @@ Choose an unused loopback port:
 ```
 
 The script verifies the archive, restores a separate database and Storage
-volume, compares row counts, and checks the isolated gateway. It intentionally
-leaves the rehearsal running so an operator can inspect UUID ownership and
-download a restored GPX file.
+volume, compares row counts, and checks the isolated gateway. It first
+initializes an empty current schema so the custom dump's cleanup statements
+have valid relation targets. It intentionally leaves the rehearsal running so
+an operator can inspect UUID ownership and download a restored GPX file.
 
 After inspection, remove only the isolated project:
 
