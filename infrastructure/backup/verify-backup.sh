@@ -42,7 +42,7 @@ fi
 docker run --rm -i postgres:15-alpine \
   pg_restore --list < "$backup_dir/database.dump" >/dev/null
 
-grep -q '^format_version=1$' "$backup_dir/manifest.txt" || {
+grep -q '^format_version=2$' "$backup_dir/manifest.txt" || {
   echo "Unsupported or missing backup format version." >&2
   exit 1
 }

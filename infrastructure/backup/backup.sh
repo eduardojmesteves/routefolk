@@ -80,7 +80,6 @@ docker compose exec -T db pg_dump \
   -U postgres \
   -d postgres \
   --format=custom \
-  --no-owner \
   --schema=public \
   --schema=auth \
   --schema=storage \
@@ -119,7 +118,7 @@ chmod 600 "$backup_dir/storage.tar.gz"
 git_commit="$(git rev-parse HEAD 2>/dev/null || printf unknown)"
 compose_version="$(docker compose version --short 2>/dev/null || printf unknown)"
 cat > "$backup_dir/manifest.txt" <<EOF
-format_version=1
+format_version=2
 created_at_utc=$timestamp
 git_commit=$git_commit
 compose_version=$compose_version
@@ -127,6 +126,7 @@ database=postgres
 database_schemas=public,auth,storage
 storage_volume=$storage_volume
 environment_included=false
+ownership_preserved=true
 EOF
 
 (

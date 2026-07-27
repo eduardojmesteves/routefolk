@@ -169,7 +169,8 @@ Test sign-in/out, trip/stage/journal/expense/item CRUD, GPX upload/download, arc
 Routefolk provides operator scripts under `infrastructure/backup`. A backup
 briefly stops the externally writable services, creates a custom-format dump of
 the `public`, `auth`, and `storage` schemas, archives the private Storage volume,
-and records checksums and validation counts:
+preserves database object ownership, and records checksums and validation
+counts:
 
 ```sh
 ./infrastructure/backup/backup.sh /encrypted/offsite/staging

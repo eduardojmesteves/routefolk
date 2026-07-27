@@ -75,14 +75,18 @@ compose up -d
 echo "Entering the isolated restore write-freeze..." >&2
 compose stop gateway agent-api auth rest storage >/dev/null
 
-echo "Restoring PostgreSQL schemas..." >&2
-compose exec -T db pg_restore \
-  -U postgres \
-  -d postgres \
-  --clean \
-  --if-exists \
-  --no-owner \
-  --exit-on-error \
+echo "Restoring PostgreSQL schemas and ownership..." >&2
+# The Supabase image deliberately makes `postgres` a non-superuser. Restore as
+# the image's `supabase_admin` role so owned Auth/Storage schemas can be cleaned
+# and the dump can restore their original service-role ownership.
+compose exec -T db sh -c \
+  'PGPASSWORD="$POSTGRES_PASSWORD" exec pg_restore \
+    -h 127.0.0.1 \
+    -U supabase_admin \
+    -d postgres \
+    --clean \
+    --if-exists \
+    --exit-on-error' \
   < "$backup_dir/database.dump"
 
 echo "Restoring the isolated Storage volume..." >&2

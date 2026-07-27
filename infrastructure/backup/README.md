@@ -9,7 +9,8 @@ Compose project.
 - Run the scripts from the configured server checkout.
 - `backup.sh` briefly stops the public application services to prevent writes
   while PostgreSQL and Storage are captured.
-- PostgreSQL remains running and is dumped in custom format.
+- PostgreSQL remains running and is dumped in custom format with the original
+  Auth, Storage, and application object ownership preserved.
 - `.env` and all secrets are intentionally excluded. Back up `.env` separately
   to an encrypted secret store; the JWT secret and keys are required for a real
   disaster recovery.
@@ -42,8 +43,10 @@ Choose an unused loopback port:
 The script verifies the archive, restores a separate database and Storage
 volume, compares row counts, and checks the isolated gateway. It first
 initializes an empty current schema so the custom dump's cleanup statements
-have valid relation targets. It intentionally leaves the rehearsal running so
-an operator can inspect UUID ownership and download a restored GPX file.
+have valid relation targets, then restores as Supabase's internal administrator
+so the original service-role ownership can be reapplied. It intentionally
+leaves the rehearsal running so an operator can inspect UUID ownership and
+download a restored GPX file.
 
 After inspection, remove only the isolated project:
 
