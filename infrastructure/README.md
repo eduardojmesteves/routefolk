@@ -17,3 +17,9 @@ by the root [`docker-compose.yml`](../docker-compose.yml):
 
 Run scripts from the repository root. Runtime data belongs in Docker volumes
 and must never be committed here.
+
+## Backup and restore
+
+`backup/` contains the write-freeze backup, integrity verification, and
+isolated restore-rehearsal scripts. See [`backup/README.md`](backup/README.md)
+before operating on server volumes.

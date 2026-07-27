@@ -164,6 +164,45 @@ Test sign-in/out, trip/stage/journal/expense/item CRUD, GPX upload/download, arc
 5. Restrict it to administrators while testing.
 6. Automate backups of `routefolk-db` and `routefolk-storage`, then perform a restore rehearsal.
 
+### Back up and rehearse disaster recovery
+
+Routefolk provides operator scripts under `infrastructure/backup`. A backup
+briefly stops the externally writable services, creates a custom-format dump of
+the `public`, `auth`, and `storage` schemas, archives the private Storage volume,
+and records checksums and validation counts:
+
+```sh
+./infrastructure/backup/backup.sh /encrypted/offsite/staging
+./infrastructure/backup/verify-backup.sh \
+  /encrypted/offsite/staging/routefolk-backup-YYYYMMDDTHHMMSSZ
+```
+
+The archive deliberately excludes `.env`. Escrow that file separately in an
+encrypted secret store because its JWT secret and keys are required for a real
+recovery. Never copy it into the backup directory or commit it.
+
+Restore only into a separately named rehearsal project and unused loopback
+port:
+
+```sh
+./infrastructure/backup/restore-rehearsal.sh \
+  /encrypted/offsite/staging/routefolk-backup-YYYYMMDDTHHMMSSZ \
+  routefolk-restore-manual \
+  18081
+```
+
+The rehearsal verifies checksums, restores separate database and Storage
+volumes, compares row counts, and checks the isolated gateway. Inspect Auth user
+UUIDs, trip ownership, and a GPX download before removing only the rehearsal:
+
+```sh
+docker compose -p routefolk-restore-manual down --volumes
+```
+
+Never use that cleanup command with the working `routefolk` project. Copy a
+verified backup to the chosen encrypted off-device destination and record the
+restore date, duration, and operator before passing the Stage 2 gate.
+
 Do not change `lib/config.js` or the Pages Content Security Policy yet.
 
 ### Enter Google OAuth credentials safely
