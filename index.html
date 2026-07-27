@@ -28,13 +28,7 @@
     <main class="rf-screen" id="content" tabindex="-1" aria-live="polite"></main>
   </div>
   <div id="toast" aria-live="polite" aria-atomic="true"></div>
-  <script>
-    try {
-      const palette = localStorage.getItem('rf.palette') || 'midnight';
-      document.documentElement.dataset.palette = palette;
-      if (!localStorage.getItem('rf.palette')) localStorage.setItem('rf.palette', palette);
-    } catch {}
-  </script>
+  <script src="lib/palette-init.js"></script>
   <script src="actions/action-router.js" type="module"></script>
   <script src="screens/app-renderer.js?v=20260520-desktop-weather-02" type="module"></script>
   <script src="screens/wizards.js?v=20260522-wizard-split-01" type="module"></script>
