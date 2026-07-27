@@ -1,8 +1,7 @@
 -- ============================================================
--- routefolk — full schema (current state)
--- This file is a snapshot of what your Supabase database should
--- contain after running all migrations. It is idempotent and
--- safe to re-run.
+-- routefolk — base schema snapshot through migration 009
+-- Newer numbered migrations must be applied after this snapshot.
+-- The self-hosted migration runner does that automatically.
 --
 -- For incremental changes, see migrations/*.sql instead.
 -- ============================================================
@@ -631,7 +630,11 @@ CREATE POLICY gpx_objects_delete ON storage.objects
 INSERT INTO public.app_meta(key, value)
 VALUES ('schema_version', '009')
 ON CONFLICT (key)
-DO UPDATE SET value = EXCLUDED.value, updated_at = now();
+DO UPDATE SET
+  -- Reapplying the base snapshot must never move an upgraded database's
+  -- compatibility marker backwards.
+  value = lpad(greatest(public.app_meta.value::int, EXCLUDED.value::int)::text, 3, '0'),
+  updated_at = now();
 
 -- ============================================================
 -- Done.
