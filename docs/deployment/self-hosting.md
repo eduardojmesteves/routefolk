@@ -166,6 +166,155 @@ Test sign-in/out, trip/stage/journal/expense/item CRUD, GPX upload/download, arc
 
 Do not change `lib/config.js` or the Pages Content Security Policy yet.
 
+### Enter Google OAuth credentials safely
+
+Create a separate Google OAuth **Web application** client for the parallel
+backend. Add the Pages origin as an authorized JavaScript origin and add the
+exact `${API_EXTERNAL_URL}/auth/v1/callback` URL as an authorized redirect URI.
+Do not reuse the hosted Supabase client during the parallel test.
+
+If an OAuth client secret is printed in a terminal transcript, screenshot,
+chat, issue, or log, delete or rotate that secret in Google Cloud before using
+it. Treat the replacement as the only valid secret.
+
+The text passed to `read -p` is only the prompt. Never put a credential inside
+that prompt. Read the values, export them for the child Python process, and
+then update `.env` without echoing either value:
+
+```bash
+read -r -p 'Google client ID: ' ROUTEFOLK_GOOGLE_CLIENT_ID
+read -r -s -p 'Google client secret: ' ROUTEFOLK_GOOGLE_CLIENT_SECRET
+printf '\n'
+
+test -n "$ROUTEFOLK_GOOGLE_CLIENT_ID"
+test -n "$ROUTEFOLK_GOOGLE_CLIENT_SECRET"
+export ROUTEFOLK_GOOGLE_CLIENT_ID ROUTEFOLK_GOOGLE_CLIENT_SECRET
+
+python3 - <<'PY'
+import os
+from pathlib import Path
+
+updates = {
+    "GOOGLE_ENABLED": "true",
+    "GOOGLE_CLIENT_ID": os.environ["ROUTEFOLK_GOOGLE_CLIENT_ID"],
+    "GOOGLE_CLIENT_SECRET": os.environ["ROUTEFOLK_GOOGLE_CLIENT_SECRET"],
+}
+
+path = Path(".env")
+lines = path.read_text().splitlines()
+found = set()
+result = []
+
+for line in lines:
+    key = line.split("=", 1)[0] if "=" in line else None
+    if key in updates:
+        result.append(f"{key}={updates[key]}")
+        found.add(key)
+    else:
+        result.append(line)
+
+missing = set(updates) - found
+if missing:
+    raise SystemExit(f"Missing variables in .env: {sorted(missing)}")
+
+temporary = path.with_name(".env.tmp")
+temporary.write_text("\n".join(result) + "\n")
+temporary.chmod(0o600)
+temporary.replace(path)
+PY
+
+unset ROUTEFOLK_GOOGLE_CLIENT_ID ROUTEFOLK_GOOGLE_CLIENT_SECRET
+```
+
+Confirm only presence and lengths—never values—then recreate Auth and inspect
+its public provider settings:
+
+```bash
+awk -F= '
+  /^GOOGLE_ENABLED=/ { print $1 "=" $2 }
+  /^GOOGLE_CLIENT_ID=/ { print $1 "=<redacted; length " length($2) ">" }
+  /^GOOGLE_CLIENT_SECRET=/ { print $1 "=<redacted; length " length($2) ">" }
+' .env
+stat -c '%a %n' .env
+
+unset GOOGLE_ENABLED GOOGLE_CLIENT_ID GOOGLE_CLIENT_SECRET
+docker compose config --quiet
+docker compose up -d --force-recreate auth
+
+ROUTEFOLK_API_EXTERNAL_URL="$(sed -n 's/^API_EXTERNAL_URL=//p' .env)"
+test -n "$ROUTEFOLK_API_EXTERNAL_URL"
+curl --silent --show-error --fail-with-body \
+  --output /tmp/routefolk-auth-settings.json \
+  "${ROUTEFOLK_API_EXTERNAL_URL}/auth/v1/settings"
+
+python3 - <<'PY'
+import json
+
+settings = json.load(open("/tmp/routefolk-auth-settings.json"))
+assert settings.get("external", {}).get("google") is True
+print("Google provider enabled")
+PY
+
+rm -f /tmp/routefolk-auth-settings.json
+unset ROUTEFOLK_API_EXTERNAL_URL
+```
+
+Keep the production PWA pointed at hosted Supabase until the separate frontend
+rehearsal is ready.
+
+### Prepare an isolated frontend rehearsal
+
+Do not edit `lib/config.js` in the server checkout. First create a disposable
+worktree in a directory owned by the operator. `/opt` is commonly root-owned,
+so a sibling of `/opt/routefolk` may not be writable:
+
+```bash
+cd /opt/routefolk
+test -z "$(git status --porcelain -- lib/config.js _headers)" || {
+  echo 'Stop: restore or move existing frontend edits before continuing.' >&2
+  exit 1
+}
+
+test ! -e "$HOME/routefolk-selfhost-test"
+git worktree add --detach "$HOME/routefolk-selfhost-test" HEAD
+cd "$HOME/routefolk-selfhost-test"
+test "$PWD" != /opt/routefolk
+```
+
+Every subsequent test-only edit to `lib/config.js` and `_headers` must be made
+from that worktree. Chain `cd` with `&&`, or stop immediately when a command
+fails, so a failed worktree creation cannot fall through to editing the server
+checkout. Before editing, use `pwd` and `git status --short` to confirm the
+location.
+
+The backend gateway intentionally serves API paths rather than a website, so
+opening `${API_EXTERNAL_URL}/` returns Nginx `404 Not Found`. Use `/health` to
+test the gateway. The rehearsal PWA must be deployed at its own frontend origin.
+
+`ripgrep` is optional on the server. If `rg` is unavailable, inspect the CSP
+with the standard tool available on Ubuntu:
+
+```bash
+grep -nE 'connect-src|form-action' _headers
+```
+
+If the isolated worktree setup fails after the Auth `SITE_URL` was changed,
+restore the saved environment before doing anything else:
+
+```bash
+cd /opt/routefolk
+cp --preserve=mode .env.before-frontend-rehearsal .env
+chmod 600 .env
+unset SITE_URL
+docker compose config --quiet
+docker compose up -d --force-recreate auth
+git restore --worktree -- lib/config.js _headers
+git status --short
+```
+
+The final `git restore` is appropriate only when those files contain disposable
+rehearsal edits and no intentional uncommitted operator changes.
+
 **Gate:** HTTPS, OAuth, health checks, restarts, backup, and restore succeed while hosted Supabase remains production.
 
 ## Stage 3 — build and rehearse data migration
