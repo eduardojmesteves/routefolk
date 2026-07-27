@@ -315,6 +315,127 @@ git status --short
 The final `git restore` is appropriate only when those files contain disposable
 rehearsal edits and no intentional uncommitted operator changes.
 
+### Create the disposable Cloudflare Pages project
+
+Use a separate **Direct Upload** Pages project. Do not connect the production
+Git repository: its committed `lib/config.js` still targets hosted Supabase.
+Direct Upload lets the operator deploy the modified isolated worktree without
+committing its anonymous key or CSP changes.
+
+From the isolated worktree, prepare the test-only frontend configuration:
+
+```bash
+cd "$HOME/routefolk-selfhost-test"
+test "$PWD" != /opt/routefolk
+
+ROUTEFOLK_ANON_KEY="$(sed -n 's/^ANON_KEY=//p' /opt/routefolk/.env)"
+test -n "$ROUTEFOLK_ANON_KEY"
+export ROUTEFOLK_ANON_KEY
+
+python3 - <<'PY'
+import os
+from pathlib import Path
+
+path = Path("lib/config.js")
+lines = []
+for line in path.read_text().splitlines():
+    if line.startswith("export const SUPABASE_URL = "):
+        lines.append("export const SUPABASE_URL = 'https://routefolk-api.homelab-cloud.pt';")
+    elif line.startswith("export const SUPABASE_ANON_KEY = "):
+        lines.append(f"export const SUPABASE_ANON_KEY = '{os.environ['ROUTEFOLK_ANON_KEY']}';")
+    else:
+        lines.append(line)
+path.write_text("\n".join(lines) + "\n")
+
+headers = Path("_headers")
+text = headers.read_text()
+origin = "https://routefolk-api.homelab-cloud.pt"
+if origin not in text:
+    text = text.replace(
+        "connect-src 'self' ",
+        f"connect-src 'self' {origin} ",
+    ).replace(
+        "form-action 'self' ",
+        f"form-action 'self' {origin} ",
+    )
+headers.write_text(text)
+PY
+
+unset ROUTEFOLK_ANON_KEY
+grep -nE 'SUPABASE_URL|SUPABASE_ANON_KEY' lib/config.js | sed -E 's#(SUPABASE_ANON_KEY = ).*#\1<redacted>#'
+grep -nE 'connect-src|form-action' _headers
+git status --short -- lib/config.js _headers
+```
+
+On the home server, install no global package. Use a temporary current Wrangler
+CLI, authenticate the intended Cloudflare account, create a uniquely named
+project, and deploy the worktree:
+
+```bash
+node --version
+npm --version
+npx wrangler@latest login
+npx wrangler@latest pages project create routefolk-selfhost-test --production-branch main
+npx wrangler@latest pages deploy . --project-name routefolk-selfhost-test --branch main
+```
+
+The login command may print a URL that must be opened on another device when
+the server has no desktop browser. Select the account that owns the Pages
+domain. If the requested project name is unavailable, choose another unique
+name and use that same name in the deploy command. Record the exact stable
+`https://<project>.pages.dev` URL reported by Cloudflare; do not assume it in
+advance.
+
+The Cloudflare dashboard alternative must use the dedicated **Pages** flow. In
+the current combined uploader, click **Looking to deploy Pages? Get started**;
+do not continue on a screen labelled **Create a Worker** or showing a
+`workers.dev` suffix. Then choose **Direct Upload**. Never select the existing
+production Pages project.
+
+Do not upload the repository or worktree directory directly. It contains
+`wrangler.jsonc`, backend files, and operator documentation, which makes the
+combined uploader treat it as a Worker/build project. Build an allow-listed
+static bundle instead:
+
+```bash
+rm -rf "$HOME/routefolk-selfhost-upload"
+/opt/routefolk/infrastructure/docker/build-pages-bundle.sh \
+  "$HOME/routefolk-selfhost-test" \
+  "$HOME/routefolk-selfhost-upload"
+
+find "$HOME/routefolk-selfhost-upload" -maxdepth 1 -printf '%f\n' | sort
+test ! -e "$HOME/routefolk-selfhost-upload/wrangler.jsonc"
+test ! -e "$HOME/routefolk-selfhost-upload/.env"
+```
+
+Upload the **contents** of `routefolk-selfhost-upload`. Its root must contain
+`index.html`, `_headers`, `app.js`, and the frontend asset directories. When the
+browser runs on another computer, archive only this bundle, copy it to that
+computer, extract it, and upload the extracted contents:
+
+```bash
+tar -C "$HOME" -czf "$HOME/routefolk-selfhost-upload.tar.gz" \
+  routefolk-selfhost-upload
+```
+
+The Pages uploader must no longer show `wrangler.jsonc`, `docker-compose.yml`,
+or `.gitignore` in its file list. If it still says **Worker name** rather than
+**Project name**, go back and enter the Pages flow before deploying.
+
+After the first deployment succeeds:
+
+1. open the exact Pages URL and confirm the PWA shell loads;
+2. add that exact origin to the Google OAuth client's authorized JavaScript
+   origins while retaining `${API_EXTERNAL_URL}/auth/v1/callback` as the
+   authorized redirect URI;
+3. change `SITE_URL` in `/opt/routefolk/.env` to that exact Pages origin;
+4. recreate `auth` and verify `GOTRUE_SITE_URL` inside the container;
+5. redeploy with the same Wrangler `pages deploy` command after later test-only
+   frontend edits.
+
+The Direct Upload project is disposable. The production Pages project and the
+committed hosted-Supabase configuration remain unchanged throughout this test.
+
 **Gate:** HTTPS, OAuth, health checks, restarts, backup, and restore succeed while hosted Supabase remains production.
 
 ## Stage 3 — build and rehearse data migration
