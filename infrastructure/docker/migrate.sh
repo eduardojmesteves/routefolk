@@ -33,12 +33,30 @@ while ! psql -h db -U postgres -d postgres -tAc "
   attempt=$((attempt + 1))
   sleep 2
 done
-psql -v ON_ERROR_STOP=1 -h db -U postgres -d postgres -f /schema.sql
 
-# schema.sql is currently a snapshot through the version recorded in app_meta.
-# Apply every newer migration in filename order so a fresh self-hosted database
-# cannot silently miss migrations when new files are added.
-current=$(psql -h db -U postgres -d postgres -tAc \
+# schema.sql is a base snapshot, not a migration that may be replayed over an
+# upgraded database: it contains the older policies that existed at version
+# 009. Apply it only when Routefolk has not been initialized. Replaying it on a
+# version-015 database would silently replace hardened policies before the
+# version marker causes migrations 010-015 to be skipped.
+initialized=false
+if psql -h db -U postgres -d postgres -tAc \
+  "select to_regclass('public.app_meta') is not null" | grep -q t; then
+  installed_marker=$(psql -v ON_ERROR_STOP=1 -h db -U postgres -d postgres -tAc \
+    "select value from public.app_meta where key = 'schema_version'")
+  [ -n "$(printf '%s' "$installed_marker" | tr -d '[:space:]')" ] && initialized=true
+fi
+
+if [ "$initialized" = true ]; then
+  echo 'Routefolk schema already initialized; preserving installed policies.'
+else
+  echo 'Applying Routefolk base schema snapshot...'
+  psql -v ON_ERROR_STOP=1 -h db -U postgres -d postgres -f /schema.sql
+fi
+
+# Apply every migration newer than the installed marker in filename order so a
+# fresh or upgraded self-hosted database cannot silently miss migrations.
+current=$(psql -v ON_ERROR_STOP=1 -h db -U postgres -d postgres -tAc \
   "select value from public.app_meta where key = 'schema_version'" | tr -d '[:space:]')
 current=$(printf '%s' "$current" | sed 's/^0*//')
 current=${current:-0}

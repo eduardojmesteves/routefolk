@@ -49,7 +49,9 @@ The Docker stack is therefore an unvalidated candidate backend. It must not beco
 The stack intentionally refuses to render without generated database, JWT,
 Storage, and Agent API secrets. Run `setup-env.sh` rather than relying on sample
 credentials. The migration container applies every numbered migration newer
-than the schema snapshot, in order. The Agent API establishes the configured
+than the installed schema marker, in order. It applies the base snapshot only
+to an uninitialized database; replaying that older snapshot over an upgraded
+database would regress its RLS policies. The Agent API establishes the configured
 user's JWT claims and changes to the `authenticated` database role before any
 application query, so normal row-level security remains authoritative.
 
