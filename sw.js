@@ -4,7 +4,7 @@
 // Bump CACHE whenever shell assets change.
 // ============================================================
 
-const CACHE = 'routefolk-shell-v130-selfhost-csp';
+const CACHE = 'routefolk-shell-v131-desktop-selects';
 
 const SHELL_ASSETS = [
   './',
