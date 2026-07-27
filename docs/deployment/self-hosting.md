@@ -436,6 +436,46 @@ After the first deployment succeeds:
 The Direct Upload project is disposable. The production Pages project and the
 committed hosted-Supabase configuration remain unchanged throughout this test.
 
+### Redeploy after CSP or gateway changes
+
+OAuth returns access tokens in the browser URL fragment. Never include that URL
+in screenshots or logs. If a token is exposed, delete the corresponding Auth
+session, temporarily deactivate its `app_members` row, and wait at least the
+configured JWT lifetime before reactivating it. Closing the tab alone does not
+invalidate an already issued access token.
+
+The committed frontend CSP permits Google Fonts and uses an external palette
+initializer so it does not require `unsafe-inline` scripts. The gateway owns
+CORS for the single configured `SITE_URL`, including preflight requests. After
+pulling either change on the server:
+
+```bash
+cd /opt/routefolk
+git pull --ff-only origin main
+unset SITE_URL
+docker compose config --quiet
+docker compose up -d --force-recreate gateway
+```
+
+Recreate the isolated worktree from the updated commit, reapply its test-only
+backend URL/key and CSP origin, rebuild the clean bundle, and create a new Pages
+deployment. A stale bundle still contains the old CSP and inline script.
+
+Validate CORS before retrying OAuth:
+
+```bash
+curl --silent --show-error --dump-header - --output /dev/null \
+  --request OPTIONS \
+  --header 'Origin: https://routefolk-selfhost-test.pages.dev' \
+  --header 'Access-Control-Request-Method: GET' \
+  --header 'Access-Control-Request-Headers: authorization,apikey,x-client-info' \
+  'https://routefolk-api.homelab-cloud.pt/auth/v1/user'
+```
+
+The response must be HTTP 204 and include exactly one
+`Access-Control-Allow-Origin` header matching the Pages origin. Requests with a
+different Origin must not receive that header.
+
 **Gate:** HTTPS, OAuth, health checks, restarts, backup, and restore succeed while hosted Supabase remains production.
 
 ## Stage 3 — build and rehearse data migration
