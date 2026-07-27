@@ -14,7 +14,8 @@
 .rf-v2-wizard-panel .rf-d2-form-row-pair .rf-d2-form-row{margin:0;}
 .rf-v2-wizard-panel .rf-d2-form-label{font:800 11px/1 var(--rf-d2-font-mono);letter-spacing:.14em;text-transform:uppercase;color:var(--rf-d2-muted);}
 .rf-v2-wizard-panel .rf-d2-input,.rf-v2-wizard-panel .rf-d2-textarea,.rf-v2-wizard-panel select.rf-d2-input{width:100%;min-height:48px;border:1px solid var(--rf-d2-rule-2);background:rgba(243,240,228,.76);color:var(--rf-d2-ink);padding:12px 14px;border-radius:10px;font:600 16px/1.2 var(--rf-d2-font-ui);box-sizing:border-box;pointer-events:auto;}
-.rf-v2-wizard-panel select.rf-d2-input{appearance:auto;-webkit-appearance:menulist;}
+.rf-v2-wizard-panel select.rf-d2-input{appearance:auto;-webkit-appearance:menulist;color-scheme:light;background-color:var(--rf-d2-surface,#f3f0e4);color:var(--rf-d2-ink,#171a26);}
+.rf-v2-wizard-panel select.rf-d2-input option{background-color:#f3f0e4;color:#171a26;}
 .rf-v2-wizard-panel .rf-d2-textarea{min-height:110px;resize:vertical;line-height:1.35;}
 .rf-v2-wizard-panel .rf-d2-input:focus,.rf-v2-wizard-panel .rf-d2-textarea:focus{outline:2px solid rgba(38,52,94,.24);outline-offset:2px;border-color:var(--rf-d2-primary);}
 .rf-v2-wizard-panel .rf-d2-form-actions{display:flex;justify-content:flex-end;gap:10px;margin-top:22px;}
