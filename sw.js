@@ -4,7 +4,7 @@
 // Bump CACHE whenever shell assets change.
 // ============================================================
 
-const CACHE = 'routefolk-shell-v129-weather-nav';
+const CACHE = 'routefolk-shell-v130-selfhost-csp';
 
 const SHELL_ASSETS = [
   './',
@@ -96,6 +96,7 @@ const SHELL_ASSETS = [
   './components/atoms/navigate-button.js',
   './components/atoms/navigate-sheet.js',
   './lib/config.js',
+  './lib/palette-init.js',
   './lib/supabase.js',
   './lib/auth.js',
   './lib/meta.js',
