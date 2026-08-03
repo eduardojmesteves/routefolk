@@ -23,3 +23,8 @@ and must never be committed here.
 `backup/` contains the write-freeze backup, integrity verification, and
 isolated restore-rehearsal scripts. See [`backup/README.md`](backup/README.md)
 before operating on server volumes.
+
+`migration/` contains the hosted PostgreSQL compatibility renderer, private
+Storage installer, restored-data validation, tests, and the clean migration
+rehearsal runbook. See [`migration/README.md`](migration/README.md); these tools
+are for an isolated rehearsal and do not perform a production cutover.
