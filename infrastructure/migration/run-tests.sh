@@ -21,7 +21,16 @@ cat > "$tmp/bin/getfattr" <<'EOF'
 while test "$#" -gt 1; do case "$1" in --only-values) shift;; -n) name=$2; shift 2;; *) break;; esac; done
 cat "$1.attr.${name##*.}"
 EOF
-chmod +x "$tmp/bin/setfattr" "$tmp/bin/getfattr"
+cat > "$tmp/bin/chown" <<'EOF'
+#!/bin/sh
+# The production installer runs as root in a helper container. The test suite
+# runs as the invoking user, so verify the requested ownership without trying
+# to perform a privileged ownership change on the fixture.
+test "$#" -eq 2
+test "$1" = '0:0'
+test -f "$2"
+EOF
+chmod +x "$tmp/bin/setfattr" "$tmp/bin/getfattr" "$tmp/bin/chown"
 PATH="$tmp/bin:$PATH"; export PATH
 
 : > "$tmp/version"; : > "$tmp/xattr"; : > "$tmp/size"
