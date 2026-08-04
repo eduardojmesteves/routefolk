@@ -96,9 +96,10 @@ operator gates.
 ## Compatibility rendering
 
 `render-compatible-sql.sh` uses the same PostgreSQL client generation as the
-source archive, removes only exact PostgreSQL-17 `transaction_timeout`,
-`\restrict`, and `\unrestrict` lines, checks balanced restrictions and the
-transaction boundary, refuses overwrite, and creates a mode-600 checksum.
+source archive, renders data with trigger guards, removes only exact
+PostgreSQL-17 `transaction_timeout`, `\restrict`, and `\unrestrict` lines,
+checks balanced restrictions, trigger guards, and the transaction boundary,
+refuses overwrite, and creates a portable mode-600 checksum manifest.
 
 ## Cleanup after evidence approval
 

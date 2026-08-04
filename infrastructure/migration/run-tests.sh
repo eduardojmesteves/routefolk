@@ -64,12 +64,29 @@ expect_failure "$root/infrastructure/migration/install-storage-objects.sh" "$tmp
 # Exact compatibility filtering with a deterministic pg_restore.
 cat > "$tmp/bin/pg_restore" <<'EOF'
 #!/bin/sh
-for arg do case "$arg" in --file=*) output=${arg#--file=};; esac; done
-printf '%s\n' '\restrict key' 'BEGIN;' 'SET transaction_timeout = 0;' "SELECT 'SET transaction_timeout = 0;';" 'COMMIT;' '\unrestrict key' > "$output"
+disable_triggers=false
+for arg do
+  case "$arg" in
+    --file=*) output=${arg#--file=};;
+    --disable-triggers) disable_triggers=true;;
+  esac
+done
+"$disable_triggers"
+printf '%s\n' \
+  '\restrict key' \
+  'BEGIN;' \
+  'SET transaction_timeout = 0;' \
+  'ALTER TABLE public.example DISABLE TRIGGER ALL;' \
+  "SELECT 'SET transaction_timeout = 0;';" \
+  'ALTER TABLE public.example ENABLE TRIGGER ALL;' \
+  'COMMIT;' \
+  '\unrestrict key' > "$output"
 EOF
 chmod +x "$tmp/bin/pg_restore"; : > "$tmp/archive"
 "$root/infrastructure/migration/render-compatible-sql.sh" "$tmp/archive" "$tmp/output.sql" >/dev/null
-test "$(cat "$tmp/output.sql")" = "$(printf "BEGIN;\nSELECT 'SET transaction_timeout = 0;';\nCOMMIT;")"; pass=$((pass + 1))
+test "$(cat "$tmp/output.sql")" = "$(printf "BEGIN;\nALTER TABLE public.example DISABLE TRIGGER ALL;\nSELECT 'SET transaction_timeout = 0;';\nALTER TABLE public.example ENABLE TRIGGER ALL;\nCOMMIT;")"
+(cd "$tmp" && sha256sum --quiet -c output.sql.sha256)
+pass=$((pass + 1))
 
 # Complete retained-input fixture and forbidden SQL rejection.
 inputs="$tmp/inputs"; mkdir -p "$inputs/hosted-gpx-files/trip/stage"

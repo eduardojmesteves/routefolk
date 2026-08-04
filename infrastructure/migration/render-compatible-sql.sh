@@ -21,7 +21,7 @@ cleanup() { rm -f "$raw_sql" "$removed"; }
 trap cleanup EXIT HUP INT TERM
 : > "$removed"
 
-pg_restore --file="$raw_sql" --single-transaction "$source_dump"
+pg_restore --file="$raw_sql" --single-transaction --disable-triggers "$source_dump"
 
 # PostgreSQL 17 pg_dump emits syntax that PostgreSQL 15 psql does not know.
 # Match complete lines only so similarly named application SQL is untouched.
@@ -46,9 +46,16 @@ test "$timeout_count" -le 1 || { echo "Multiple transaction_timeout settings fou
 grep -q '^BEGIN;$' "$output_sql" && grep -q '^COMMIT;$' "$output_sql" || {
   echo "Rendered SQL does not retain its transaction boundary" >&2; exit 1;
 }
+disable_count="$(grep -c 'DISABLE TRIGGER ALL;' "$output_sql" || true)"
+enable_count="$(grep -c 'ENABLE TRIGGER ALL;' "$output_sql" || true)"
+test "$disable_count" -gt 0 && test "$disable_count" -eq "$enable_count" || {
+  echo "Rendered SQL does not contain balanced trigger guards" >&2; exit 1;
+}
 
 chmod 600 "$output_sql"
-sha256sum "$output_sql" > "${output_sql}.sha256"
+output_dir=$(dirname -- "$output_sql")
+output_name=$(basename -- "$output_sql")
+(cd "$output_dir" && sha256sum "$output_name") > "${output_sql}.sha256"
 chmod 600 "${output_sql}.sha256"
 printf 'Rendered %s (removed timeout=%s, restrict=%s, unrestrict=%s)\n' \
   "$output_sql" "$timeout_count" "$restrict_count" "$unrestrict_count"
