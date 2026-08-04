@@ -4,7 +4,7 @@
 // Bump CACHE whenever shell assets change.
 // ============================================================
 
-const CACHE = 'routefolk-shell-v131-desktop-selects';
+const CACHE = 'routefolk-shell-v132-selfhosted-production-cutover';
 
 const SHELL_ASSETS = [
   './',
