@@ -554,7 +554,7 @@ The anonymous key is designed to be public; authorization still depends on JWTs 
 After the PWA cutover succeeds:
 
 1. use a dedicated approved Routefolk account and set its UUID as `ROUTEFOLK_API_USER_ID`;
-2. store `ROUTEFOLK_API_KEY` only in the agent platform's secret manager;
+2. store `ROUTEFOLK_API_KEY` only in your chat client's secret manager;
 3. add network restrictions, request logging, rate limiting, and a rotation procedure;
 4. test list/read first, then create/edit/delete a disposable private route;
 5. verify attribution and key revocation before allowing production writes.
