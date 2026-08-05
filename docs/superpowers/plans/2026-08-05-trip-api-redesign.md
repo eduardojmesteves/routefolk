@@ -1441,6 +1441,8 @@ git commit -m "feat(api): rewrite server.js as a createApp() factory with /trips
 - Modify: `infrastructure/docker/setup-env.sh`
 - Modify: `infrastructure/migration/run-rehearsal.sh`
 - Modify: `infrastructure/migration/README.md`
+- Modify: `infrastructure/backup/backup.sh`
+- Modify: `infrastructure/backup/restore-rehearsal.sh`
 - Modify: `.env.example`
 - Modify: `tests/repo-hygiene.test.mjs`
 
