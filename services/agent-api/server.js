@@ -150,6 +150,8 @@ function idParameter() {
   return { name: 'id', in: 'path', required: true, schema: { type: 'string', format: 'uuid' } };
 }
 
+const openApiResourceNames = ['routes', 'trips', 'stages', 'journal'];
+
 const resourceOperationNames = {
   routes: 'Route',
   trips: 'Trip',
@@ -165,7 +167,7 @@ function resourceOperationName(action, resourceName) {
 }
 
 function resourcePaths() {
-  return Object.fromEntries(Object.keys(resources).flatMap(resourceName => [
+  return Object.fromEntries(openApiResourceNames.flatMap(resourceName => [
     [`/${resourceName}`, {
       get: {
         operationId: resourceOperationName('list', resourceName),
