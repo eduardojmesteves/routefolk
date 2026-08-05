@@ -58,7 +58,7 @@ docker compose exec -T db pg_isready -U postgres >/dev/null
 
 echo "Entering the backup write-freeze..." >&2
 services_stopped=true
-docker compose stop gateway agent-api auth rest storage >/dev/null
+docker compose stop gateway api auth rest storage >/dev/null
 
 storage_container="$(docker compose ps -aq storage)"
 test -n "$storage_container" || {
