@@ -134,6 +134,8 @@ services:
       - "${BIND_ADDRESS:-127.0.0.1}:${PORT:-18080}:80"
     environment:
       ROUTEFOLK_SITE_URL: ${SITE_URL:-http://localhost:8788}
+      ROUTEFOLK_AGENT_RATE_LIMIT_RATE: ${AGENT_RATE_LIMIT_RATE:-30r/m}
+      ROUTEFOLK_AGENT_RATE_LIMIT_BURST: ${AGENT_RATE_LIMIT_BURST:-10}
       NGINX_ENVSUBST_FILTER: ROUTEFOLK_
     volumes:
       - ./infrastructure/docker/nginx.conf:/etc/nginx/templates/default.conf.template:ro
