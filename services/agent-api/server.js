@@ -126,11 +126,61 @@ const filterParameters = [
   { name: 'limit', in: 'query', schema: { type: 'integer', minimum: 1, maximum: 500 } },
 ];
 
+const agentRecordProperties = {
+  id: { type: 'string', format: 'uuid', readOnly: true },
+  created_at: { type: 'string', format: 'date-time', readOnly: true },
+  updated_at: { type: 'string', format: 'date-time', readOnly: true },
+  title: { type: 'string' },
+  description: { type: 'string' },
+  start_date: { type: 'string', format: 'date' },
+  end_date: { type: 'string', format: 'date' },
+  cover_photo_url: { type: 'string' },
+  status: { type: 'string' },
+  visibility: { type: 'string' },
+  trip_id: { type: 'string', format: 'uuid' },
+  stage_id: { type: 'string', format: 'uuid' },
+  order_index: { type: 'integer' },
+  start_location: { type: 'string' },
+  start_lat: { type: 'number' },
+  start_lng: { type: 'number' },
+  end_location: { type: 'string' },
+  end_lat: { type: 'number' },
+  end_lng: { type: 'number' },
+  planned_date: { type: 'string', format: 'date' },
+  gmaps_url: { type: 'string' },
+  custom_route_url: { type: 'string' },
+  distance_km: { type: 'number' },
+  notes: { type: 'string' },
+  entry_type: { type: 'string' },
+  location: { type: 'string' },
+  location_url: { type: 'string' },
+  info_url: { type: 'string' },
+  timestamp: { type: 'string', format: 'date-time' },
+  photo_album_url: { type: 'string' },
+  user_id: { type: 'string', format: 'uuid' },
+  category: { type: 'string' },
+  amount: { type: 'number' },
+  currency: { type: 'string' },
+  date: { type: 'string', format: 'date' },
+  category_id: { type: 'string', format: 'uuid' },
+  name: { type: 'string' },
+  assigned_to: { type: 'string', format: 'uuid' },
+  sort_order: { type: 'integer' },
+};
+
+const recordBodySchema = {
+  type: 'object',
+  description: 'A Routefolk record body. Use only fields allowed by the selected resource.',
+  properties: agentRecordProperties,
+  additionalProperties: false,
+  minProperties: 1,
+};
+
 const recordRequestBody = {
   required: true,
   content: {
     'application/json': {
-      schema: { type: 'object', additionalProperties: true },
+      schema: recordBodySchema,
     },
   },
 };
@@ -148,9 +198,24 @@ app.get('/openapi.json', (req, res) => res.json({
     schemas: {
       ResourceMap: {
         type: 'object',
-        additionalProperties: { type: 'array', items: { type: 'string' } },
+        description: 'Writable Routefolk resources and the fields accepted for each resource.',
+        properties: Object.fromEntries(Object.entries(resources).map(([name, value]) => [
+          name,
+          {
+            type: 'array',
+            items: { type: 'string' },
+            description: `Writable fields for ${name}.`,
+            example: value.fields,
+          },
+        ])),
+        required: Object.keys(resources),
+        additionalProperties: false,
       },
-      AgentRecord: { type: 'object', additionalProperties: true },
+      AgentRecord: {
+        type: 'object',
+        properties: agentRecordProperties,
+        additionalProperties: true,
+      },
       AgentRecordList: {
         type: 'object',
         properties: { data: { type: 'array', items: { $ref: '#/components/schemas/AgentRecord' } } },

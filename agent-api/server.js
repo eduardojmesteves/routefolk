@@ -3,11 +3,14 @@ import pg from 'pg';
 
 const { Pool } = pg;
 const app = express();
+// The only direct caller is the controlled Nginx gateway. Trust one proxy hop
+// so generated OpenAPI server URLs retain the external HTTPS scheme.
+app.set('trust proxy', 1);
 const pool = new Pool({ connectionString: process.env.DATABASE_URL });
 const apiKey = process.env.AGENT_API_KEY;
 const agentUserId = process.env.AGENT_USER_ID;
 
-if (!apiKey || apiKey === 'change-me-before-exposing') console.warn('WARNING: configure a strong AGENT_API_KEY before exposing this service.');
+if (!apiKey || apiKey === 'change-me-before-exposing') throw new Error('A strong AGENT_API_KEY is required');
 if (!agentUserId) throw new Error('AGENT_USER_ID is required');
 
 app.use(express.json({ limit: '1mb' }));
@@ -40,7 +43,13 @@ async function inAgentTransaction(work) {
   const client = await pool.connect();
   try {
     await client.query('BEGIN');
-    await client.query("select set_config('request.jwt.claim.sub', $1, true), set_config('request.jwt.claim.role', 'authenticated', true)", [agentUserId]);
+    const user = (await client.query('select email from auth.users where id = $1', [agentUserId])).rows[0];
+    if (!user) throw new Error('AGENT_USER_ID does not identify an Auth user');
+    const claims = JSON.stringify({ sub: agentUserId, role: 'authenticated', email: user.email });
+    await client.query("select set_config('request.jwt.claim.sub', $1, true), set_config('request.jwt.claim.role', 'authenticated', true), set_config('request.jwt.claims', $2, true)", [agentUserId, claims]);
+    // The connection uses postgres only to establish the claims above. All
+    // application queries run as authenticated so PostgreSQL enforces RLS.
+    await client.query('SET LOCAL ROLE authenticated');
     const result = await work(client);
     await client.query('COMMIT');
     return result;
@@ -60,13 +69,13 @@ app.get('/resources/:resource', async (req, res, next) => {
   for (const key of ['trip_id', 'stage_id', 'status']) if (req.query[key] !== undefined && (def.fields.includes(key) || key === 'status')) { values.push(req.query[key]); filters.push(`${key} = $${values.length}`); }
   const limit = Math.min(Math.max(Number.parseInt(req.query.limit, 10) || 100, 1), 500);
   try {
-    const result = await pool.query(`select * from public.${def.table}${filters.length ? ` where ${filters.join(' and ')}` : ''} order by created_at desc limit ${limit}`, values);
+    const result = await inAgentTransaction(client => client.query(`select * from public.${def.table}${filters.length ? ` where ${filters.join(' and ')}` : ''} order by created_at desc limit ${limit}`, values));
     res.json({ data: result.rows });
   } catch (error) { next(error); }
 });
 app.get('/resources/:resource/:id', async (req, res, next) => {
   const def = definition(req.params.resource, res); if (!def) return;
-  try { const result = await pool.query(`select * from public.${def.table} where id = $1`, [req.params.id]); if (!result.rows[0]) return res.status(404).json({ error: 'Not found.' }); res.json({ data: result.rows[0] }); } catch (error) { next(error); }
+  try { const result = await inAgentTransaction(client => client.query(`select * from public.${def.table} where id = $1`, [req.params.id])); if (!result.rows[0]) return res.status(404).json({ error: 'Not found.' }); res.json({ data: result.rows[0] }); } catch (error) { next(error); }
 });
 app.post('/resources/:resource', async (req, res, next) => {
   const def = definition(req.params.resource, res); if (!def) return;
@@ -117,11 +126,61 @@ const filterParameters = [
   { name: 'limit', in: 'query', schema: { type: 'integer', minimum: 1, maximum: 500 } },
 ];
 
+const agentRecordProperties = {
+  id: { type: 'string', format: 'uuid', readOnly: true },
+  created_at: { type: 'string', format: 'date-time', readOnly: true },
+  updated_at: { type: 'string', format: 'date-time', readOnly: true },
+  title: { type: 'string' },
+  description: { type: 'string' },
+  start_date: { type: 'string', format: 'date' },
+  end_date: { type: 'string', format: 'date' },
+  cover_photo_url: { type: 'string' },
+  status: { type: 'string' },
+  visibility: { type: 'string' },
+  trip_id: { type: 'string', format: 'uuid' },
+  stage_id: { type: 'string', format: 'uuid' },
+  order_index: { type: 'integer' },
+  start_location: { type: 'string' },
+  start_lat: { type: 'number' },
+  start_lng: { type: 'number' },
+  end_location: { type: 'string' },
+  end_lat: { type: 'number' },
+  end_lng: { type: 'number' },
+  planned_date: { type: 'string', format: 'date' },
+  gmaps_url: { type: 'string' },
+  custom_route_url: { type: 'string' },
+  distance_km: { type: 'number' },
+  notes: { type: 'string' },
+  entry_type: { type: 'string' },
+  location: { type: 'string' },
+  location_url: { type: 'string' },
+  info_url: { type: 'string' },
+  timestamp: { type: 'string', format: 'date-time' },
+  photo_album_url: { type: 'string' },
+  user_id: { type: 'string', format: 'uuid' },
+  category: { type: 'string' },
+  amount: { type: 'number' },
+  currency: { type: 'string' },
+  date: { type: 'string', format: 'date' },
+  category_id: { type: 'string', format: 'uuid' },
+  name: { type: 'string' },
+  assigned_to: { type: 'string', format: 'uuid' },
+  sort_order: { type: 'integer' },
+};
+
+const recordBodySchema = {
+  type: 'object',
+  description: 'A Routefolk record body. Use only fields allowed by the selected resource.',
+  properties: agentRecordProperties,
+  additionalProperties: false,
+  minProperties: 1,
+};
+
 const recordRequestBody = {
   required: true,
   content: {
     'application/json': {
-      schema: { type: 'object', additionalProperties: true },
+      schema: recordBodySchema,
     },
   },
 };
@@ -139,9 +198,24 @@ app.get('/openapi.json', (req, res) => res.json({
     schemas: {
       ResourceMap: {
         type: 'object',
-        additionalProperties: { type: 'array', items: { type: 'string' } },
+        description: 'Writable Routefolk resources and the fields accepted for each resource.',
+        properties: Object.fromEntries(Object.entries(resources).map(([name, value]) => [
+          name,
+          {
+            type: 'array',
+            items: { type: 'string' },
+            description: `Writable fields for ${name}.`,
+            example: value.fields,
+          },
+        ])),
+        required: Object.keys(resources),
+        additionalProperties: false,
       },
-      AgentRecord: { type: 'object', additionalProperties: true },
+      AgentRecord: {
+        type: 'object',
+        properties: agentRecordProperties,
+        additionalProperties: true,
+      },
       AgentRecordList: {
         type: 'object',
         properties: { data: { type: 'array', items: { $ref: '#/components/schemas/AgentRecord' } } },
