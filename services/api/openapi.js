@@ -62,9 +62,21 @@ const RESOURCE_LABELS = {
   'item-categories': { singular: 'ItemCategory', plural: 'ItemCategories' },
 };
 
+// ChatGPT Custom GPT Actions reject any OpenAPI document with more than 30
+// operations. Describing full CRUD for all 6 resources plus the 2 batch
+// actions is 32 operations — over the limit. Only the resources central to
+// the actual use case (creating and editing a trip's journey: the trip
+// itself, its stages, and journal entries) are described here, keeping the
+// document at 17 operations with headroom for future additions. Expenses,
+// items, and item-categories still have full working REST endpoints in
+// server.js — they're simply not described in this document, so a chat
+// client can't discover or call them. This is a document-level omission
+// only, not a removal of functionality.
+const CHAT_EXPOSED_RESOURCES = ['trips', 'stages', 'journal-entries'];
+
 function resourcePaths() {
   const paths = {};
-  for (const resourceName of Object.keys(RESOURCES)) {
+  for (const resourceName of CHAT_EXPOSED_RESOURCES) {
     const { singular: label, plural } = RESOURCE_LABELS[resourceName];
     const noun = resourceName.replace(/-/g, ' ');
     paths[`/${resourceName}`] = {
