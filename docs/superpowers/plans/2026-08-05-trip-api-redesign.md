@@ -11,7 +11,8 @@
 ## Global Constraints
 
 - No new npm dependencies beyond the existing `express` and `pg`.
-- Tests run via `node --test`; no test framework (matches `tests/actions/trip-action-ownership.test.mjs`).
+- Tests run via `node --test`; no test framework.
+- **Test files are never committed.** The repo has an existing, deliberate policy (commit `519644c`, `README.md`) that test infrastructure stays local-only via `.gitignore` — it can be run but does not deploy. Every task below still writes real tests and runs them (write the failing test, watch it fail, implement, watch it pass) — that discipline doesn't change — but the commit step at the end of each task stages only the implementation file(s), never the test file(s). `tests/` is already covered by the root `.gitignore` (`/tests/`); Task 2 adds a matching entry for `services/api/test/`. One consequence: the OpenAPI-completeness lint (Task 6) and the branding/dead-file regression guard (`tests/repo-hygiene.test.mjs`, Tasks 1/8) are real, running checks during this implementation, but — per this policy — do not persist as committed CI-style guards for future sessions.
 - No "agent," "AI," "assistant," "ChatGPT," "Claude," or model-name branding in any product-facing code, config, or doc. `docs/superpowers/` planning documents are exempt (internal process history, not product-facing).
 - Env vars: `ROUTEFOLK_API_KEY`, `ROUTEFOLK_API_USER_ID` (renamed from `AGENT_API_KEY`, `AGENT_USER_ID`).
 - Gateway path: `/api/v1` (renamed from `/agent/v1`). Service directory: `services/api/` (renamed from `services/agent-api/`). Compose service name: `api` (renamed from `agent-api`).
@@ -32,14 +33,14 @@ services/api/                    (renamed from services/agent-api/)
 ├── validate.js                  (NEW — request validation built on resources.js)
 ├── openapi.js                   (NEW — OpenAPI doc generator + completeness linter)
 ├── server.js                    (REWRITTEN — createApp() factory + route wiring)
-└── test/
-    ├── db.test.mjs               (NEW)
-    ├── resources.test.mjs        (NEW)
-    ├── validate.test.mjs         (NEW)
-    ├── openapi.test.mjs          (NEW)
-    └── server.test.mjs           (NEW)
+└── test/                         (NOT COMMITTED — gitignored, see Global Constraints)
+    ├── db.test.mjs
+    ├── resources.test.mjs
+    ├── validate.test.mjs
+    ├── openapi.test.mjs
+    └── server.test.mjs
 
-tests/repo-hygiene.test.mjs      (NEW — regression guard for the cleanup)
+tests/repo-hygiene.test.mjs      (NOT COMMITTED — local verification aid, already gitignored)
 
 docker-compose.yml                          (MODIFIED — service rename, env var rename)
 infrastructure/docker/nginx.conf            (MODIFIED — path/upstream rename)
@@ -66,11 +67,11 @@ v3-refactor/        (DELETED — superseded design archive)
 - Delete: `docker/` (entire directory)
 - Delete: `SELF_HOSTING.md`
 - Delete: `v3-refactor/` (entire directory)
-- Test: `tests/repo-hygiene.test.mjs` (create)
+- Test: `tests/repo-hygiene.test.mjs` (create — local-only, not committed; already covered by the root `.gitignore`'s `/tests/` entry)
 
 **Interfaces:**
 - Consumes: nothing
-- Produces: `tests/repo-hygiene.test.mjs`, which later tasks extend with more assertions
+- Produces: nothing later tasks import — `tests/repo-hygiene.test.mjs` is a local verification aid that later tasks (2, 8) extend with more assertions on disk, but it is never committed
 
 These four are confirmed unreferenced: `docker-compose.yml` only builds `./services/agent-api` and mounts `./infrastructure/docker/*`, never `./agent-api` or `./docker`; `docs/README.md` only links `docs/deployment/self-hosting.md`, never `SELF_HOSTING.md`; and no live CSS/JS/HTML file references `v3-refactor/`.
 
@@ -122,8 +123,9 @@ Expected: PASS
 
 - [ ] **Step 5: Commit**
 
+The test file that proved this stays uncommitted (repo policy — see Global Constraints); only the deletions are staged, and `git rm` already staged them in Step 3:
+
 ```bash
-git add tests/repo-hygiene.test.mjs
 git commit -m "chore: remove dead agent-api/docker/SELF_HOSTING.md duplicates and superseded v3-refactor archive"
 ```
 
@@ -135,7 +137,8 @@ git commit -m "chore: remove dead agent-api/docker/SELF_HOSTING.md duplicates an
 - Modify (rename): `services/agent-api/` → `services/api/`
 - Modify: `services/api/package.json`
 - Modify: `services/README.md`
-- Modify: `tests/repo-hygiene.test.mjs`
+- Modify: `.gitignore`
+- Modify: `tests/repo-hygiene.test.mjs` (local-only, not committed)
 
 **Interfaces:**
 - Consumes: nothing
@@ -179,7 +182,15 @@ Install its dependencies now — `node_modules` was never checked in (`services/
 cd services/api && npm install && cd -
 ```
 
-- [ ] **Step 4: Update `services/README.md`**
+- [ ] **Step 4: Extend `.gitignore` to cover the new service's test directory**
+
+The root `.gitignore` only anchors `/tests/` at the repo root — it does not cover `services/api/test/`, which Task 3 starts creating. Add a matching entry so the same "tests stay local, never committed" policy applies there too. Add this line to `.gitignore`, next to the existing `/tests/` entry:
+
+```
+/services/*/test/
+```
+
+- [ ] **Step 5: Update `services/README.md`**
 
 Replace its contents:
 
@@ -195,15 +206,15 @@ separate from the static PWA modules served by Cloudflare Pages.
 not mixed into the repository root or browser application.
 ```
 
-- [ ] **Step 5: Run test to verify it passes**
+- [ ] **Step 6: Run test to verify it passes**
 
 Run: `node --test tests/repo-hygiene.test.mjs`
 Expected: PASS
 
-- [ ] **Step 6: Commit**
+- [ ] **Step 7: Commit**
 
 ```bash
-git add services/ tests/repo-hygiene.test.mjs
+git add services/ .gitignore
 git commit -m "chore(api): rename services/agent-api to services/api"
 ```
 
@@ -322,7 +333,7 @@ Expected: PASS
 - [ ] **Step 5: Commit**
 
 ```bash
-git add services/api/db.js services/api/test/db.test.mjs
+git add services/api/db.js
 git commit -m "feat(api): extract db.js connection/impersonation helper"
 ```
 
@@ -481,7 +492,7 @@ Expected: PASS
 - [ ] **Step 5: Commit**
 
 ```bash
-git add services/api/resources.js services/api/test/resources.test.mjs
+git add services/api/resources.js
 git commit -m "feat(api): add shared per-resource schema definitions"
 ```
 
@@ -666,7 +677,7 @@ Expected: PASS
 - [ ] **Step 5: Commit**
 
 ```bash
-git add services/api/validate.js services/api/test/validate.test.mjs
+git add services/api/validate.js
 git commit -m "feat(api): add resource validation and trip-plan assembly"
 ```
 
@@ -1004,7 +1015,7 @@ Expected: PASS
 - [ ] **Step 5: Commit**
 
 ```bash
-git add services/api/openapi.js services/api/test/openapi.test.mjs
+git add services/api/openapi.js
 git commit -m "feat(api): generate the OpenAPI document from shared resource schemas, with a completeness linter"
 ```
 
@@ -1577,7 +1588,7 @@ Expected: PASS
 - [ ] **Step 10: Commit**
 
 ```bash
-git add docker-compose.yml infrastructure/ .env.example tests/repo-hygiene.test.mjs
+git add docker-compose.yml infrastructure/ .env.example
 git commit -m "chore(infra): rename agent-api to api across compose, nginx, and migration scripts"
 ```
 
