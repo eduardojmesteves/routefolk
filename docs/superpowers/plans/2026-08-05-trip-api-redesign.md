@@ -810,21 +810,23 @@ function dataEnvelope(schema) {
   return { type: 'object', properties: { data: schema }, required: ['data'] };
 }
 
-function titleCase(resourceName) {
-  return resourceName
-    .split('-')
-    .map(part => part[0].toUpperCase() + part.slice(1))
-    .join('');
-}
+const RESOURCE_LABELS = {
+  trips: { singular: 'Trip', plural: 'Trips' },
+  stages: { singular: 'Stage', plural: 'Stages' },
+  'journal-entries': { singular: 'JournalEntry', plural: 'JournalEntries' },
+  expenses: { singular: 'Expense', plural: 'Expenses' },
+  items: { singular: 'Item', plural: 'Items' },
+  'item-categories': { singular: 'ItemCategory', plural: 'ItemCategories' },
+};
 
 function resourcePaths() {
   const paths = {};
   for (const resourceName of Object.keys(RESOURCES)) {
-    const label = titleCase(resourceName).replace(/s$/, '');
+    const { singular: label, plural } = RESOURCE_LABELS[resourceName];
     const noun = resourceName.replace(/-/g, ' ');
     paths[`/${resourceName}`] = {
       get: {
-        operationId: `list${label}s`,
+        operationId: `list${plural}`,
         summary: `List ${noun}`,
         parameters: [
           { name: 'trip_id', in: 'query', schema: { type: 'string', format: 'uuid' } },
@@ -1412,7 +1414,7 @@ Edit `services/api/package.json` scripts:
   "scripts": {
     "start": "node server.js",
     "check": "node --check db.js && node --check resources.js && node --check validate.js && node --check openapi.js && node --check server.js",
-    "test": "node --test test/"
+    "test": "node --test test/*.test.mjs"
   },
 ```
 
