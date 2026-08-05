@@ -105,8 +105,8 @@ services:
     entrypoint: ["/bin/sh", "/migrate.sh"]
     restart: "no"
 
-  agent-api:
-    build: ./services/agent-api
+  api:
+    build: ./services/api
     restart: unless-stopped
     depends_on:
       migrate:
@@ -114,8 +114,8 @@ services:
     environment:
       DATABASE_URL: postgres://postgres:${POSTGRES_PASSWORD:?POSTGRES_PASSWORD is required}@db:5432/postgres
       API_EXTERNAL_URL: ${API_EXTERNAL_URL:-http://127.0.0.1:18080}
-      AGENT_API_KEY: ${AGENT_API_KEY:?AGENT_API_KEY is required}
-      AGENT_USER_ID: ${AGENT_USER_ID:?Set AGENT_USER_ID to an existing approved Auth user UUID}
+      ROUTEFOLK_API_KEY: ${ROUTEFOLK_API_KEY:?ROUTEFOLK_API_KEY is required}
+      ROUTEFOLK_API_USER_ID: ${ROUTEFOLK_API_USER_ID:?Set ROUTEFOLK_API_USER_ID to an existing approved Auth user UUID}
       PORT: 3001
     healthcheck:
       test: ["CMD", "node", "-e", "fetch('http://127.0.0.1:3001/health').then(r => { if (!r.ok) process.exit(1) }).catch(() => process.exit(1))"]
@@ -129,14 +129,14 @@ services:
     depends_on:
       migrate:
         condition: service_completed_successfully
-      agent-api:
+      api:
         condition: service_healthy
     ports:
       - "${BIND_ADDRESS:-127.0.0.1}:${PORT:-18080}:80"
     environment:
       ROUTEFOLK_SITE_URL: ${SITE_URL:-http://localhost:8788}
-      ROUTEFOLK_AGENT_RATE_LIMIT_RATE: ${AGENT_RATE_LIMIT_RATE:-30r/m}
-      ROUTEFOLK_AGENT_RATE_LIMIT_BURST: ${AGENT_RATE_LIMIT_BURST:-10}
+      ROUTEFOLK_API_RATE_LIMIT_RATE: ${API_RATE_LIMIT_RATE:-30r/m}
+      ROUTEFOLK_API_RATE_LIMIT_BURST: ${API_RATE_LIMIT_BURST:-10}
       NGINX_ENVSUBST_FILTER: ROUTEFOLK_
     volumes:
       - ./infrastructure/docker/nginx.conf:/etc/nginx/templates/default.conf.template:ro

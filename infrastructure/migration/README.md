@@ -61,7 +61,7 @@ BIND_ADDRESS=127.0.0.1
 PORT=18085
 API_EXTERNAL_URL=http://127.0.0.1:18085
 SITE_URL=https://routefolk-selfhost-test.pages.dev
-AGENT_USER_ID=<migrated-active-user-uuid>
+ROUTEFOLK_API_USER_ID=<migrated-active-user-uuid>
 ```
 
 Validate inputs independently:
