@@ -72,7 +72,7 @@ export const RESOURCES = {
   'item-categories': {
     table: 'item_categories',
     fields: {
-      trip_id: { type: 'string', format: 'uuid', required: true },
+      trip_id: { type: 'string', format: 'uuid' },
       name: { type: 'string', required: true },
       sort_order: { type: 'integer' },
     },
