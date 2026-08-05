@@ -270,10 +270,14 @@ const agentRecordProperties = {
   sort_order: { type: 'integer' },
 };
 
+const writableRecordProperties = Object.fromEntries(
+  Object.entries(agentRecordProperties).filter(([, schema]) => !schema.readOnly),
+);
+
 const recordBodySchema = {
   type: 'object',
   description: 'A Routefolk record body. Use only fields allowed by the selected resource.',
-  properties: agentRecordProperties,
+  properties: writableRecordProperties,
   additionalProperties: false,
   minProperties: 1,
 };
