@@ -98,9 +98,33 @@ function deleteRecord(resourceName, req, res, next) {
     .catch(next);
 }
 
-function listAssistantTrips(_req, res, next) {
+function listPlanningTrips(_req, res, next) {
   return inAgentTransaction(client => client.query('select id, title, description, start_date, end_date, status, visibility, created_at, updated_at from public.trips order by created_at desc limit 20'))
     .then(result => res.json({ trips: result.rows }))
+    .catch(next);
+}
+
+function readTripPlan(req, res, next) {
+  return inAgentTransaction(async client => {
+    const tripResult = await client.query('select * from public.trips where id = $1', [req.params.id]);
+    const trip = tripResult.rows[0];
+    if (!trip) return null;
+
+    const stages = (await client.query('select * from public.stages where trip_id = $1 order by order_index asc, planned_date asc nulls last', [req.params.id])).rows;
+    const journalEntries = (await client.query(`
+      select journal_entries.*
+        from public.journal_entries
+        join public.stages on stages.id = journal_entries.stage_id
+       where stages.trip_id = $1
+       order by journal_entries.timestamp asc nulls last, journal_entries.title asc
+    `, [req.params.id])).rows;
+
+    return { trip, stages, journal_entries: journalEntries };
+  })
+    .then(data => {
+      if (!data) return res.status(404).json({ error: 'Not found.' });
+      return res.json({ data });
+    })
     .catch(next);
 }
 
@@ -179,8 +203,12 @@ app.get('/health', (_req, res) => res.json({ status: 'ok' }));
 app.get('/ready', async (_req, res, next) => {
   try { await pool.query('select 1'); res.json({ status: 'ready' }); } catch (error) { next(error); }
 });
-app.get('/assistant/trips', listAssistantTrips);
-app.post('/assistant/trip-plan', createTripPlan);
+app.get('/planning/trips', listPlanningTrips);
+app.get('/planning/trip-plans/:id', readTripPlan);
+app.post('/planning/trip-plans', createTripPlan);
+app.patch('/planning/trips/:id', (req, res, next) => updateRecord('trips', req, res, next));
+app.patch('/planning/stages/:id', (req, res, next) => updateRecord('stages', req, res, next));
+app.patch('/planning/journal-entries/:id', (req, res, next) => updateRecord('journal', req, res, next));
 app.get('/resources', (_req, res) => res.json(Object.fromEntries(Object.entries(resources).map(([name, value]) => [name, value.fields]))));
 app.get('/resources/:resource', (req, res, next) => listRecords(req.params.resource, req, res, next));
 app.get('/resources/:resource/:id', (req, res, next) => readRecord(req.params.resource, req, res, next));
@@ -196,328 +224,180 @@ for (const resourceName of Object.keys(resources)) {
   app.delete(`/${resourceName}/:id`, (req, res, next) => deleteRecord(resourceName, req, res, next));
 }
 
-function externalAgentBaseUrl(req) {
+function externalPlanningBaseUrl(req) {
   const configured = process.env.API_EXTERNAL_URL?.replace(/\/+$/, '');
   const inferred = `${req.protocol}://${req.get('host')}`;
   return `${configured || inferred}/agent/v1`;
-}
-
-function resourceParameter() {
-  return { name: 'resource', in: 'path', required: true, schema: { type: 'string', enum: Object.keys(resources) } };
 }
 
 function idParameter() {
   return { name: 'id', in: 'path', required: true, schema: { type: 'string', format: 'uuid' } };
 }
 
-const openApiResourceNames = ['routes', 'trips', 'stages', 'journal'];
+app.get('/openapi.json', (req, res) => {
+  const tripProperties = {
+    id: { type: 'string', format: 'uuid', readOnly: true },
+    title: { type: 'string' },
+    description: { type: 'string' },
+    start_date: { type: 'string', format: 'date' },
+    end_date: { type: 'string', format: 'date' },
+    cover_photo_url: { type: 'string' },
+    status: { type: 'string', default: 'planning' },
+    visibility: { type: 'string', default: 'private' },
+    created_at: { type: 'string', format: 'date-time', readOnly: true },
+    updated_at: { type: 'string', format: 'date-time', readOnly: true },
+  };
+  const stageProperties = {
+    id: { type: 'string', format: 'uuid', readOnly: true },
+    trip_id: { type: 'string', format: 'uuid', readOnly: true },
+    order_index: { type: 'integer' },
+    title: { type: 'string' },
+    start_location: { type: 'string' },
+    start_lat: { type: 'number' },
+    start_lng: { type: 'number' },
+    end_location: { type: 'string' },
+    end_lat: { type: 'number' },
+    end_lng: { type: 'number' },
+    planned_date: { type: 'string', format: 'date' },
+    gmaps_url: { type: 'string' },
+    custom_route_url: { type: 'string' },
+    distance_km: { type: 'number' },
+    notes: { type: 'string' },
+  };
+  const journalEntryProperties = {
+    id: { type: 'string', format: 'uuid', readOnly: true },
+    stage_id: { type: 'string', format: 'uuid', readOnly: true },
+    entry_type: { type: 'string', default: 'note' },
+    title: { type: 'string' },
+    description: { type: 'string' },
+    location: { type: 'string' },
+    location_url: { type: 'string' },
+    info_url: { type: 'string' },
+    timestamp: { type: 'string', format: 'date-time' },
+    photo_album_url: { type: 'string' },
+  };
+  const writableTripProperties = Object.fromEntries(Object.entries(tripProperties).filter(([, schema]) => !schema.readOnly));
+  const writableStageProperties = Object.fromEntries(Object.entries(stageProperties).filter(([, schema]) => !schema.readOnly));
+  const writableJournalEntryProperties = Object.fromEntries(Object.entries(journalEntryProperties).filter(([, schema]) => !schema.readOnly));
+  const journalEntryInputProperties = {
+    stage_index: { type: 'integer', description: 'One-based stage number used when creating a full trip plan.' },
+    ...writableJournalEntryProperties,
+  };
+  const json = schema => ({ 'application/json': { schema } });
+  const response = schema => ({ content: json(schema) });
+  const errorResponse = { description: 'Error', ...response({ $ref: '#/components/schemas/ErrorResponse' }) };
 
-const resourceOperationNames = {
-  routes: 'Route',
-  trips: 'Trip',
-  stages: 'Stage',
-  journal: 'JournalEntry',
-  expenses: 'Expense',
-  items: 'PackingItem',
-  'item-categories': 'ItemCategory',
-};
-
-function resourceOperationName(action, resourceName) {
-  return `${action}${resourceOperationNames[resourceName]}`;
-}
-
-function resourcePaths() {
-  return Object.fromEntries(openApiResourceNames.flatMap(resourceName => [
-    [`/${resourceName}`, {
-      get: {
-        operationId: resourceOperationName('list', resourceName),
-        summary: `List Routefolk ${resourceName}`,
-        parameters: filterParameters,
-        responses: {
-          200: { description: 'Records', content: { 'application/json': { schema: { $ref: '#/components/schemas/AgentRecordList' } } } },
-        },
-      },
-      post: {
-        operationId: resourceOperationName('create', resourceName),
-        summary: `Create a Routefolk ${resourceName} record`,
-        requestBody: recordRequestBody,
-        responses: {
-          201: { description: 'Created', content: { 'application/json': { schema: { $ref: '#/components/schemas/AgentRecordResponse' } } } },
-          400: { description: 'Invalid request', content: { 'application/json': { schema: { $ref: '#/components/schemas/ErrorResponse' } } } },
-        },
-      },
-    }],
-    [`/${resourceName}/{id}`, {
-      get: {
-        operationId: resourceOperationName('read', resourceName),
-        summary: `Read a Routefolk ${resourceName} record`,
-        parameters: [idParameter()],
-        responses: {
-          200: { description: 'Record', content: { 'application/json': { schema: { $ref: '#/components/schemas/AgentRecordResponse' } } } },
-          404: { description: 'Not found', content: { 'application/json': { schema: { $ref: '#/components/schemas/ErrorResponse' } } } },
-        },
-      },
-      patch: {
-        operationId: resourceOperationName('update', resourceName),
-        summary: `Update a Routefolk ${resourceName} record`,
-        parameters: [idParameter()],
-        requestBody: recordRequestBody,
-        responses: {
-          200: { description: 'Updated', content: { 'application/json': { schema: { $ref: '#/components/schemas/AgentRecordResponse' } } } },
-          400: { description: 'Invalid request', content: { 'application/json': { schema: { $ref: '#/components/schemas/ErrorResponse' } } } },
-          404: { description: 'Not found', content: { 'application/json': { schema: { $ref: '#/components/schemas/ErrorResponse' } } } },
-        },
-      },
-      delete: {
-        operationId: resourceOperationName('delete', resourceName),
-        summary: `Delete a Routefolk ${resourceName} record`,
-        parameters: [idParameter()],
-        responses: {
-          204: { description: 'Deleted' },
-          404: { description: 'Not found', content: { 'application/json': { schema: { $ref: '#/components/schemas/ErrorResponse' } } } },
-        },
-      },
-    }],
-  ]));
-}
-
-const filterParameters = [
-  { name: 'trip_id', in: 'query', schema: { type: 'string', format: 'uuid' } },
-  { name: 'stage_id', in: 'query', schema: { type: 'string', format: 'uuid' } },
-  { name: 'status', in: 'query', schema: { type: 'string' } },
-  { name: 'limit', in: 'query', schema: { type: 'integer', minimum: 1, maximum: 500 } },
-];
-
-const agentRecordProperties = {
-  id: { type: 'string', format: 'uuid', readOnly: true },
-  created_at: { type: 'string', format: 'date-time', readOnly: true },
-  updated_at: { type: 'string', format: 'date-time', readOnly: true },
-  title: { type: 'string' },
-  description: { type: 'string' },
-  start_date: { type: 'string', format: 'date' },
-  end_date: { type: 'string', format: 'date' },
-  cover_photo_url: { type: 'string' },
-  status: { type: 'string' },
-  visibility: { type: 'string' },
-  trip_id: { type: 'string', format: 'uuid' },
-  stage_id: { type: 'string', format: 'uuid' },
-  order_index: { type: 'integer' },
-  start_location: { type: 'string' },
-  start_lat: { type: 'number' },
-  start_lng: { type: 'number' },
-  end_location: { type: 'string' },
-  end_lat: { type: 'number' },
-  end_lng: { type: 'number' },
-  planned_date: { type: 'string', format: 'date' },
-  gmaps_url: { type: 'string' },
-  custom_route_url: { type: 'string' },
-  distance_km: { type: 'number' },
-  notes: { type: 'string' },
-  entry_type: { type: 'string' },
-  location: { type: 'string' },
-  location_url: { type: 'string' },
-  info_url: { type: 'string' },
-  timestamp: { type: 'string', format: 'date-time' },
-  photo_album_url: { type: 'string' },
-  user_id: { type: 'string', format: 'uuid' },
-  category: { type: 'string' },
-  amount: { type: 'number' },
-  currency: { type: 'string' },
-  date: { type: 'string', format: 'date' },
-  category_id: { type: 'string', format: 'uuid' },
-  name: { type: 'string' },
-  assigned_to: { type: 'string', format: 'uuid' },
-  sort_order: { type: 'integer' },
-};
-
-const writableRecordProperties = Object.fromEntries(
-  Object.entries(agentRecordProperties).filter(([, schema]) => !schema.readOnly),
-);
-
-const recordBodySchema = {
-  type: 'object',
-  description: 'A Routefolk record body. Use only fields allowed by the selected resource.',
-  properties: writableRecordProperties,
-  additionalProperties: false,
-  minProperties: 1,
-};
-
-const recordRequestBody = {
-  required: true,
-  content: {
-    'application/json': {
-      schema: recordBodySchema,
+  res.json({
+    openapi: '3.1.0',
+    info: {
+      title: 'Routefolk Planning API',
+      version: '1.0.0',
+      description: 'Create and maintain Routefolk trip planning data through a compact integration API.',
     },
-  },
-};
-
-app.get('/openapi.json', (req, res) => res.json({
-  openapi: '3.1.0',
-  info: {
-    title: 'Routefolk Agent API',
-    version: '1.0.0',
-    description: 'Simple ChatGPT actions for listing trips and creating a complete trip plan in Routefolk.',
-  },
-  servers: [{ url: externalAgentBaseUrl(req) }],
-  components: {
-    securitySchemes: { agentKey: { type: 'http', scheme: 'bearer' } },
-    schemas: {},
-  },
-  security: [{ agentKey: [] }],
-  paths: {
-    '/assistant/trips': {
-      get: {
-        operationId: 'listTrips',
-        summary: 'List Routefolk trips visible to the Agent user',
-        responses: {
-          200: {
-            description: 'Visible trips',
-            content: {
-              'application/json': {
-                schema: {
-                  type: 'object',
-                  properties: {
-                    trips: {
-                      type: 'array',
-                      items: {
-                        type: 'object',
-                        properties: {
-                          id: { type: 'string', format: 'uuid' },
-                          title: { type: 'string' },
-                          description: { type: 'string' },
-                          start_date: { type: 'string' },
-                          end_date: { type: 'string' },
-                          status: { type: 'string' },
-                          visibility: { type: 'string' },
-                        },
-                      },
-                    },
-                  },
-                  required: ['trips'],
-                },
-              },
-            },
+    servers: [{ url: externalPlanningBaseUrl(req) }],
+    components: {
+      securitySchemes: { agentKey: { type: 'http', scheme: 'bearer' } },
+      schemas: {
+        ErrorResponse: {
+          type: 'object',
+          properties: { error: { type: 'string' }, code: { type: 'string' } },
+        },
+        Trip: { type: 'object', properties: tripProperties },
+        Stage: { type: 'object', properties: stageProperties },
+        JournalEntry: { type: 'object', properties: journalEntryProperties },
+        TripInput: { type: 'object', properties: writableTripProperties, required: ['title'], additionalProperties: false },
+        StageInput: { type: 'object', properties: writableStageProperties, additionalProperties: false },
+        JournalEntryInput: { type: 'object', properties: journalEntryInputProperties, additionalProperties: false },
+        TripPlanInput: {
+          type: 'object',
+          properties: {
+            trip: { $ref: '#/components/schemas/TripInput' },
+            stages: { type: 'array', items: { $ref: '#/components/schemas/StageInput' } },
+            journal_entries: { type: 'array', items: { $ref: '#/components/schemas/JournalEntryInput' } },
           },
+          required: ['trip', 'stages'],
+          additionalProperties: false,
+        },
+        TripPlan: {
+          type: 'object',
+          properties: {
+            trip: { $ref: '#/components/schemas/Trip' },
+            stages: { type: 'array', items: { $ref: '#/components/schemas/Stage' } },
+            journal_entries: { type: 'array', items: { $ref: '#/components/schemas/JournalEntry' } },
+          },
+          required: ['trip', 'stages', 'journal_entries'],
         },
       },
     },
-    '/assistant/trip-plan': {
-      post: {
-        operationId: 'createTripPlan',
-        summary: 'Create one Routefolk trip with stages and journal entries',
-        requestBody: {
-          required: true,
-          content: {
-            'application/json': {
-              schema: {
+    security: [{ agentKey: [] }],
+    paths: {
+      '/planning/trips': {
+        get: {
+          operationId: 'listPlanningTrips',
+          summary: 'List visible Routefolk trips',
+          responses: {
+            200: {
+              description: 'Visible trips',
+              ...response({
                 type: 'object',
-                properties: {
-                  trip: {
-                    type: 'object',
-                    properties: {
-                      title: { type: 'string' },
-                      description: { type: 'string' },
-                      start_date: { type: 'string', format: 'date' },
-                      end_date: { type: 'string', format: 'date' },
-                      status: { type: 'string', default: 'planning' },
-                      visibility: { type: 'string', default: 'private' },
-                    },
-                    required: ['title'],
-                  },
-                  stages: {
-                    type: 'array',
-                    items: {
-                      type: 'object',
-                      properties: {
-                        order_index: { type: 'integer' },
-                        title: { type: 'string' },
-                        start_location: { type: 'string' },
-                        end_location: { type: 'string' },
-                        planned_date: { type: 'string', format: 'date' },
-                        gmaps_url: { type: 'string' },
-                        custom_route_url: { type: 'string' },
-                        distance_km: { type: 'number' },
-                        notes: { type: 'string' },
-                      },
-                    },
-                  },
-                  journal_entries: {
-                    type: 'array',
-                    items: {
-                      type: 'object',
-                      properties: {
-                        stage_index: { type: 'integer', description: 'One-based stage number to attach this entry to.' },
-                        entry_type: { type: 'string', default: 'note' },
-                        title: { type: 'string' },
-                        description: { type: 'string' },
-                        location: { type: 'string' },
-                        location_url: { type: 'string' },
-                        info_url: { type: 'string' },
-                        timestamp: { type: 'string', format: 'date-time' },
-                        photo_album_url: { type: 'string' },
-                      },
-                    },
-                  },
-                },
-                required: ['trip', 'stages'],
-              },
+                properties: { trips: { type: 'array', items: { $ref: '#/components/schemas/Trip' } } },
+                required: ['trips'],
+              }),
             },
           },
         },
-        responses: {
-          201: {
-            description: 'Created trip plan',
-            content: {
-              'application/json': {
-                schema: {
-                  type: 'object',
-                  properties: {
-                    data: {
-                      type: 'object',
-                      properties: {
-                        trip: {
-                          type: 'object',
-                          properties: {
-                            id: { type: 'string', format: 'uuid' },
-                            title: { type: 'string' },
-                          },
-                        },
-                        stages: {
-                          type: 'array',
-                          items: {
-                            type: 'object',
-                            properties: {
-                              id: { type: 'string', format: 'uuid' },
-                              title: { type: 'string' },
-                              order_index: { type: 'integer' },
-                            },
-                          },
-                        },
-                        journal_entries: {
-                          type: 'array',
-                          items: {
-                            type: 'object',
-                            properties: {
-                              id: { type: 'string', format: 'uuid' },
-                              title: { type: 'string' },
-                              stage_id: { type: 'string', format: 'uuid' },
-                            },
-                          },
-                        },
-                      },
-                      required: ['trip', 'stages', 'journal_entries'],
-                    },
-                  },
-                  required: ['data'],
-                },
-              },
-            },
+      },
+      '/planning/trip-plans/{id}': {
+        get: {
+          operationId: 'readTripPlan',
+          summary: 'Read one Routefolk trip with stages and journal entries',
+          parameters: [idParameter()],
+          responses: {
+            200: { description: 'Trip plan', ...response({ type: 'object', properties: { data: { $ref: '#/components/schemas/TripPlan' } }, required: ['data'] }) },
+            404: errorResponse,
           },
-          400: { description: 'Invalid request' },
+        },
+      },
+      '/planning/trip-plans': {
+        post: {
+          operationId: 'createTripPlan',
+          summary: 'Create one Routefolk trip with stages and journal entries',
+          requestBody: { required: true, content: json({ $ref: '#/components/schemas/TripPlanInput' }) },
+          responses: {
+            201: { description: 'Created trip plan', ...response({ type: 'object', properties: { data: { $ref: '#/components/schemas/TripPlan' } }, required: ['data'] }) },
+            400: errorResponse,
+          },
+        },
+      },
+      '/planning/trips/{id}': {
+        patch: {
+          operationId: 'updateTrip',
+          summary: 'Update trip fields',
+          parameters: [idParameter()],
+          requestBody: { required: true, content: json({ type: 'object', properties: writableTripProperties, minProperties: 1, additionalProperties: false }) },
+          responses: { 200: { description: 'Updated trip', ...response({ type: 'object', properties: { data: { $ref: '#/components/schemas/Trip' } }, required: ['data'] }) }, 400: errorResponse, 404: errorResponse },
+        },
+      },
+      '/planning/stages/{id}': {
+        patch: {
+          operationId: 'updateStage',
+          summary: 'Update stage fields',
+          parameters: [idParameter()],
+          requestBody: { required: true, content: json({ type: 'object', properties: writableStageProperties, minProperties: 1, additionalProperties: false }) },
+          responses: { 200: { description: 'Updated stage', ...response({ type: 'object', properties: { data: { $ref: '#/components/schemas/Stage' } }, required: ['data'] }) }, 400: errorResponse, 404: errorResponse },
+        },
+      },
+      '/planning/journal-entries/{id}': {
+        patch: {
+          operationId: 'updateJournalEntry',
+          summary: 'Update journal entry fields',
+          parameters: [idParameter()],
+          requestBody: { required: true, content: json({ type: 'object', properties: writableJournalEntryProperties, minProperties: 1, additionalProperties: false }) },
+          responses: { 200: { description: 'Updated journal entry', ...response({ type: 'object', properties: { data: { $ref: '#/components/schemas/JournalEntry' } }, required: ['data'] }) }, 400: errorResponse, 404: errorResponse },
         },
       },
     },
-  },
-}));
+  });
+});
 app.use((error, _req, res, _next) => { console.error(error); res.status(error.code === '22P02' || error.code === '23514' || error.code === '23502' ? 400 : 500).json({ error: error.message, code: error.code }); });
-app.listen(Number(process.env.PORT) || 3001, '0.0.0.0', () => console.log('Routefolk Agent API listening'));
+app.listen(Number(process.env.PORT) || 3001, '0.0.0.0', () => console.log('Routefolk Planning API listening'));
