@@ -17,11 +17,18 @@ Browser ──HTTPS──> Cloudflare Pages (HTML/CSS/JavaScript PWA)
 
 The repository does not deploy to a home server by itself. `docker compose up` starts the backend on whichever Docker host executes it. A public HTTPS hostname or secure tunnel must route to the `gateway` container on that home server. Only the gateway port is published; PostgreSQL and the internal services remain on the Docker network.
 
-## Current state: no cutover
+## Current state: self-hosted cutover complete
 
-No server, hostname, tunnel, or backup destination has been selected. No DNS or Cloudflare Pages setting has changed, and no hosted Supabase data has been copied. The committed PWA configuration still points at the existing hosted Supabase project, so deploying the current Cloudflare Pages source does not switch production unexpectedly.
+The production PWA is configured to use the self-hosted backend at
+`https://routefolk-api.homelab-cloud.pt`. The home-server Compose project
+`routefolk` is authoritative for the application database, Auth, Storage, and
+Agent API. Hosted Supabase should remain intact through the rollback window and
+must not receive independent writes while the self-hosted backend is
+authoritative.
 
-The Docker stack is therefore an unvalidated candidate backend. It must not become authoritative until the stages below pass.
+The remaining post-cutover work is operational hardening: monitor the backend,
+keep rollback evidence available, complete Agent API exposure controls, and only
+retire hosted Supabase after the rollback/disaster-recovery gates pass.
 
 ## What runs on the home server
 
@@ -119,6 +126,11 @@ After the PWA cutover succeeds:
 3. add network restrictions, request logging, rate limiting, and a rotation procedure;
 4. test list/read first, then create/edit/delete a disposable private route;
 5. verify attribution and key revocation before allowing production writes.
+
+The gateway applies a dedicated Agent API rate limit and emits Agent API access
+logs to container stdout. Tune `AGENT_RATE_LIMIT_RATE` and
+`AGENT_RATE_LIMIT_BURST` in the protected server environment if the defaults are
+too strict or too permissive.
 
 ## Stage 6 — rollback or retire hosted Supabase
 
