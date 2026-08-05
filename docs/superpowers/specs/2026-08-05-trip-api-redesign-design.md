@@ -131,6 +131,19 @@ batching:
 The old generic `/resources/:name` listing endpoint is removed —
 `/openapi.json` is the one real discovery mechanism.
 
+All of the above are real, working REST endpoints. However, ChatGPT Custom
+GPT Actions reject any OpenAPI document with more than 30 operations —
+discovered live during end-to-end verification, not anticipated in the
+original design. Full CRUD across all 6 resources plus the 2 batch actions
+is 32 operations, over the limit. The document served at `/openapi.json`
+therefore describes only `trips`, `stages`, and `journal-entries` — the
+resources central to creating and editing a trip's journey — plus
+`/trips/plan` and `/stages/reorder` (17 operations total). `expenses`,
+`items`, and `item-categories` keep fully working endpoints; they are simply
+not described in the document a chat client discovers, so a chat client has
+no way to call them. This is a document-level omission, not a functionality
+removal.
+
 ### Validation and errors
 
 Each resource has a hand-written JSON Schema (type, required/optional,

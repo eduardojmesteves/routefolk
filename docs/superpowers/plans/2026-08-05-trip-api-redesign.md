@@ -18,6 +18,7 @@
 - Gateway path: `/api/v1` (renamed from `/agent/v1`). Service directory: `services/api/` (renamed from `services/agent-api/`). Compose service name: `api` (renamed from `agent-api`).
 - Enum values sent to the database must exactly match `schema.sql`'s CHECK constraints: `trips.status` ∈ `{planning, active, completed, cancelled}`; `trips.visibility` ∈ `{private, group}`; `journal_entries.entry_type` ∈ `{stop, meal, lodging, note, drink, other}`; `expenses.category` ∈ `{fuel, food_drinks, lodging, tolls, parking, other}`; `expenses.currency` = `EUR` only; `trip_items.status` ∈ `{planned, packed, optional}`.
 - `style.css` and `style-fidelity.css` are live (imported by `styles/index.css`) — do not touch them.
+- **ChatGPT Custom GPT Actions reject any OpenAPI document with more than 30 operations** (discovered live during Task 11's real-world test — the initial 32-operation document was rejected outright). The chat-facing OpenAPI document (Task 6) describes only `trips`, `stages`, and `journal-entries` (17 operations total, including `/trips/plan` and `/stages/reorder`) — `expenses`, `items`, and `item-categories` still have full working REST endpoints in `server.js` (Task 7), they're simply not described in the document a chat client discovers.
 
 ---
 
@@ -730,15 +731,28 @@ test('checkOpenApiCompleteness catches more than one servers entry', () => {
   assert.ok(problems.some(problem => problem.includes('servers')));
 });
 
-test('every resource is reachable through direct CRUD paths, and the batch actions are documented', () => {
+test('every chat-exposed resource is reachable through direct CRUD paths, and the batch actions are documented', () => {
   const doc = buildOpenApiDocument(BASE_URL);
   assert.ok(doc.paths['/trips/plan'], '/trips/plan is documented');
   assert.equal(doc.paths['/trips/plan'].post.operationId, 'createTripPlan');
   assert.ok(doc.paths['/stages/reorder'], '/stages/reorder is documented');
-  for (const resourceName of ['trips', 'stages', 'journal-entries', 'expenses', 'items', 'item-categories']) {
+  for (const resourceName of ['trips', 'stages', 'journal-entries']) {
     assert.ok(doc.paths[`/${resourceName}`], `/${resourceName} is documented`);
     assert.ok(doc.paths[`/${resourceName}/{id}`], `/${resourceName}/{id} is documented`);
   }
+});
+
+test('expenses, items, and item-categories are intentionally not in the chat-facing document (over the 30-operation platform limit otherwise)', () => {
+  const doc = buildOpenApiDocument(BASE_URL);
+  for (const resourceName of ['expenses', 'items', 'item-categories']) {
+    assert.equal(doc.paths[`/${resourceName}`], undefined, `/${resourceName} should not be documented`);
+  }
+});
+
+test('the document stays within the ChatGPT Actions 30-operation limit', () => {
+  const doc = buildOpenApiDocument(BASE_URL);
+  const operationCount = Object.values(doc.paths).reduce((count, methods) => count + Object.keys(methods).length, 0);
+  assert.ok(operationCount <= 30, `document has ${operationCount} operations, over the 30-operation limit`);
 });
 
 test('the document serves exactly the requested base URL as its one server', () => {
@@ -819,9 +833,21 @@ const RESOURCE_LABELS = {
   'item-categories': { singular: 'ItemCategory', plural: 'ItemCategories' },
 };
 
+// ChatGPT Custom GPT Actions reject any OpenAPI document with more than 30
+// operations. Describing full CRUD for all 6 resources plus the 2 batch
+// actions is 32 operations — over the limit. Only the resources central to
+// the actual use case (creating and editing a trip's journey: the trip
+// itself, its stages, and journal entries) are described here, keeping the
+// document at 17 operations with headroom for future additions. Expenses,
+// items, and item-categories still have full working REST endpoints in
+// server.js — they're simply not described in this document, so a chat
+// client can't discover or call them. This is a document-level omission
+// only, not a removal of functionality.
+const CHAT_EXPOSED_RESOURCES = ['trips', 'stages', 'journal-entries'];
+
 function resourcePaths() {
   const paths = {};
-  for (const resourceName of Object.keys(RESOURCES)) {
+  for (const resourceName of CHAT_EXPOSED_RESOURCES) {
     const { singular: label, plural } = RESOURCE_LABELS[resourceName];
     const noun = resourceName.replace(/-/g, ' ');
     paths[`/${resourceName}`] = {
