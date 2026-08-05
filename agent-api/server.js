@@ -361,6 +361,7 @@ app.get('/openapi.json', (req, res) => res.json({
   servers: [{ url: externalAgentBaseUrl(req) }],
   components: {
     securitySchemes: { agentKey: { type: 'http', scheme: 'bearer' } },
+    schemas: {},
   },
   security: [{ agentKey: [] }],
   paths: {
@@ -466,7 +467,51 @@ app.get('/openapi.json', (req, res) => res.json({
         responses: {
           201: {
             description: 'Created trip plan',
-            content: { 'application/json': { schema: { type: 'object', additionalProperties: true } } },
+            content: {
+              'application/json': {
+                schema: {
+                  type: 'object',
+                  properties: {
+                    data: {
+                      type: 'object',
+                      properties: {
+                        trip: {
+                          type: 'object',
+                          properties: {
+                            id: { type: 'string', format: 'uuid' },
+                            title: { type: 'string' },
+                          },
+                        },
+                        stages: {
+                          type: 'array',
+                          items: {
+                            type: 'object',
+                            properties: {
+                              id: { type: 'string', format: 'uuid' },
+                              title: { type: 'string' },
+                              order_index: { type: 'integer' },
+                            },
+                          },
+                        },
+                        journal_entries: {
+                          type: 'array',
+                          items: {
+                            type: 'object',
+                            properties: {
+                              id: { type: 'string', format: 'uuid' },
+                              title: { type: 'string' },
+                              stage_id: { type: 'string', format: 'uuid' },
+                            },
+                          },
+                        },
+                      },
+                      required: ['trip', 'stages', 'journal_entries'],
+                    },
+                  },
+                  required: ['data'],
+                },
+              },
+            },
           },
           400: { description: 'Invalid request' },
         },
