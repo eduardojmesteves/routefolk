@@ -19,6 +19,7 @@
 - Enum values sent to the database must exactly match `schema.sql`'s CHECK constraints: `trips.status` ∈ `{planning, active, completed, cancelled}`; `trips.visibility` ∈ `{private, group}`; `journal_entries.entry_type` ∈ `{stop, meal, lodging, note, drink, other}`; `expenses.category` ∈ `{fuel, food_drinks, lodging, tolls, parking, other}`; `expenses.currency` = `EUR` only; `trip_items.status` ∈ `{planned, packed, optional}`.
 - `style.css` and `style-fidelity.css` are live (imported by `styles/index.css`) — do not touch them.
 - **ChatGPT Custom GPT Actions reject any OpenAPI document with more than 30 operations** (discovered live during Task 11's real-world test — the initial 32-operation document was rejected outright). The chat-facing OpenAPI document (Task 6) describes only `trips`, `stages`, and `journal-entries` (17 operations total, including `/trips/plan` and `/stages/reorder`) — `expenses`, `items`, and `item-categories` still have full working REST endpoints in `server.js` (Task 7), they're simply not described in the document a chat client discovers.
+- **ChatGPT Actions also requires `components.schemas` to be present as an object**, even though it's optional in the OpenAPI 3.1 spec itself and this document never uses `$ref` (also discovered live during Task 11 — a second, separate import failure after the operation-count one was fixed). `buildOpenApiDocument()` sets `components.schemas: {}`.
 
 ---
 
@@ -731,6 +732,22 @@ test('checkOpenApiCompleteness catches more than one servers entry', () => {
   assert.ok(problems.some(problem => problem.includes('servers')));
 });
 
+test('checkOpenApiCompleteness catches a missing or non-object components.schemas', () => {
+  const doc = buildOpenApiDocument(BASE_URL);
+  delete doc.components.schemas;
+  let problems = checkOpenApiCompleteness(doc);
+  assert.ok(problems.some(problem => problem.includes('components.schemas')));
+
+  doc.components.schemas = null;
+  problems = checkOpenApiCompleteness(doc);
+  assert.ok(problems.some(problem => problem.includes('components.schemas')));
+});
+
+test('the served document has a components.schemas object (ChatGPT Actions rejects a missing one)', () => {
+  const doc = buildOpenApiDocument(BASE_URL);
+  assert.deepEqual(doc.components.schemas, {});
+});
+
 test('every chat-exposed resource is reachable through direct CRUD paths, and the batch actions are documented', () => {
   const doc = buildOpenApiDocument(BASE_URL);
   assert.ok(doc.paths['/trips/plan'], '/trips/plan is documented');
@@ -997,7 +1014,7 @@ export function buildOpenApiDocument(baseUrl) {
       description: 'Create and maintain Routefolk trips, stages, journal entries, expenses, and packing items.',
     },
     servers: [{ url: baseUrl }],
-    components: { securitySchemes: { apiKey: { type: 'http', scheme: 'bearer' } } },
+    components: { schemas: {}, securitySchemes: { apiKey: { type: 'http', scheme: 'bearer' } } },
     security: [{ apiKey: [] }],
     paths: {
       ...resourcePaths(),
@@ -1014,6 +1031,9 @@ function isBareObjectSchema(schema) {
 export function checkOpenApiCompleteness(doc) {
   const problems = [];
   if (!Array.isArray(doc.servers) || doc.servers.length !== 1) problems.push('servers must contain exactly one entry');
+  if (typeof doc.components?.schemas !== 'object' || doc.components.schemas === null || Array.isArray(doc.components.schemas)) {
+    problems.push('components.schemas must be an object (ChatGPT Actions rejects a missing or non-object schemas key, even though it is optional in the OpenAPI spec itself)');
+  }
   if (!doc.components?.securitySchemes || Object.keys(doc.components.securitySchemes).length === 0) {
     problems.push('components.securitySchemes must define at least one scheme');
   }
