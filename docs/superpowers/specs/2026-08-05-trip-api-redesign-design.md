@@ -206,8 +206,6 @@ Verified-dead material to remove:
   duplicates; the real copies are `services/api/` (renamed from
   `services/agent-api/`), `infrastructure/docker/`, and
   `docs/deployment/self-hosting.md`
-- `style.css`, `style-fidelity.css` — unused; `index.html` only loads
-  `styles/index.css`
 - `v3-refactor/` — design docs and prototype atoms for a UI migration that
   has already shipped; preserved in git history, not needed as a live
   directory
