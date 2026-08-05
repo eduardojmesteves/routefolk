@@ -2,7 +2,7 @@ import { RESOURCES } from './resources.js';
 
 export class ValidationError extends Error {
   constructor(field, message) {
-    super(`${field}: ${message}`);
+    super(message);
     this.name = 'ValidationError';
     this.field = field;
   }
