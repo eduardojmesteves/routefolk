@@ -476,7 +476,7 @@ export const RESOURCES = {
   'item-categories': {
     table: 'item_categories',
     fields: {
-      trip_id: { type: 'string', format: 'uuid', required: true },
+      trip_id: { type: 'string', format: 'uuid' },
       name: { type: 'string', required: true },
       sort_order: { type: 'integer' },
     },
@@ -548,11 +548,11 @@ test('validateTripPlan requires at least one stage', () => {
 test('validateTripPlan rejects a stage missing start_location, end_location, or planned_date', () => {
   assert.throws(
     () => validateTripPlan({ trip: { title: 'Trip' }, stages: [{ title: 'Day 1', end_location: 'B', planned_date: '2026-08-02' }] }),
-    /start_location/,
+    err => err instanceof ValidationError && err.field === 'stages[0].start_location',
   );
   assert.throws(
     () => validateTripPlan({ trip: { title: 'Trip' }, stages: [{ title: 'Day 1', start_location: 'A', end_location: 'B' }] }),
-    /planned_date/,
+    err => err instanceof ValidationError && err.field === 'stages[0].planned_date',
   );
 });
 
@@ -563,7 +563,7 @@ test('validateTripPlan rejects a stage date outside the trip range', () => {
         trip: { title: 'Trip', start_date: '2026-08-01', end_date: '2026-08-05' },
         stages: [{ title: 'Day 1', start_location: 'A', end_location: 'B', planned_date: '2026-08-10' }],
       }),
-    /planned_date/,
+    err => err instanceof ValidationError && err.field === 'stages[0].planned_date',
   );
 });
 
