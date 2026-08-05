@@ -226,7 +226,7 @@ export function buildOpenApiDocument(baseUrl) {
       description: 'Create and maintain Routefolk trips, stages, journal entries, expenses, and packing items.',
     },
     servers: [{ url: baseUrl }],
-    components: { securitySchemes: { apiKey: { type: 'http', scheme: 'bearer' } } },
+    components: { schemas: {}, securitySchemes: { apiKey: { type: 'http', scheme: 'bearer' } } },
     security: [{ apiKey: [] }],
     paths: {
       ...resourcePaths(),
@@ -243,6 +243,9 @@ function isBareObjectSchema(schema) {
 export function checkOpenApiCompleteness(doc) {
   const problems = [];
   if (!Array.isArray(doc.servers) || doc.servers.length !== 1) problems.push('servers must contain exactly one entry');
+  if (typeof doc.components?.schemas !== 'object' || doc.components.schemas === null || Array.isArray(doc.components.schemas)) {
+    problems.push('components.schemas must be an object (ChatGPT Actions rejects a missing or non-object schemas key, even though it is optional in the OpenAPI spec itself)');
+  }
   if (!doc.components?.securitySchemes || Object.keys(doc.components.securitySchemes).length === 0) {
     problems.push('components.securitySchemes must define at least one scheme');
   }
