@@ -1691,10 +1691,10 @@ git commit -m "docs: remove agent branding, fix stale cutover status, rename Age
 - [ ] **Step 1: Run every test in the repository**
 
 ```bash
-node --test tests/ services/api/test/
+node --test tests/*.test.mjs services/api/test/*.test.mjs
 ```
 
-Expected: all tests PASS — this includes `tests/actions/trip-action-ownership.test.mjs`, `tests/repo-hygiene.test.mjs`, and every `services/api/test/*.test.mjs` file from Tasks 3–7.
+Expected: all tests PASS — this includes `tests/repo-hygiene.test.mjs` and every `services/api/test/*.test.mjs` file from Tasks 3–7. (Note: `tests/actions/trip-action-ownership.test.mjs`, referenced elsewhere in this repo's history, is untracked local-only tooling from an earlier working copy — it is not part of git history and will not exist in a fresh clone or worktree. Its absence here is expected, not a gap.)
 
 - [ ] **Step 2: Stand up the stack locally and smoke-test the new endpoints**
 
