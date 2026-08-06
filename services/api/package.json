@@ -5,7 +5,7 @@
   "type": "module",
   "scripts": {
     "start": "node server.js",
-    "check": "node --check db.js && node --check resources.js && node --check validate.js && node --check openapi.js && node --check server.js",
+    "check": "node --check db.js && node --check resources.js && node --check validate.js && node --check openapi.js && node --check trip-plan.js && node --check stage-reorder.js && node --check server.js",
     "test": "node --test test/*.test.mjs"
   },
   "dependencies": {

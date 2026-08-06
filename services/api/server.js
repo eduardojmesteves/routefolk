@@ -1,7 +1,9 @@
 import express from 'express';
 import { createPool, createTransactionRunner } from './db.js';
 import { RESOURCES } from './resources.js';
-import { cleanAndValidate, validateTripPlan, ValidationError } from './validate.js';
+import { cleanAndValidate, ValidationError } from './validate.js';
+import { createTripPlan } from './trip-plan.js';
+import { reorderStages } from './stage-reorder.js';
 import { buildOpenApiDocument } from './openapi.js';
 
 function sendValidationError(res, error) {
@@ -130,40 +132,7 @@ export function createApp({ pool, apiKey, apiUserId }) {
 
   app.post('/trips/plan', async (req, res, next) => {
     try {
-      const plan = validateTripPlan(req.body);
-      const data = await inApiTransaction(async client => {
-        const tripKeys = Object.keys(plan.trip);
-        const tripResult = await client.query(
-          `insert into public.trips (${tripKeys.join(',')}) values (${tripKeys.map((_, i) => `$${i + 1}`).join(',')}) returning id`,
-          Object.values(plan.trip),
-        );
-        const tripId = tripResult.rows[0].id;
-
-        const stages = [];
-        for (const stage of plan.stages) {
-          const { journal_entries: journalEntries, ...stageFields } = stage;
-          const stageData = { ...stageFields, trip_id: tripId };
-          const stageKeys = Object.keys(stageData);
-          const stageResult = await client.query(
-            `insert into public.stages (${stageKeys.join(',')}) values (${stageKeys.map((_, i) => `$${i + 1}`).join(',')}) returning id`,
-            Object.values(stageData),
-          );
-          const stageId = stageResult.rows[0].id;
-
-          const journalEntryIds = [];
-          for (const entry of journalEntries) {
-            const entryData = { ...entry, stage_id: stageId };
-            const entryKeys = Object.keys(entryData);
-            const entryResult = await client.query(
-              `insert into public.journal_entries (${entryKeys.join(',')}) values (${entryKeys.map((_, i) => `$${i + 1}`).join(',')}) returning id`,
-              Object.values(entryData),
-            );
-            journalEntryIds.push(entryResult.rows[0].id);
-          }
-          stages.push({ stage_id: stageId, journal_entry_ids: journalEntryIds });
-        }
-        return { trip_id: tripId, stages };
-      });
+      const data = await createTripPlan(inApiTransaction, req.body);
       res.status(201).json({ data });
     } catch (error) {
       if (error instanceof ValidationError) return sendValidationError(res, error);
@@ -173,31 +142,7 @@ export function createApp({ pool, apiKey, apiUserId }) {
 
   app.post('/stages/reorder', async (req, res, next) => {
     try {
-      const tripId = req.body?.trip_id;
-      const orderedStageIds = Array.isArray(req.body?.ordered_stage_ids) ? req.body.ordered_stage_ids : [];
-      if (!tripId) throw new ValidationError('trip_id', 'is required');
-      if (orderedStageIds.length === 0) throw new ValidationError('ordered_stage_ids', 'must contain at least one stage id');
-
-      const rows = await inApiTransaction(async client => {
-        const existing = await client.query('select id from public.stages where trip_id = $1', [tripId]);
-        const existingIds = existing.rows.map(row => row.id).sort();
-        const suppliedIds = [...orderedStageIds].sort();
-        const matches = existingIds.length === suppliedIds.length && existingIds.every((id, i) => id === suppliedIds[i]);
-        if (!matches) throw new ValidationError('ordered_stage_ids', "must contain exactly the trip's current stage ids");
-
-        const updated = [];
-        for (const [index, stageId] of orderedStageIds.entries()) {
-          // stages(trip_id, order_index) is DEFERRABLE INITIALLY DEFERRED, so
-          // transient duplicate order values across these updates are fine —
-          // Postgres only checks the constraint at COMMIT.
-          const result = await client.query(
-            'update public.stages set order_index = $1 where id = $2 and trip_id = $3 returning *',
-            [index + 1, stageId, tripId],
-          );
-          updated.push(result.rows[0]);
-        }
-        return updated;
-      });
+      const rows = await reorderStages(inApiTransaction, req.body?.trip_id, req.body?.ordered_stage_ids);
       res.json({ data: rows });
     } catch (error) {
       if (error instanceof ValidationError) return sendValidationError(res, error);
