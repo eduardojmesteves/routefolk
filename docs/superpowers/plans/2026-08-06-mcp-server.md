@@ -380,6 +380,7 @@ git commit -m "refactor(api): extract createTripPlan and reorderStages so REST a
 - Create: `services/api/mcp.js`
 - Modify: `services/api/server.js` (mount `POST /mcp`)
 - Modify: `services/api/package.json` (dependency, check script)
+- Modify: `infrastructure/docker/nginx.conf` (proxy `/mcp` through the gateway — found missing during Task 3's live verification: `/health` and `/api/v1/` both have explicit `location` blocks, `/mcp` had none, so the gateway's catch-all fell through to `location / { return 404; }`)
 - Test: `services/api/test/mcp.test.mjs` (create)
 
 **Interfaces:**
@@ -619,18 +620,38 @@ Update the check script:
     "check": "node --check db.js && node --check resources.js && node --check validate.js && node --check openapi.js && node --check trip-plan.js && node --check stage-reorder.js && node --check mcp.js && node --check server.js",
 ```
 
-- [ ] **Step 7: Run tests to verify they pass**
+- [ ] **Step 7: Proxy `/mcp` through the gateway**
+
+`infrastructure/docker/nginx.conf` has explicit `location` blocks for `/health` and `/api/v1/`, proxying to the `api` service — without a matching block for `/mcp`, the gateway's catch-all (`location / { return 404; }`) intercepts every request to it before it ever reaches the `api` container. Add a new location block right after the `/api/v1/` block:
+
+```nginx
+  location = /mcp {
+    limit_req zone=routefolk_api burst=$ROUTEFOLK_API_RATE_LIMIT_BURST nodelay;
+    limit_req_status 429;
+    access_log /dev/stdout routefolk_api;
+    proxy_buffering off;
+
+    proxy_pass http://api:3001/mcp;
+    proxy_set_header Host $host;
+    proxy_set_header X-Forwarded-Host $host;
+    proxy_set_header X-Forwarded-Proto $routefolk_forwarded_proto;
+  }
+```
+
+(`proxy_buffering off` matters here specifically because MCP responses are `text/event-stream` — nginx's default response buffering can interfere with SSE-framed output.)
+
+- [ ] **Step 8: Run tests to verify they pass**
 
 ```bash
 node --test services/api/test/mcp.test.mjs
 node --test services/api/test/*.test.mjs
 ```
-Expected: all PASS, including the full suite (proving `/mcp` didn't break anything else).
+Expected: all PASS, including the full suite (proving `/mcp` didn't break anything else). (`nginx.conf` isn't covered by `node --test` — it's config, not code; its correctness is proven by the live verification in Task 3.)
 
-- [ ] **Step 8: Commit**
+- [ ] **Step 9: Commit**
 
 ```bash
-git add services/api/mcp.js services/api/server.js services/api/package.json services/api/package-lock.json
+git add services/api/mcp.js services/api/server.js services/api/package.json services/api/package-lock.json infrastructure/docker/nginx.conf
 git commit -m "feat(api): add MCP server with a single list_trips tool, mounted at POST /mcp"
 ```
 
