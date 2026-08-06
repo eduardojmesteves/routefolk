@@ -7,7 +7,7 @@ function fieldToSchema(field) {
   return schema;
 }
 
-function resourceRequestSchema(resourceName, { partial = false } = {}) {
+export function resourceRequestSchema(resourceName, { partial = false } = {}) {
   const def = RESOURCES[resourceName];
   const properties = {};
   const required = [];
