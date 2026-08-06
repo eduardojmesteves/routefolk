@@ -25,26 +25,40 @@ function verifyPkce(codeVerifier, codeChallenge) {
   return base64url(hash) === codeChallenge;
 }
 
-function escapeHtml(value) {
-  return String(value).replace(/[&<>"']/g, char => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[char]));
-}
-
-function authorizeFormHtml({ redirectUri, codeChallenge, state, error }) {
-  const errorHtml = error ? `<p style="color:#b91c1c">${escapeHtml(error)}</p>` : '';
+function googleCallbackHtml() {
   return `<!doctype html>
 <html>
-<head><meta charset="utf-8"><title>Connect to Routefolk</title></head>
+<head><meta charset="utf-8"><title>Connecting to Routefolk</title></head>
 <body style="font-family: system-ui, sans-serif; max-width: 420px; margin: 4rem auto; padding: 0 1rem;">
-  <h1>Connect to Routefolk</h1>
-  <p>Enter your Routefolk API key to allow this connection.</p>
-  ${errorHtml}
-  <form method="POST" action="/authorize">
-    <input type="hidden" name="redirect_uri" value="${escapeHtml(redirectUri || '')}">
-    <input type="hidden" name="code_challenge" value="${escapeHtml(codeChallenge || '')}">
-    <input type="hidden" name="state" value="${escapeHtml(state || '')}">
-    <input type="password" name="api_key" placeholder="Routefolk API key" required style="width:100%; padding:0.5rem; font-size:1rem;">
-    <button type="submit" style="margin-top:1rem; padding:0.5rem 1rem; font-size:1rem;">Connect</button>
-  </form>
+  <p id="status">Completing sign-in&hellip;</p>
+  <script>
+    (function () {
+      var statusEl = document.getElementById('status');
+      var params = new URLSearchParams(window.location.search);
+      var pending = params.get('pending');
+      var hashParams = new URLSearchParams(window.location.hash.slice(1));
+      var accessToken = hashParams.get('access_token');
+      if (!pending || !accessToken) {
+        statusEl.textContent = 'Sign-in was not completed. You can close this tab and try again.';
+        return;
+      }
+      fetch('/google-verify', {
+        method: 'POST',
+        headers: { 'content-type': 'application/json' },
+        body: JSON.stringify({ pending: pending, access_token: accessToken }),
+      })
+        .then(function (response) {
+          if (!response.ok) throw new Error('verification failed');
+          return response.json();
+        })
+        .then(function (data) {
+          window.location.href = data.redirect;
+        })
+        .catch(function () {
+          statusEl.textContent = 'Sign-in could not be completed. You can close this tab and try again.';
+        });
+    })();
+  </script>
 </body>
 </html>`;
 }
@@ -63,7 +77,8 @@ function issueTokenPair(accessTokens, refreshTokens) {
   };
 }
 
-export function createOAuthRouter(apiKey) {
+export function createOAuthRouter() {
+  const pendingAuthorizations = new Map();
   const authorizationCodes = new Map();
   const accessTokens = new Map();
   const refreshTokens = new Map();
@@ -93,20 +108,41 @@ export function createOAuthRouter(apiKey) {
     if (clientId !== OAUTH_CLIENT_ID) return res.status(400).send('Unknown client_id.');
     if (!redirectUri) return res.status(400).send('redirect_uri is required.');
     if (codeChallengeMethod !== 'S256' || !codeChallenge) return res.status(400).send('PKCE code_challenge with S256 is required.');
-    res.set('content-type', 'text/html').send(authorizeFormHtml({ redirectUri, codeChallenge, state, error: null }));
+
+    const pendingId = randomToken();
+    pendingAuthorizations.set(pendingId, { redirectUri, codeChallenge, state, expiresAt: Date.now() + AUTH_CODE_TTL_MS });
+
+    const issuer = oauthIssuerUrl(req);
+    const callbackUrl = `${issuer}/google-callback?pending=${encodeURIComponent(pendingId)}`;
+    const googleAuthUrl = `${issuer}/auth/v1/authorize?provider=google&redirect_to=${encodeURIComponent(callbackUrl)}`;
+    res.redirect(googleAuthUrl);
   });
 
-  router.post('/authorize', express.urlencoded({ extended: false }), (req, res) => {
-    const { redirect_uri: redirectUri, code_challenge: codeChallenge, state, api_key: suppliedKey } = req.body;
-    if (suppliedKey !== apiKey) {
-      return res.status(401).set('content-type', 'text/html').send(authorizeFormHtml({ redirectUri, codeChallenge, state, error: 'Incorrect API key.' }));
+  router.get('/google-callback', (req, res) => {
+    res.set('content-type', 'text/html').send(googleCallbackHtml());
+  });
+
+  router.post('/google-verify', async (req, res) => {
+    const { pending, access_token: accessToken } = req.body || {};
+    const entry = pendingAuthorizations.get(pending);
+    if (!entry || entry.expiresAt < Date.now()) return res.status(400).json({ error: 'invalid_grant' });
+    pendingAuthorizations.delete(pending);
+
+    const issuer = oauthIssuerUrl(req);
+    let userResponse;
+    try {
+      userResponse = await fetch(`${issuer}/auth/v1/user`, { headers: { authorization: `Bearer ${accessToken}` } });
+    } catch {
+      return res.status(401).json({ error: 'invalid_grant' });
     }
+    if (!userResponse.ok) return res.status(401).json({ error: 'invalid_grant' });
+
     const code = randomToken();
-    authorizationCodes.set(code, { codeChallenge, redirectUri, expiresAt: Date.now() + AUTH_CODE_TTL_MS });
-    const redirectUrl = new URL(redirectUri);
+    authorizationCodes.set(code, { codeChallenge: entry.codeChallenge, redirectUri: entry.redirectUri, expiresAt: Date.now() + AUTH_CODE_TTL_MS });
+    const redirectUrl = new URL(entry.redirectUri);
     redirectUrl.searchParams.set('code', code);
-    if (state) redirectUrl.searchParams.set('state', state);
-    res.redirect(redirectUrl.toString());
+    if (entry.state) redirectUrl.searchParams.set('state', entry.state);
+    res.json({ redirect: redirectUrl.toString() });
   });
 
   router.post('/token', express.urlencoded({ extended: false }), (req, res) => {
