@@ -41,7 +41,7 @@ services:
       GOTRUE_DB_DRIVER: postgres
       GOTRUE_DB_DATABASE_URL: postgres://supabase_auth_admin:${POSTGRES_PASSWORD:?POSTGRES_PASSWORD is required}@db:5432/postgres
       GOTRUE_SITE_URL: ${SITE_URL:-http://localhost:8788}
-      GOTRUE_URI_ALLOW_LIST: ${SITE_URL:-http://localhost:8788}/*
+      GOTRUE_URI_ALLOW_LIST: ${SITE_URL:-http://localhost:8788}/*,${API_EXTERNAL_URL:-http://127.0.0.1:18080}/*
       GOTRUE_DISABLE_SIGNUP: ${DISABLE_SIGNUP:-false}
       GOTRUE_JWT_SECRET: ${JWT_SECRET:?JWT_SECRET is required}
       GOTRUE_JWT_EXP: 3600

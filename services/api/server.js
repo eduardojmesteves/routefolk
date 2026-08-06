@@ -30,12 +30,12 @@ export function createApp({ pool, apiKey, apiUserId }) {
   const app = express();
   app.set('trust proxy', 1);
   const inApiTransaction = createTransactionRunner(pool, apiUserId);
-  const { router: oauthRouter, isValidAccessToken } = createOAuthRouter(apiKey);
+  const { router: oauthRouter, isValidAccessToken } = createOAuthRouter();
 
   app.use(express.json({ limit: '1mb' }));
   app.use(oauthRouter);
   app.use((req, res, next) => {
-    const exemptPaths = ['/health', '/openapi.json', '/.well-known/oauth-protected-resource', '/.well-known/oauth-authorization-server', '/authorize', '/token'];
+    const exemptPaths = ['/health', '/openapi.json', '/.well-known/oauth-protected-resource', '/.well-known/oauth-authorization-server', '/authorize', '/google-callback', '/google-verify', '/token'];
     if (exemptPaths.includes(req.path)) return next();
     const supplied = req.get('authorization')?.replace(/^Bearer\s+/i, '') || req.get('x-api-key');
     if (supplied && (supplied === apiKey || isValidAccessToken(supplied))) return next();

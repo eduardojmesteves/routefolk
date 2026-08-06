@@ -560,13 +560,14 @@ After the PWA cutover succeeds:
 5. verify attribution and key revocation before allowing production writes.
 
 Connecting Claude's remote MCP connector requires OAuth (Claude's connector
-UI has no plain bearer-token field). No account or credential separate from
-`ROUTEFOLK_API_KEY` is needed: when adding the connector in Claude, enter
-`routefolk-mcp` as the OAuth Client ID (leave the Client Secret blank), and
-when redirected to the login page, enter the same `ROUTEFOLK_API_KEY`. This
-issues Claude a short-lived session that refreshes itself automatically;
-restarting the `api` container invalidates active sessions, requiring one
-re-login.
+UI has no plain bearer-token field). When adding the connector in Claude,
+enter `routefolk-mcp` as the OAuth Client ID (leave the Client Secret
+blank). Clicking through takes you to the same Google sign-in the Routefolk
+PWA itself uses — no separate credential to retrieve or paste, and it works
+from a phone with nothing but a Google account already approved for the
+group. This issues Claude a short-lived session that refreshes itself
+automatically; restarting the `api` container invalidates active sessions,
+requiring one more Google sign-in.
 
 ## Stage 6 — rollback or retire hosted Supabase
 
