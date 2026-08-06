@@ -70,6 +70,14 @@ application query, so normal row-level security remains authoritative.
 
 There is deliberately no PWA/web container. Cloudflare Pages continues to serve the frontend.
 
+The API serves a REST endpoint at `/api/v1` for clients making direct HTTP requests
+with the configured `ROUTEFOLK_API_KEY` bearer token. The API also serves an MCP (Model Context Protocol)
+endpoint at `/mcp` for clients that speak MCP instead of REST/OpenAPI (Claude, for example,
+connects to external tools this way rather than through OpenAPI Actions). It uses the
+same `ROUTEFOLK_API_KEY` bearer token as the REST API and exposes trip, stage, and
+journal-entry operations as named tools (`list_trips`, `create_trip_plan`, `update_stage`,
+and so on).
+
 ## Generated secrets
 
 `setup-env.sh` creates the untracked, mode-600 `.env` file. It generates the
