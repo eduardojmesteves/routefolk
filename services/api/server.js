@@ -1,10 +1,12 @@
 import express from 'express';
+import { StreamableHTTPServerTransport } from '@modelcontextprotocol/sdk/server/streamableHttp.js';
 import { createPool, createTransactionRunner } from './db.js';
 import { RESOURCES } from './resources.js';
 import { cleanAndValidate, ValidationError } from './validate.js';
 import { createTripPlan } from './trip-plan.js';
 import { reorderStages } from './stage-reorder.js';
 import { buildOpenApiDocument } from './openapi.js';
+import { buildTools, createMcpServer } from './mcp.js';
 
 function sendValidationError(res, error) {
   res.status(400).json({ error: { code: 'validation_error', field: error.field, message: error.message } });
@@ -148,6 +150,17 @@ export function createApp({ pool, apiKey, apiUserId }) {
       if (error instanceof ValidationError) return sendValidationError(res, error);
       next(error);
     }
+  });
+
+  app.post('/mcp', async (req, res) => {
+    const mcpServer = createMcpServer(buildTools(inApiTransaction));
+    const transport = new StreamableHTTPServerTransport({ sessionIdGenerator: undefined });
+    res.on('close', () => {
+      transport.close();
+      mcpServer.close();
+    });
+    await mcpServer.connect(transport);
+    await transport.handleRequest(req, res, req.body);
   });
 
   app.get('/openapi.json', (req, res) => res.json(buildOpenApiDocument(externalApiBaseUrl(req))));
