@@ -559,6 +559,15 @@ After the PWA cutover succeeds:
 4. test list/read first, then create/edit/delete a disposable private route;
 5. verify attribution and key revocation before allowing production writes.
 
+Connecting Claude's remote MCP connector requires OAuth (Claude's connector
+UI has no plain bearer-token field). No account or credential separate from
+`ROUTEFOLK_API_KEY` is needed: when adding the connector in Claude, enter
+`routefolk-mcp` as the OAuth Client ID (leave the Client Secret blank), and
+when redirected to the login page, enter the same `ROUTEFOLK_API_KEY`. This
+issues Claude a short-lived session that refreshes itself automatically;
+restarting the `api` container invalidates active sessions, requiring one
+re-login.
+
 ## Stage 6 — rollback or retire hosted Supabase
 
 If critical validation fails, restore the previous `lib/config.js` and `_headers`, redeploy Pages, and return to hosted Supabase. Stop writes on the failed backend before reconciling changes; never allow independent writes to both systems.

@@ -7,6 +7,7 @@ import { createTripPlan } from './trip-plan.js';
 import { reorderStages } from './stage-reorder.js';
 import { buildOpenApiDocument } from './openapi.js';
 import { buildTools, createMcpServer } from './mcp.js';
+import { createOAuthRouter, oauthIssuerUrl } from './oauth.js';
 
 function sendValidationError(res, error) {
   res.status(400).json({ error: { code: 'validation_error', field: error.field, message: error.message } });
@@ -29,15 +30,19 @@ export function createApp({ pool, apiKey, apiUserId }) {
   const app = express();
   app.set('trust proxy', 1);
   const inApiTransaction = createTransactionRunner(pool, apiUserId);
+  const { router: oauthRouter, isValidAccessToken } = createOAuthRouter(apiKey);
 
   app.use(express.json({ limit: '1mb' }));
+  app.use(oauthRouter);
   app.use((req, res, next) => {
-    if (req.path === '/health' || req.path === '/openapi.json') return next();
+    const exemptPaths = ['/health', '/openapi.json', '/.well-known/oauth-protected-resource', '/.well-known/oauth-authorization-server', '/authorize', '/token'];
+    if (exemptPaths.includes(req.path)) return next();
     const supplied = req.get('authorization')?.replace(/^Bearer\s+/i, '') || req.get('x-api-key');
-    if (!supplied || supplied !== apiKey) {
-      return res.status(401).json({ error: { code: 'unauthorized', message: 'A valid Bearer token or X-API-Key is required.' } });
-    }
-    next();
+    if (supplied && (supplied === apiKey || isValidAccessToken(supplied))) return next();
+    res
+      .status(401)
+      .set('WWW-Authenticate', `Bearer resource_metadata="${oauthIssuerUrl(req)}/.well-known/oauth-protected-resource"`)
+      .json({ error: { code: 'unauthorized', message: 'A valid Bearer token or X-API-Key is required.' } });
   });
 
   app.get('/health', async (_req, res, next) => {
