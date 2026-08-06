@@ -1011,8 +1011,29 @@ function withId(schema) {
   };
 }
 
+// Found during implementation: this task's own error-path tests call
+// tool.handler() directly (bypassing createMcpServer's try/catch), but
+// handlers like get_trip/update_trip/create_journal_entry throw rather than
+// self-catch — so calling them directly would reject instead of resolving
+// with an isError result. Every handler is wrapped here so it's safe to
+// call standalone (as the tests do) or through createMcpServer (unchanged
+// behavior — the outer try/catch becomes redundant but harmless).
+function withErrorHandling(tools) {
+  for (const tool of Object.values(tools)) {
+    const rawHandler = tool.handler;
+    tool.handler = async args => {
+      try {
+        return await rawHandler(args);
+      } catch (error) {
+        return errorResult(error);
+      }
+    };
+  }
+  return tools;
+}
+
 export function buildTools(inApiTransaction) {
-  return {
+  return withErrorHandling({
     list_trips: {
       description: 'List Routefolk trips, most recently created first.',
       inputSchema: { type: 'object', properties: { limit: { type: 'integer', minimum: 1, maximum: 500 } } },
@@ -1120,7 +1141,7 @@ export function buildTools(inApiTransaction) {
       inputSchema: { type: 'object', properties: { id: { type: 'string', format: 'uuid' } }, required: ['id'] },
       handler: async args => textResult(await deleteRecord(inApiTransaction, 'journal_entries', args.id)),
     },
-  };
+  });
 }
 
 export function createMcpServer(tools) {
