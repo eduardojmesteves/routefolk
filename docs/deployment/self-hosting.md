@@ -73,10 +73,11 @@ There is deliberately no PWA/web container. Cloudflare Pages continues to serve 
 The API serves a REST endpoint at `/api/v1` for clients making direct HTTP requests
 with the configured `ROUTEFOLK_API_KEY` bearer token. The API also serves an MCP (Model Context Protocol)
 endpoint at `/mcp` for clients that speak MCP instead of REST/OpenAPI (Claude, for example,
-connects to external tools this way rather than through OpenAPI Actions). It uses the
-same `ROUTEFOLK_API_KEY` bearer token as the REST API and exposes trip, stage, and
-journal-entry operations as named tools (`list_trips`, `create_trip_plan`, `update_stage`,
-and so on).
+connects to external tools this way rather than through OpenAPI Actions), exposing trip,
+stage, and journal-entry operations as named tools (`list_trips`, `create_trip_plan`,
+`update_stage`, and so on). `/mcp` accepts `ROUTEFOLK_API_KEY` as a fallback credential,
+but Claude itself authenticates via Google sign-in instead (see Stage 5 below) — no key
+ever needs to reach the chat client.
 
 ## Generated secrets
 
@@ -562,20 +563,21 @@ The anonymous key is designed to be public; authorization still depends on JWTs 
 After the PWA cutover succeeds:
 
 1. use a dedicated approved Routefolk account and set its UUID as `ROUTEFOLK_API_USER_ID`;
-2. store `ROUTEFOLK_API_KEY` only in your chat client's secret manager;
+2. store `ROUTEFOLK_API_KEY` only in a secret manager — it's needed for direct REST/`curl` access and as `/mcp`'s fallback credential, but Claude itself never needs it (see below);
 3. add network restrictions, request logging, rate limiting, and a rotation procedure;
 4. test list/read first, then create/edit/delete a disposable private route;
 5. verify attribution and key revocation before allowing production writes.
 
 Connecting Claude's remote MCP connector requires OAuth (Claude's connector
-UI has no plain bearer-token field). When adding the connector in Claude,
-enter `routefolk-mcp` as the OAuth Client ID (leave the Client Secret
-blank). Clicking through takes you to the same Google sign-in the Routefolk
-PWA itself uses — no separate credential to retrieve or paste, and it works
-from a phone with nothing but a Google account already approved for the
-group. This issues Claude a short-lived session that refreshes itself
-automatically; restarting the `api` container invalidates active sessions,
-requiring one more Google sign-in.
+UI has no plain bearer-token field), so it does not use `ROUTEFOLK_API_KEY`
+at all. When adding the connector in Claude, enter `routefolk-mcp` as the
+OAuth Client ID (leave the Client Secret blank). Clicking through takes you
+to the same Google sign-in the Routefolk PWA itself uses — no separate
+credential to retrieve or paste, and it works from a phone with nothing but
+a Google account already approved for the group. This issues Claude a
+short-lived session that refreshes itself automatically; restarting the
+`api` container invalidates active sessions, requiring one more Google
+sign-in.
 
 ## Stage 6 — rollback or retire hosted Supabase
 
