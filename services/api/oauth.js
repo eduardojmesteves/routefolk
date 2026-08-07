@@ -6,6 +6,12 @@ const AUTH_CODE_TTL_MS = 5 * 60 * 1000;
 const ACCESS_TOKEN_TTL_MS = 60 * 60 * 1000;
 const REFRESH_TOKEN_TTL_MS = 30 * 24 * 60 * 60 * 1000;
 
+// Only Claude's own hosted-surfaces callback is a legitimate destination for
+// an authorization code. Accepting an arbitrary redirect_uri here would let
+// an attacker redirect a real user's authorization code to a URL they
+// control (this client has no secret, so nothing else stops that).
+const ALLOWED_REDIRECT_URIS = ['https://claude.ai/api/mcp/auth_callback'];
+
 export function oauthIssuerUrl(req) {
   const configured = process.env.API_EXTERNAL_URL?.replace(/\/+$/, '');
   const inferred = `${req.protocol}://${req.get('host')}`;
@@ -77,7 +83,7 @@ function issueTokenPair(accessTokens, refreshTokens) {
   };
 }
 
-export function createOAuthRouter() {
+export function createOAuthRouter(pool) {
   const pendingAuthorizations = new Map();
   const authorizationCodes = new Map();
   const accessTokens = new Map();
@@ -106,7 +112,7 @@ export function createOAuthRouter() {
   router.get('/authorize', (req, res) => {
     const { client_id: clientId, redirect_uri: redirectUri, code_challenge: codeChallenge, code_challenge_method: codeChallengeMethod, state } = req.query;
     if (clientId !== OAUTH_CLIENT_ID) return res.status(400).send('Unknown client_id.');
-    if (!redirectUri) return res.status(400).send('redirect_uri is required.');
+    if (!ALLOWED_REDIRECT_URIS.includes(redirectUri)) return res.status(400).send('redirect_uri is not allowed.');
     if (codeChallengeMethod !== 'S256' || !codeChallenge) return res.status(400).send('PKCE code_challenge with S256 is required.');
 
     const pendingId = randomToken();
@@ -136,6 +142,38 @@ export function createOAuthRouter() {
       return res.status(401).json({ error: 'invalid_grant' });
     }
     if (!userResponse.ok) return res.status(401).json({ error: 'invalid_grant' });
+
+    let email;
+    try {
+      email = (await userResponse.json())?.email;
+    } catch {
+      return res.status(401).json({ error: 'invalid_grant' });
+    }
+    if (!email) return res.status(401).json({ error: 'invalid_grant' });
+
+    // Completing GoTrue's Google sign-in only proves the person has a real
+    // Google account -- it does not prove they're an approved Routefolk
+    // member (GOTRUE_DISABLE_SIGNUP does not restrict who can sign in). The
+    // real membership boundary is public.app_members, the same allowlist
+    // migration 010 introduced for exactly this reason. Without this check,
+    // any Google account could obtain a full-access session.
+    //
+    // This runs in an async handler on Express 4, which does not forward
+    // rejected promises to the error middleware -- an unhandled rejection
+    // here would take down the whole (publicly reachable) API process, so a
+    // database blip must be caught and answered explicitly. Fail closed: if
+    // membership cannot be confirmed, no authorization code is issued.
+    let memberResult;
+    try {
+      memberResult = await pool.query(
+        'select 1 from public.app_members where lower(email) = lower($1) and active limit 1',
+        [email],
+      );
+    } catch (error) {
+      console.error('app_members membership check failed', error);
+      return res.status(503).json({ error: 'temporarily_unavailable' });
+    }
+    if (memberResult.rows.length === 0) return res.status(401).json({ error: 'invalid_grant' });
 
     const code = randomToken();
     authorizationCodes.set(code, { codeChallenge: entry.codeChallenge, redirectUri: entry.redirectUri, expiresAt: Date.now() + AUTH_CODE_TTL_MS });

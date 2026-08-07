@@ -30,7 +30,7 @@ export function createApp({ pool, apiKey, apiUserId }) {
   const app = express();
   app.set('trust proxy', 1);
   const inApiTransaction = createTransactionRunner(pool, apiUserId);
-  const { router: oauthRouter, isValidAccessToken } = createOAuthRouter();
+  const { router: oauthRouter, isValidAccessToken } = createOAuthRouter(pool);
 
   app.use(express.json({ limit: '1mb' }));
   app.use(oauthRouter);
