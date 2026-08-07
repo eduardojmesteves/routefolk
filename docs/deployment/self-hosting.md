@@ -33,16 +33,17 @@ Merging these definitions does not move or rebuild the existing PWA. Generated
 secrets, database contents, GPX objects, and container state stay outside Git;
 Docker stores runtime data in the named volumes declared by Compose.
 
-## Current state: no cutover
+## Current state: cutover complete, trial period
 
-An Ubuntu 22.04 home server and Cloudflare Tunnel have been selected, and the
-local Compose preflight has passed. No tunnel route, production DNS, Cloudflare
-Pages setting, or Google OAuth callback has changed, and no hosted Supabase data
-has been copied. The committed PWA configuration still points at the existing
-hosted Supabase project, so deploying the current Cloudflare Pages source does
-not switch production unexpectedly.
+The frontend cutover described in Stage 4 has been completed: `lib/config.js`
+points production at the self-hosted backend
+(`https://routefolk-api.homelab-cloud.pt`), and the home server is
+authoritative for Auth, PostgREST, Storage, and the API.
 
-The Docker stack is therefore an unvalidated candidate backend. It must not become authoritative until the stages below pass.
+The original hosted Supabase project has **not** been deleted. It stays
+available, unused, as a rollback path while the self-hosted stack runs through
+an operator trial period. It will be disconnected for good once the home
+server has proven reliable over time.
 
 ## Preflight safeguards
 

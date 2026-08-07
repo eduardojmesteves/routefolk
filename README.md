@@ -94,8 +94,8 @@ Access is limited to the intended group. New users must be approved by the app a
 | App style | Native ES modules, no build step |
 | Hosting | Cloudflare Pages |
 | Security headers | Cloudflare Pages `_headers` |
-| Backend | Supabase Auth, Postgres, and Storage |
-| Auth | Google sign-in through Supabase |
+| Backend | Self-hosted Postgres, GoTrue Auth, PostgREST, and Storage |
+| Auth | Google sign-in through self-hosted GoTrue |
 | Maps/navigation | Google Maps links |
 | Weather/geocoding | Open-Meteo |
 | PWA | Hand-written service worker |

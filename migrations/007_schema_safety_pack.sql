@@ -7,8 +7,8 @@
 -- - Normalize and protect stage ordering.
 -- - Add a lightweight schema compatibility marker.
 --
--- Run manually in Supabase SQL Editor before deploying code that
--- expects schema_version 007.
+-- Applied automatically by infrastructure/docker/migrate.sh before deploying
+-- code that expects schema_version 007.
 -- ============================================================
 
 BEGIN;

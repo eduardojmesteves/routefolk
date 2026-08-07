@@ -14,7 +14,7 @@ by the root [`docker-compose.yml`](../docker-compose.yml):
 - `migrate.sh` applies the base schema snapshot only to a new database, then
   applies every numbered migration newer than the installed marker in order;
 - `nginx.conf` exposes only the backend API gateway routes and applies
-  Agent API-specific request logging and rate limiting.
+  API-specific request logging and rate limiting.
 
 Run scripts from the repository root. Runtime data belongs in Docker volumes
 and must never be committed here.
