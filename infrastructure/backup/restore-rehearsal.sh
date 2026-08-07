@@ -73,7 +73,7 @@ echo "Initializing the isolated application project $project..." >&2
 compose up -d
 
 echo "Entering the isolated restore write-freeze..." >&2
-compose stop gateway agent-api auth rest storage >/dev/null
+compose stop gateway api auth rest storage >/dev/null
 
 echo "Restoring PostgreSQL schemas and ownership..." >&2
 # The Supabase image deliberately makes `postgres` a non-superuser. Restore as

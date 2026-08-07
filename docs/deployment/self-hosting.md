@@ -2,7 +2,7 @@
 
 ## Intended architecture
 
-The Routefolk PWA **stays on Cloudflare Pages**. Only the services currently supplied by hosted Supabase—and the new Agent API—run with Docker on the home server.
+The Routefolk PWA **stays on Cloudflare Pages**. Only the services currently supplied by hosted Supabase—and the new API—run with Docker on the home server.
 
 ```text
 Browser ──HTTPS──> Cloudflare Pages (HTML/CSS/JavaScript PWA)
@@ -11,7 +11,7 @@ Browser ──HTTPS──> Cloudflare Pages (HTML/CSS/JavaScript PWA)
                     ├── Auth
                     ├── PostgREST
                     ├── Storage
-                    ├── Agent API
+                    ├── API
                     └── PostgreSQL (internal only)
 ```
 
@@ -23,7 +23,7 @@ The repository does not deploy to a home server by itself. `docker compose up` s
 routefolk/
 ├── docs/deployment/       # Operator runbooks
 ├── infrastructure/docker/ # Container configuration and lifecycle scripts
-├── services/agent-api/    # Independently containerised Agent API
+├── services/api/    # Independently containerised API
 ├── docker-compose.yml     # Backend stack entry point
 ├── actions/, lib/, …      # Existing Cloudflare Pages PWA
 └── migrations/            # Existing database migrations
@@ -33,25 +33,26 @@ Merging these definitions does not move or rebuild the existing PWA. Generated
 secrets, database contents, GPX objects, and container state stay outside Git;
 Docker stores runtime data in the named volumes declared by Compose.
 
-## Current state: no cutover
+## Current state: cutover complete, trial period
 
-An Ubuntu 22.04 home server and Cloudflare Tunnel have been selected, and the
-local Compose preflight has passed. No tunnel route, production DNS, Cloudflare
-Pages setting, or Google OAuth callback has changed, and no hosted Supabase data
-has been copied. The committed PWA configuration still points at the existing
-hosted Supabase project, so deploying the current Cloudflare Pages source does
-not switch production unexpectedly.
+The frontend cutover described in Stage 4 has been completed: `lib/config.js`
+points production at the self-hosted backend
+(`https://routefolk-api.homelab-cloud.pt`), and the home server is
+authoritative for Auth, PostgREST, Storage, and the API.
 
-The Docker stack is therefore an unvalidated candidate backend. It must not become authoritative until the stages below pass.
+The original hosted Supabase project has **not** been deleted. It stays
+available, unused, as a rollback path while the self-hosted stack runs through
+an operator trial period. It will be disconnected for good once the home
+server has proven reliable over time.
 
 ## Preflight safeguards
 
 The stack intentionally refuses to render without generated database, JWT,
-Storage, and Agent API secrets. Run `setup-env.sh` rather than relying on sample
+Storage, and API secrets. Run `setup-env.sh` rather than relying on sample
 credentials. The migration container applies every numbered migration newer
 than the installed schema marker, in order. It applies the base snapshot only
 to an uninitialized database; replaying that older snapshot over an upgraded
-database would regress its RLS policies. The Agent API establishes the configured
+database would regress its RLS policies. The API establishes the configured
 user's JWT claims and changes to the `authenticated` database role before any
 application query, so normal row-level security remains authoritative.
 
@@ -59,23 +60,32 @@ application query, so normal row-level security remains authoritative.
 
 | Compose service | Responsibility | Exposure/data |
 |---|---|---|
-| `gateway` | One public entry point for `/auth/v1`, `/rest/v1`, `/storage/v1`, and `/agent/v1` | Loopback port 18080 by default; put HTTPS/tunnel in front |
+| `gateway` | One public entry point for `/auth/v1`, `/rest/v1`, `/storage/v1`, and `/api/v1` | Loopback port 18080 by default; put HTTPS/tunnel in front |
 | `db` | PostgreSQL for Routefolk, Auth, and Storage metadata | Internal; `routefolk-db` volume |
 | `bootstrap` | Synchronizes internal Supabase role passwords | One-shot, internal process |
 | `auth` | Supabase GoTrue and Google OAuth callbacks | Internal via gateway |
 | `rest` | PostgREST used by the existing browser client | Internal via gateway |
 | `storage` | Private GPX object service | Internal; `routefolk-storage` volume |
 | `migrate` | One-shot Routefolk schema application | Internal, no persistent process |
-| `agent-api` | Key-protected automation API | Internal via gateway |
+| `api` | Key-protected automation API | Internal via gateway |
 
 There is deliberately no PWA/web container. Cloudflare Pages continues to serve the frontend.
+
+The API serves a REST endpoint at `/api/v1` for clients making direct HTTP requests
+with the configured `ROUTEFOLK_API_KEY` bearer token. The API also serves an MCP (Model Context Protocol)
+endpoint at `/mcp` for clients that speak MCP instead of REST/OpenAPI (Claude, for example,
+connects to external tools this way rather than through OpenAPI Actions), exposing trip,
+stage, and journal-entry operations as named tools (`list_trips`, `create_trip_plan`,
+`update_stage`, and so on). `/mcp` accepts `ROUTEFOLK_API_KEY` as a fallback credential,
+but Claude itself authenticates via Google sign-in instead (see Stage 5 below) — no key
+ever needs to reach the chat client.
 
 ## Generated secrets
 
 `setup-env.sh` creates the untracked, mode-600 `.env` file. It generates the
 PostgreSQL password, JWT signing secret, anonymous and service-role JWTs, and
-Agent API key. Do not print or share that file. Google OAuth credentials remain
-blank until the later OAuth stage, and `AGENT_USER_ID` remains a non-secret
+API key. Do not print or share that file. Google OAuth credentials remain
+blank until the later OAuth stage, and `ROUTEFOLK_API_USER_ID` remains a non-secret
 placeholder until an approved Auth user exists.
 
 The PostgreSQL image creates internal roles for Auth, PostgREST, and Storage.
@@ -122,7 +132,7 @@ After that preflight succeeds, pull/build and start the private backend:
 
 ```sh
 docker compose pull
-docker compose build agent-api
+docker compose build api
 docker compose up -d
 sleep 30
 docker compose ps -a
@@ -130,7 +140,7 @@ docker compose logs migrate
 curl --fail-with-body http://127.0.0.1:18080/health
 ```
 
-The gateway health endpoint checks the Agent API and its database connection;
+The gateway health endpoint checks the API and its database connection;
 it is not a static Nginx success response. The expected `bootstrap` and
 `migrate` states are `Exited (0)`, while the six long-running services should
 be healthy or running.
@@ -151,7 +161,7 @@ you have explicitly decided to destroy the disposable database and GPX data.
 
 Serve a separate local copy of the PWA and temporarily point that copy—not `main` and not Cloudflare Pages—at the generated backend URL/key. Configure a separate Google OAuth test client with the backend callback `http://127.0.0.1:18080/auth/v1/callback` and the local PWA as its site/redirect origin.
 
-Test sign-in/out, trip/stage/journal/expense/item CRUD, GPX upload/download, archive rendering, session refresh, and Agent API operations with throwaway data.
+Test sign-in/out, trip/stage/journal/expense/item CRUD, GPX upload/download, archive rendering, session refresh, and API operations with throwaway data.
 
 **Gate:** all workflows pass and container restarts preserve test data. Production still calls hosted Supabase.
 
@@ -528,7 +538,7 @@ On a disposable copy:
 2. copy private GPX objects and preserve their paths/Storage metadata;
 3. verify Google sign-in resolves to the original user UUIDs;
 4. compare every application-table row count and GPX object count/checksum;
-5. run the complete PWA and Agent API smoke tests;
+5. run the complete PWA and API smoke tests;
 6. record exact commands, duration, validation queries, and rollback steps.
 
 **Gate:** the rehearsal is repeatable and users, ownership, records, and GPX downloads are intact. Hosted Supabase stays authoritative until then.
@@ -545,19 +555,30 @@ During an announced write freeze:
 6. deploy that small frontend configuration change to Cloudflare Pages;
 7. test OAuth, reads, writes, uploads, downloads, and refreshes from the production Pages URL.
 
-The anonymous key is designed to be public; authorization still depends on JWTs and database RLS. The database password, JWT secret, service-role key, and Agent API key must never enter the Pages repository or browser bundle.
+The anonymous key is designed to be public; authorization still depends on JWTs and database RLS. The database password, JWT secret, service-role key, and API key must never enter the Pages repository or browser bundle.
 
 **Gate:** Pages successfully uses the home-server backend and monitoring/backups are healthy. Keep the old Supabase project intact and read-only through the rollback window.
 
-## Stage 5 — enable the Agent API separately
+## Stage 5 — enable the API separately
 
 After the PWA cutover succeeds:
 
-1. use a dedicated approved Routefolk account and set its UUID as `AGENT_USER_ID`;
-2. store `AGENT_API_KEY` only in the agent platform's secret manager;
+1. use a dedicated approved Routefolk account and set its UUID as `ROUTEFOLK_API_USER_ID`;
+2. store `ROUTEFOLK_API_KEY` only in a secret manager — it's needed for direct REST/`curl` access and as `/mcp`'s fallback credential, but Claude itself never needs it (see below);
 3. add network restrictions, request logging, rate limiting, and a rotation procedure;
 4. test list/read first, then create/edit/delete a disposable private route;
 5. verify attribution and key revocation before allowing production writes.
+
+Connecting Claude's remote MCP connector requires OAuth (Claude's connector
+UI has no plain bearer-token field), so it does not use `ROUTEFOLK_API_KEY`
+at all. When adding the connector in Claude, enter `routefolk-mcp` as the
+OAuth Client ID (leave the Client Secret blank). Clicking through takes you
+to the same Google sign-in the Routefolk PWA itself uses — no separate
+credential to retrieve or paste, and it works from a phone with nothing but
+a Google account already approved for the group. This issues Claude a
+short-lived session that refreshes itself automatically; restarting the
+`api` container invalidates active sessions, requiring one more Google
+sign-in.
 
 ## Stage 6 — rollback or retire hosted Supabase
 
@@ -575,4 +596,4 @@ Before Stage 2, confirm:
 - off-device backup destination and retention;
 - whether all existing Auth identities and GPX files must migrate;
 - acceptable downtime/write freeze;
-- whether the Agent API should be tunnel/VPN-only or internet-reachable.
+- whether the API should be tunnel/VPN-only or internet-reachable.

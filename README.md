@@ -94,8 +94,8 @@ Access is limited to the intended group. New users must be approved by the app a
 | App style | Native ES modules, no build step |
 | Hosting | Cloudflare Pages |
 | Security headers | Cloudflare Pages `_headers` |
-| Backend | Supabase Auth, Postgres, and Storage |
-| Auth | Google sign-in through Supabase |
+| Backend | Self-hosted Postgres, GoTrue Auth, PostgREST, and Storage |
+| Auth | Google sign-in through self-hosted GoTrue |
 | Maps/navigation | Google Maps links |
 | Weather/geocoding | Open-Meteo |
 | PWA | Hand-written service worker |
@@ -192,15 +192,16 @@ Personal and non-commercial use, study, and modification are allowed. Commercial
 
 See [`LICENSE`](./LICENSE) for the full terms.
 
-## Final stability closure
-
-The app has been split into focused modules while keeping `app.js` as the controller. Stage handlers and the direct stage fallback intentionally remain in `app.js` because that path is sensitive and has been stabilised there.
-
 ## Self-hosted backend for the Cloudflare Pages PWA
 
-The PWA remains deployed on Cloudflare Pages. Docker Compose is only for replacing the hosted Supabase backend on an operator-controlled home server; it runs PostgreSQL, Auth, PostgREST, Storage, the Agent API, and an Nginx API gateway. It does **not** containerise or replace the Cloudflare Pages frontend.
+The PWA remains deployed on Cloudflare Pages. Docker Compose replaces the
+previously hosted Supabase backend on an operator-controlled home server; it
+runs PostgreSQL, Auth, PostgREST, Storage, the API, and an Nginx gateway. It
+does **not** containerise or replace the Cloudflare Pages frontend.
 
-Nothing is deployed automatically. Read the [staged backend migration plan](./docs/deployment/self-hosting.md) before running the stack or changing the production frontend configuration. The existing hosted Supabase URL remains in `lib/config.js` until the new backend has passed local testing, a data-migration rehearsal, and a controlled cutover.
+The production PWA is already cut over: `lib/config.js` points at the
+self-hosted backend origin. Read the [deployment guide](./docs/deployment/self-hosting.md)
+before changing the stack or the production frontend configuration.
 
 For a disposable backend test:
 
@@ -209,6 +210,13 @@ For a disposable backend test:
 docker compose up --build
 ```
 
-The backend gateway then listens at <http://127.0.0.1:18080>. The PWA must be served separately (as it is in production by Cloudflare Pages) and configured to use that backend during testing. Production requires an HTTPS hostname that securely reaches the home-server gateway; PostgreSQL and internal services must not be exposed directly.
+The backend gateway then listens at <http://127.0.0.1:18080>. The PWA must be
+served separately (as it is in production by Cloudflare Pages) and configured
+to use that backend during testing. Production requires an HTTPS hostname
+that securely reaches the home-server gateway; PostgreSQL and internal
+services must not be exposed directly.
 
-The Agent API is available through the backend origin at `/agent/v1`, with its OpenAPI document at `/agent/v1/openapi.json`. Configure a real approved Routefolk UUID as `AGENT_USER_ID` and keep `AGENT_API_KEY` in the agent's secret store before enabling writes.
+The API is available through the backend origin at `/api/v1`, with its
+OpenAPI document at `/api/v1/openapi.json`. Configure a real approved
+Routefolk UUID as `ROUTEFOLK_API_USER_ID` and keep `ROUTEFOLK_API_KEY` in
+your chat client's secret store before enabling writes.

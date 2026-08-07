@@ -2,8 +2,8 @@
 -- routefolk — 012_date_consistency_triggers.sql
 -- DB-level date consistency hardening.
 --
--- Run manually in Supabase SQL Editor before deploying app code
--- that expects schema version 012.
+-- Applied automatically by infrastructure/docker/migrate.sh before deploying
+-- app code that expects schema version 012.
 --
 -- This migration deliberately enforces date-only fields that the DB can
 -- validate unambiguously:

@@ -1,9 +1,15 @@
 # Hosted-to-self-hosted migration rehearsal
 
 These tools reproduce the validated Routefolk database, Auth, and private GPX
-Storage migration in a new isolated Compose project. They do **not** perform a
-production cutover. Hosted Supabase and production Pages remain authoritative
-until the gates in [`SELF_HOSTING.md`](../../SELF_HOSTING.md) pass.
+Storage migration in a new isolated Compose project, run against an unused
+`routefolk-migrate-rehearsal-final-*` project name. They do **not** perform a
+production cutover and never touch the real `routefolk` project — see the
+gates in the [self-hosting guide](../../docs/deployment/self-hosting.md).
+
+The production cutover this toolkit rehearsed has since completed (see
+"Current state" in that guide); it is kept here for re-validating the
+migration process if it's ever needed again during the current operator
+trial period, not as a description of the live system's present state.
 
 ## Safety contract
 
@@ -53,15 +59,15 @@ parents. Both `user.supabase.cache-control` and
 ## Prepare a final rehearsal
 
 Create a protected project-specific environment file outside the checkout.
-Use a new loopback port and the migrated approved Agent UUID. Example
-non-secret values:
+Use a new loopback port and the migrated approved `ROUTEFOLK_API_USER_ID`.
+Example non-secret values:
 
 ```dotenv
 BIND_ADDRESS=127.0.0.1
 PORT=18085
 API_EXTERNAL_URL=http://127.0.0.1:18085
 SITE_URL=https://routefolk-selfhost-test.pages.dev
-AGENT_USER_ID=<migrated-active-user-uuid>
+ROUTEFOLK_API_USER_ID=<migrated-active-user-uuid>
 ```
 
 Validate inputs independently:
@@ -85,7 +91,8 @@ The runner initializes the current schema, stops only target application
 services, clears the 16 data targets, restores as `supabase_admin`, compares all
 counts, installs and hashes six GPX objects, repairs levels, validates
 relationships, starts services, downloads/hashes every GPX through Storage,
-tests Agent list access, records duration, and checksums evidence.
+tests the API user's trip-list access, records duration, and checksums
+evidence.
 
 Success ends with `rehearsal_status=passed`. Review `rehearsal-run.txt`, both
 empty diff files, validation output, API response semantics, and the checksum

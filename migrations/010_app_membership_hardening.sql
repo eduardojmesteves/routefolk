@@ -8,8 +8,8 @@
 -- - Add an explicit database-level allowlist.
 -- - Require app membership in all public-table and GPX storage policies.
 --
--- Apply manually in Supabase SQL Editor before deploying app files that
--- expect schema_version = 010.
+-- Applied automatically by infrastructure/docker/migrate.sh before deploying
+-- app files that expect schema_version = 010.
 -- ============================================================
 
 -- ------------------------------------------------------------

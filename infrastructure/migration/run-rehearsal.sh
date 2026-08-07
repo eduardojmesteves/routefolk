@@ -48,7 +48,7 @@ finished=false
 finish() {
   status=$?
   test -z "${curl_config:-}" || rm -f "$curl_config"
-  test -z "${agent_config:-}" || rm -f "$agent_config"
+  test -z "${api_config:-}" || rm -f "$api_config"
   if ! "$finished"; then
     printf 'status=failed\nexit_status=%s\nfinished_at_utc=%s\n' "$status" "$(date -u +%Y-%m-%dT%H:%M:%SZ)" >> "$run_file"
   fi
@@ -60,7 +60,7 @@ compose() { docker compose --env-file "$env_file" -p "$project" "$@"; }
 compose up -d
 sleep 20
 curl --silent --show-error --fail "http://127.0.0.1:$port/health" >/dev/null
-compose stop gateway agent-api auth rest storage >/dev/null
+compose stop gateway api auth rest storage >/dev/null
 compose exec -T db pg_isready -U postgres -d postgres >/dev/null
 
 compose exec -T db sh -c 'PGPASSWORD="$POSTGRES_PASSWORD" exec psql -h 127.0.0.1 -U supabase_admin -d postgres -X -v ON_ERROR_STOP=1' \
@@ -106,7 +106,7 @@ SQL
 compose exec -T db psql -U postgres -d postgres -X -v ON_ERROR_STOP=1 \
   < "$repo/infrastructure/migration/validate-restored-data.sql" > "$evidence/relationship-validation.txt"
 
-compose up -d auth rest storage agent-api gateway
+compose up -d auth rest storage api gateway
 sleep 20
 curl --silent --show-error --fail "http://127.0.0.1:$port/health" >/dev/null
 
@@ -128,20 +128,20 @@ rm -f "$curl_config"
 (cd "$downloads" && find . -type f -name '*.gpx' -print0 | sort -z | xargs -0 sha256sum) > "$evidence/api-gpx-sha256sums.txt"
 diff -u "$source/hosted-gpx-sha256sums.txt" "$evidence/api-gpx-sha256sums.txt" > "$evidence/api-hashes.diff"
 
-agent_config=$evidence/.agent-curl.conf
-agent_key=$(sed -n 's/^AGENT_API_KEY=//p' "$env_file" | tail -n 1)
-printf 'header = "Authorization: Bearer %s"\n' "$agent_key" > "$agent_config"; unset agent_key
-agent_status=$(curl --silent --show-error --config "$agent_config" --output "$evidence/agent-list.json" --write-out '%{http_code}' \
-  "http://127.0.0.1:$port/agent/v1/resources/trips?limit=10")
-rm -f "$agent_config"
-test "$agent_status" = 200 || { echo "Agent API returned $agent_status" >&2; exit 1; }
-agent_id=$(sed -n 's/^AGENT_USER_ID=//p' "$env_file" | tail -n 1)
-valid_uuid=$(printf '%s\n' "$agent_id" | grep -Ec '^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$')
-test "$valid_uuid" -eq 1 || { echo 'Invalid AGENT_USER_ID.' >&2; exit 1; }
+api_config=$evidence/.agent-curl.conf
+api_key=$(sed -n 's/^ROUTEFOLK_API_KEY=//p' "$env_file" | tail -n 1)
+printf 'header = "Authorization: Bearer %s"\n' "$api_key" > "$api_config"; unset api_key
+api_status=$(curl --silent --show-error --config "$api_config" --output "$evidence/api-list.json" --write-out '%{http_code}' \
+  "http://127.0.0.1:$port/api/v1/trips?limit=10")
+rm -f "$api_config"
+test "$api_status" = 200 || { echo "API returned $api_status" >&2; exit 1; }
+api_user_id=$(sed -n 's/^ROUTEFOLK_API_USER_ID=//p' "$env_file" | tail -n 1)
+valid_uuid=$(printf '%s\n' "$api_user_id" | grep -Ec '^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$')
+test "$valid_uuid" -eq 1 || { echo 'Invalid ROUTEFOLK_API_USER_ID.' >&2; exit 1; }
 expected_agent_rows=$(compose exec -T db psql -U postgres -d postgres -X -A -t -P footer=off \
-  -c "SELECT count(*) FROM public.trips WHERE public.user_has_trip_access(id, '$agent_id'::uuid);")
+  -c "SELECT count(*) FROM public.trips WHERE public.user_has_trip_access(id, '$api_user_id'::uuid);")
 python3 -c 'import json,sys; rows=json.load(open(sys.argv[1]))["data"]; assert isinstance(rows,list) and len(rows)==int(sys.argv[2])' \
-  "$evidence/agent-list.json" "$expected_agent_rows"
+  "$evidence/api-list.json" "$expected_agent_rows"
 
 {
   docker ps --filter 'label=com.docker.compose.project=routefolk' --format 'routefolk|{{.Names}}|{{.ID}}'
