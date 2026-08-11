@@ -107,7 +107,9 @@ export function subtitle(trip) {
 
 export function day(date) {
   if (!date) return '';
-  try { return new Date(`${date}T00:00:00Z`).toLocaleDateString('en-GB', { weekday: 'short' }).slice(0, 3); } catch { return ''; }
+  const d = new Date(`${date}T00:00:00Z`);
+  if (Number.isNaN(d.getTime())) return '';
+  return d.toLocaleDateString('en-GB', { weekday: 'short' }).slice(0, 3);
 }
 
 export function dateSpan(start, end) {

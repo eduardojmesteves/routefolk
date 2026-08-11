@@ -50,7 +50,7 @@ function injectTripActions() {
   const trip = activeTrip();
   if (!trip || !STATE.viewTripId || STATE.wizard) return;
   if (!['trips', 'archive'].includes(STATE.tab)) return;
-  const target = document.querySelector('.rf-d2-hero .rf-d2-hero-stamps, .rf-clean-trip-head .rf-clean-stamps, .rf-m2-detail-hero');
+  const target = document.querySelector('.rf-d2-hero .rf-d2-hero-stamps, .rf-clean-trip-head .rf-m2-detail-stamps, .rf-m2-detail-hero');
   if (!target || target.querySelector('.rf-v2-hero-actions')) return;
   const wrap = document.createElement('div');
   wrap.className = 'rf-v2-hero-actions';
