@@ -72,7 +72,7 @@ export function renderMobileStages(trip, { screen, tripHeader }) {
   const cards = st.map((stage, index) => `<article class="rf-clean-stage-card is-split ${revealedId === stage.id ? 'is-selected' : ''}"><button class="rf-clean-stage-tap" data-action="rf-m2-select-stage-card" data-stage-id="${esc(stage.id)}"><span class="is-${stageNodeStatus(stage)}">${index + 1}</span><div><strong>${esc(stage.start_location || 'Start')} <em>to</em> ${esc(stage.end_location || 'End')}</strong><small>${esc(day(stage.planned_date))} · ${Math.round(Number(stage.distance_km) || 0)} km · ${esc(fmtDate(stage.planned_date) || '')}</small>${stage.notes ? `<p>${esc(stage.notes)}</p>` : ''}</div></button>${revealedId === stage.id ? stageActionFooterHtml(stage, { index, total, trip }) : ''}</article>`).join('');
   // HANDOFF.md generic empty state: centered icon-less message + a
   // "+ Add a stage" CTA, not a special-cased hero variant.
-  const emptyState = `<div class="rf-d2-empty-state"><p>No stages yet.</p><button class="rf-m2-btn is-primary" data-action="rf-m2-add-stage" type="button">+ Add a stage</button></div>`;
+  const emptyState = `<div class="rf-d2-empty-state"><p>No stages yet.</p><p class="rf-d2-empty-hint">Add the first leg of this trip to start the route.</p><button class="rf-m2-btn is-primary" data-action="rf-m2-add-stage" type="button">+ Add a stage</button></div>`;
   return screen(`${tripHeader(trip, 'stages')}<main class="rf-clean-page">${st.length ? `<div class="rf-clean-stage-rail">${cards}</div><button class="rf-m2-btn is-dashed" data-action="rf-m2-add-stage">+ Add another stage</button>` : emptyState}</main>`);
 }
 

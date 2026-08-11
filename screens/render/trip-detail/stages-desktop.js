@@ -113,6 +113,6 @@ export function renderStages(trip, { hero, tabs, loadingHtml }) {
   // "+ Add a stage" CTA, not a special-cased hero variant.
   const listOrEmpty = st.length
     ? `<div class="rf-d2-stage-list">${st.map((stage, i) => renderStageRow(stage, i, selected?.id)).join('')}<button class="rf-d2-btn is-dashed" data-action="rf-d2-add-stage" type="button">+ Add another stage</button></div>`
-    : `<div class="rf-d2-empty-state"><p>No stages yet.</p><button class="rf-d2-btn is-primary" data-action="rf-d2-add-stage" type="button">+ Add a stage</button></div>`;
+    : `<div class="rf-d2-empty-state"><p>No stages yet.</p><p class="rf-d2-empty-hint">Add the first leg of this trip to start the route.</p><button class="rf-d2-btn is-primary" data-action="rf-d2-add-stage" type="button">+ Add a stage</button></div>`;
   return `<main class="rf-d2-main">${hero(trip, { withStats: true })}${tabs('stages')}<div class="rf-d2-section-head"><div class="rf-d2-section-title">${st.length} stages</div><button class="rf-d2-btn is-primary" data-action="rf-d2-add-stage" type="button">+ Add stage</button></div>${listOrEmpty}</main>${renderAside(trip, selected, { loadingHtml })}`;
 }

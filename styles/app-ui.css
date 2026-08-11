@@ -51,6 +51,7 @@
    "+ Add a stage"-style CTA, reused wherever a list has nothing yet. */
 .rf-d2-empty-state{display:flex;flex-direction:column;align-items:center;gap:14px;padding:48px 20px;text-align:center;}
 .rf-d2-empty-state p{margin:0;color:var(--rf-d2-muted);font:15px var(--rf-d2-font-ui);}
+.rf-d2-empty-state p.rf-d2-empty-hint{max-width:260px;font-size:13px;margin-top:-8px;}
 
 /* Trips-list hero state machine (Route Atlas) — "Now riding" banner /
    "planning queue" card. Shared markup for mobile + desktop; see
