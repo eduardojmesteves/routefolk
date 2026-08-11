@@ -10,6 +10,7 @@ import { forecastForStage } from '../lib/weather.js';
 import { listEntriesForStage } from '../lib/journal.js';
 import { listProfiles } from '../lib/profiles.js';
 import { listActiveTripMembers, listTripMembersForTrip } from '../lib/trip-members.js';
+import { listMyRoads, listRoadStageLinks } from '../lib/roads.js';
 import {
   ensureDefaultItemCategories,
   listItemsForTrip,
@@ -39,6 +40,12 @@ export function createDataLoaders({ renderAll }) {
       STATE.tripsLoading = false;
       renderAll();
       if (STATE.tab === 'archive') ensureArchiveData();
+      // The Trips-list "Now riding" hero needs the active trip's stages
+      // (stage index, day count, km progress) even before that trip is
+      // opened — fire-and-forget, same lazy pattern as the rest of this
+      // file.
+      const active = STATE.trips.find((trip) => trip.status === 'active');
+      if (active && !STATE.stagesByTrip[active.id]) loadStagesForTrip(active.id);
     }
   }
 
@@ -198,6 +205,36 @@ export function createDataLoaders({ renderAll }) {
     }
   }
 
+  /** Loads the current user's "My roads" (Account/You) plus every linked
+   *  stage's trip/date context, so cards render fully without a drill-in. */
+  async function loadMyRoads(options = {}) {
+    if (!STATE.user) return;
+    STATE.myRoadsLoading = true;
+    STATE.myRoadsError = null;
+    if (!options.quiet) renderAll();
+
+    try {
+      const roads = await listMyRoads(STATE.user.id);
+      STATE.myRoads = roads;
+      const links = await listRoadStageLinks(roads.map((road) => road.id));
+      const byRoad = {};
+      links.forEach((link) => {
+        if (!byRoad[link.road_id]) byRoad[link.road_id] = [];
+        byRoad[link.road_id].push(link);
+      });
+      STATE.roadStageLinksByRoad = byRoad;
+    } catch (err) {
+      console.error(err);
+      STATE.myRoads = [];
+      STATE.roadStageLinksByRoad = {};
+      STATE.myRoadsError = err.message || 'Failed to load your roads.';
+      if (!options.quiet) toast('Failed to load your roads.');
+    } finally {
+      STATE.myRoadsLoading = false;
+      renderAll();
+    }
+  }
+
   async function loadGpxForTrip(tripId, options = {}) {
     STATE.gpxLoading = true;
     STATE.gpxError = null;
@@ -351,6 +388,7 @@ export function createDataLoaders({ renderAll }) {
     loadExpensesForTrip,
     loadItemsForTrip,
     loadGpxForTrip,
+    loadMyRoads,
     ensureArchiveGpxGeometries,
     ensureArchiveData,
     openTrip,

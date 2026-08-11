@@ -9,8 +9,10 @@
 // ============================================================
 
 import { STATE } from '../state/app-state.js';
-import { createEntry, updateEntry, deleteEntry } from '../lib/journal.js';
+import { createEntry, updateEntry, deleteEntry, initEntriesSortOrder, swapEntryOrder } from '../lib/journal.js';
+import { setJournalOrderMode } from '../lib/stages.js';
 import { dispatchAppAction } from '../screens/app-actions.js';
+import { orderedEntries } from '../screens/render/shared.js';
 import {
   claim,
   renderAll,
@@ -38,6 +40,15 @@ const JOURNAL_WIZARD_ACTIONS = new Set([
   'rf-v2-update-entry',
 ]);
 
+/** Entry-ordering actions (exact match) owned by this module — the
+ *  Auto/Override toggle and manual-mode ↑/↓ reorder. */
+const JOURNAL_ORDER_ACTIONS = new Set([
+  'rf-v2-journal-order-auto',
+  'rf-v2-journal-order-manual',
+  'rf-v2-journal-entry-up',
+  'rf-v2-journal-entry-down',
+]);
+
 /**
  * Create a journal entry on the selected stage from the wizard form.
  * @param {Event} event
@@ -54,6 +65,9 @@ export async function saveEntryCreate(event) {
       title: fieldValue('v2-entry-title'),
       location: fieldValue('v2-entry-place'),
       description: fieldValue('v2-entry-note'),
+      location_url: fieldValue('v2-entry-location-url') || null,
+      info_url: fieldValue('v2-entry-info-url') || null,
+      photo_album_url: fieldValue('v2-entry-photo-url') || null,
       timestamp: time ? `${date}T${time}:00` : null,
     };
     if (!payload.title && !payload.location && !payload.description) {
@@ -90,6 +104,8 @@ export async function saveEntryEdit(event) {
       location: fieldValue('v2-entry-place-edit'),
       description: fieldValue('v2-entry-note-edit'),
       location_url: fieldValue('v2-entry-location-url-edit') || null,
+      info_url: fieldValue('v2-entry-info-url-edit') || null,
+      photo_album_url: fieldValue('v2-entry-photo-url-edit') || null,
       timestamp: time ? `${date}T${time}:00` : null,
     });
     STATE.entriesByStage[stage.id] = entriesForStage(stage.id).map((candidate) => candidate.id === updated.id ? updated : candidate);
@@ -121,12 +137,74 @@ export async function removeEntry(event, entryId) {
 }
 
 /**
+ * Flip the Auto/Override toggle for the open stage's journal. Switching
+ * into manual mode stamps sort_order from the entries' current
+ * chronological order first, so the override starts where Auto left off
+ * rather than from an undefined order.
+ * @param {Event} event
+ * @param {boolean} manual
+ */
+export async function setJournalOrder(event, manual) {
+  claim(event);
+  const stage = selectedStage();
+  if (!stage || stage.journal_manual_order === manual) return;
+  try {
+    if (manual) {
+      const ids = orderedEntries(stage).map((entry) => entry.id);
+      await initEntriesSortOrder(ids);
+      STATE.entriesByStage[stage.id] = entriesForStage(stage.id).map((entry) => ({
+        ...entry,
+        sort_order: ids.indexOf(entry.id),
+      }));
+    }
+    await setJournalOrderMode(stage.id, manual);
+    stage.journal_manual_order = manual;
+    renderAll();
+  } catch (error) {
+    console.error(error);
+  }
+}
+
+/**
+ * Swap two adjacent journal entries' sort_order (manual mode only).
+ * @param {Event} event
+ * @param {string} entryId
+ * @param {number} dir -1 (up) or +1 (down)
+ */
+export async function reorderEntry(event, entryId, dir) {
+  claim(event);
+  const stage = selectedStage();
+  if (!stage?.journal_manual_order) return;
+  const list = orderedEntries(stage);
+  const i = list.findIndex((entry) => entry.id === entryId);
+  const j = i + dir;
+  if (i < 0 || j < 0 || j >= list.length) return;
+  const a = list[i];
+  const b = list[j];
+  const swapped = [a.sort_order ?? i, b.sort_order ?? j];
+  STATE.entriesByStage[stage.id] = entriesForStage(stage.id).map((entry) => {
+    if (entry.id === a.id) return { ...entry, sort_order: swapped[1] };
+    if (entry.id === b.id) return { ...entry, sort_order: swapped[0] };
+    return entry;
+  });
+  renderAll();
+  try {
+    await swapEntryOrder(a, b);
+  } catch (error) {
+    console.error(error);
+    await api().loadEntriesForStage?.(stage.id, { quiet: true });
+    renderAll();
+  }
+}
+
+/**
  * @param {string} action
  * @returns {boolean} true if this action belongs to the journal domain
  */
 export function owns(action) {
   return JOURNAL_APP_SUFFIXES.some((suffix) => action.endsWith(suffix))
-    || JOURNAL_WIZARD_ACTIONS.has(action);
+    || JOURNAL_WIZARD_ACTIONS.has(action)
+    || JOURNAL_ORDER_ACTIONS.has(action);
 }
 
 /**
@@ -155,6 +233,18 @@ export async function handle(event, btn, action) {
   }
   if (action === 'rf-v2-delete-entry') {
     await removeEntry(event, btn.dataset.entryId);
+    return true;
+  }
+  if (action === 'rf-v2-journal-order-auto') {
+    await setJournalOrder(event, false);
+    return true;
+  }
+  if (action === 'rf-v2-journal-order-manual') {
+    await setJournalOrder(event, true);
+    return true;
+  }
+  if (action === 'rf-v2-journal-entry-up' || action === 'rf-v2-journal-entry-down') {
+    await reorderEntry(event, btn.dataset.entryId, action === 'rf-v2-journal-entry-up' ? -1 : 1);
     return true;
   }
   return dispatchAppAction(event, btn, action);

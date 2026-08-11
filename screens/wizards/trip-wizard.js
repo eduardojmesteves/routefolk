@@ -13,14 +13,15 @@ import {
   fieldValue,
   getDraftTripVisibility,
   setDraftTripVisibility,
-  panelHtml,
   row,
-  pair,
   input,
-  select,
-  option,
+  narrativeShellHtml,
+  narrativeSection,
+  choiceCards,
 } from './wizard-shared.js';
 import { api } from './wizard-shared.js';
+import { dateSpan } from '../render/shared.js';
+import { fmtDateRange } from '../../utils/datetime.js';
 
 let selectableMembersLoadPromise = null;
 let selectableMembersLoadUserId = null;
@@ -145,13 +146,82 @@ export function tripWizardDataSignature(modeClass, targetKey) {
   return [modeClass, targetKey, currentWizardVisibility(), STATE.selectableTripMembersLoading ? 'members-loading' : 'members-ready', STATE.selectableTripMembersError || '', selectable, trip?.id || '', trip?.id && STATE.tripMembersLoadingByTrip[trip.id] ? 'trip-members-loading' : 'trip-members-ready', selectedRows].join('|');
 }
 
-// ---- Trip wizard markup ---------------------------------------------
+// ---- Trip wizard markup (Route Atlas narrative pattern) --------------
+// This is the reference migration for the wizard shell described in
+// HANDOFF.md's "Wizard redesign pattern" — every other wizard follows
+// this shape in a later phase.
+
+const STATUS_LABELS = { planning: 'Planning', active: 'Active', completed: 'Completed', cancelled: 'Cancelled' };
+const VISIBILITY_LABELS = { group: 'Everyone', selected: 'Selected users', private: 'Private' };
+
+function durationLabel(start, end) {
+  if (!start || !end) return '';
+  const days = dateSpan(start, end);
+  return days ? `${days} day${days === 1 ? '' : 's'} on the road` : '';
+}
+
+/** Re-renders the "N days on the road" chip next to the date fields. */
+export function refreshTripDurationChip() {
+  const chip = byId('v2-trip-duration');
+  if (!chip) return;
+  const label = durationLabel(field('v2-trip-start')?.value, field('v2-trip-end')?.value);
+  chip.textContent = label;
+  chip.hidden = !label;
+}
+
+/** Sticky live-preview: the actual Trips-list card this trip will render as. */
+export function tripPreviewHtml() {
+  const title = fieldValue('v2-trip-title') || 'Untitled trip';
+  const desc = fieldValue('v2-trip-desc');
+  const start = field('v2-trip-start')?.value || '';
+  const end = field('v2-trip-end')?.value || '';
+  const status = field('v2-trip-status')?.value || 'planning';
+  const visibility = field('v2-trip-visibility')?.value || 'group';
+  const dateLabel = start || end ? fmtDateRange(start, end) : 'Planned for later';
+  return `<div class="rf-d2-trip-row rf-v2-preview-card"><div class="rf-d2-trip-row-no">No. --</div><div class="rf-d2-trip-row-title">${esc(title)}</div><div class="rf-d2-trip-row-sub">${esc(desc || dateLabel)}</div><div class="rf-d2-trip-row-meta"><span>${esc(dateLabel)}</span></div><span class="rf-d2-state-pill is-${esc(status)}"><span class="rf-d2-state-dot"></span>${esc(STATUS_LABELS[status] || 'Planning')}</span><span class="rf-d2-stamp is-accent">${esc(VISIBILITY_LABELS[visibility] || 'Everyone')}</span></div>`;
+}
+
 export function tripWizardHtml(editing = false) {
   const trip = editing ? activeTrip() : null;
   const visibility = currentWizardVisibility();
   const canManageVisibility = canManageTripVisibility(trip);
-  const visibilityAttrs = canManageVisibility ? '' : 'disabled';
-  return panelHtml({ id: 'rf-v2-trip-title', kicker: editing ? 'Edit trip' : 'New trip', title: editing ? 'Edit road journal' : 'Plan a road journal', sub: 'Stages, costs, GPX and notes stay attached to this trip.', errorId: 'v2-trip-error', saveAction: editing ? 'rf-v2-update-trip' : 'rf-v2-save-trip', saveLabel: editing ? 'Save changes' : 'Create trip', body: [row('v2-trip-title', 'Title', input('v2-trip-title', trip?.title || '', 'placeholder="e.g. Pyrenees Crossing"')), row('v2-trip-desc', 'Subtitle / short description', input('v2-trip-desc', trip?.description || '', 'placeholder="Bordeaux to Barcelona"')), pair(row('v2-trip-start', 'Start', input('v2-trip-start', trip?.start_date || '', 'type="date"')), row('v2-trip-end', 'End', input('v2-trip-end', trip?.end_date || '', 'type="date"'))), pair(row('v2-trip-status', 'Status', select('v2-trip-status', `${option('planning', 'Planning', trip?.status)}${option('active', 'Active', trip?.status)}${option('completed', 'Completed', trip?.status)}${option('cancelled', 'Cancelled', trip?.status)}`)), row('v2-trip-visibility', 'Visibility', select('v2-trip-visibility', `${option('group', 'Shared with everyone', visibility)}${option('selected', 'Shared with selected users', visibility)}${option('private', 'Private', visibility)}`, visibilityAttrs))), selectedUsersRowHtml(trip, canManageVisibility, visibility)].join('') });
+  const status = trip?.status || 'planning';
+
+  const sections = [
+    narrativeSection('v2-trip-section-name', 'What should we call it?', '', [
+      row('v2-trip-title', 'Title', input('v2-trip-title', trip?.title || '', 'placeholder="e.g. Pyrenees Crossing"')),
+      row('v2-trip-desc', 'Subtitle / short description', input('v2-trip-desc', trip?.description || '', 'placeholder="Bordeaux to Barcelona"')),
+    ].join('')),
+    narrativeSection('v2-trip-section-when', 'When does it roll?', '', [
+      `<div class="rf-d2-form-row-pair">${row('v2-trip-start', 'Start', input('v2-trip-start', trip?.start_date || '', 'type="date"'))}${row('v2-trip-end', 'End', input('v2-trip-end', trip?.end_date || '', 'type="date"'))}</div>`,
+      `<p class="rf-v2-duration-chip" id="v2-trip-duration" ${durationLabel(trip?.start_date, trip?.end_date) ? '' : 'hidden'}>${esc(durationLabel(trip?.start_date, trip?.end_date))}</p>`,
+    ].join('')),
+    narrativeSection('v2-trip-section-status', "Where's it at?", '', choiceCards('v2-trip-status', [
+      { value: 'planning', label: 'Planning', description: 'Still coming together', tone: 'info' },
+      { value: 'active', label: 'Active', description: 'On the road right now', tone: 'primary' },
+    ], status)),
+    narrativeSection('v2-trip-section-who', "Who's riding along?", '', [
+      choiceCards('v2-trip-visibility', [
+        { value: 'group', label: 'Everyone', description: 'Visible to every active member', tone: 'accent' },
+        { value: 'selected', label: 'Selected users', description: 'Only the riders you pick', tone: 'info' },
+        { value: 'private', label: 'Private', description: 'Visible only to you', tone: 'muted' },
+      ], visibility, { disabled: !canManageVisibility }),
+      selectedUsersRowHtml(trip, canManageVisibility, visibility),
+    ].join('')),
+  ];
+
+  return narrativeShellHtml({
+    id: 'rf-v2-trip-title',
+    kicker: editing ? 'Edit trip' : 'New trip',
+    title: editing ? 'Edit road journal' : 'Plan a road journal',
+    sub: 'Stages, costs, GPX and notes stay attached to this trip.',
+    sections,
+    previewLabel: 'Trips list preview',
+    previewHtml: tripPreviewHtml(),
+    errorId: 'v2-trip-error',
+    saveAction: editing ? 'rf-v2-update-trip' : 'rf-v2-save-trip',
+    saveLabel: editing ? 'Save changes' : 'Create trip',
+  });
 }
 
 // ---- Trip write payload helpers (used by actions/trip-actions.js) ----

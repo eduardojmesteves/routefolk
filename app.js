@@ -12,9 +12,11 @@ import { createSessionController } from './state/session-controller.js';
 import { restoreUiState, saveUiState, validateUiSelection } from './state/ui-state.js';
 import { toast } from './components/toast.js';
 
-const EXPECTED_SCHEMA_VERSION = '015';
+const EXPECTED_SCHEMA_VERSION = '017';
 const PALETTE_KEY = 'rf.palette';
-const PALETTES = ['forest', 'midnight', 'oxblood', 'alpine'];
+// "midnight" is the single palette key the app ships: Ember Trail (dark).
+// See screens/render/shared.js PALETTES for the switcher-facing list.
+const PALETTES = ['midnight'];
 let lastAuthUserId = null;
 let resumeInFlight = false;
 
@@ -43,6 +45,7 @@ const {
   loadExpensesForTrip,
   loadItemsForTrip,
   loadGpxForTrip,
+  loadMyRoads,
   ensureArchiveGpxGeometries,
   ensureArchiveData,
   openTrip,
@@ -66,6 +69,7 @@ window.routefolkData = {
   loadExpensesForTrip,
   loadItemsForTrip,
   loadGpxForTrip,
+  loadMyRoads,
   ensureArchiveGpxGeometries,
   ensureArchiveData,
   openTrip,

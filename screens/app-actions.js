@@ -237,6 +237,7 @@ export async function dispatchAppAction(event, btn, action) {
     claim(event);
     switchPrimaryTab(btn.dataset.tab || 'trips');
     if (STATE.tab === 'archive') await appApi().ensureArchiveData?.();
+    if (STATE.tab === 'account' && !STATE.myRoads.length) await appApi().loadMyRoads?.({ quiet: true });
     const id = STATE.viewTripId;
     if (id && STATE.tab !== 'account') await appApi().openTrip?.(id, STATE.view);
     renderSoon();
@@ -261,6 +262,7 @@ export async function dispatchAppAction(event, btn, action) {
     STATE.viewTripId = null;
     STATE.selectedTripId = null;
     STATE.selectedStageId = null;
+    STATE.stageListSelectedId = null;
     STATE.wizard = null;
     renderSoon();
     return true;
@@ -295,9 +297,23 @@ export async function dispatchAppAction(event, btn, action) {
   if (action.endsWith('open-stage')) {
     claim(event);
     STATE.selectedStageId = btn.dataset.stageId;
+    STATE.stageListSelectedId = null;
     STATE.view = 'journal';
     STATE.lastTripView = 'journal';
     await appApi().loadEntriesForStage?.(STATE.selectedStageId, { quiet: true });
+    renderSoon();
+    return true;
+  }
+
+  // Mobile Stages list: tap a card to reveal its ↑↓ Edit Delete Journal
+  // row (hidden by default); tap the same card again, or select a
+  // different one, to move/close the reveal. See HANDOFF.md — this is
+  // deliberately a select, not a navigate (Journal opens from the
+  // revealed row's own "Journal" button, via rf-m2-open-stage above).
+  if (action.endsWith('select-stage-card')) {
+    claim(event);
+    const id = btn.dataset.stageId;
+    STATE.stageListSelectedId = STATE.stageListSelectedId === id ? null : id;
     renderSoon();
     return true;
   }

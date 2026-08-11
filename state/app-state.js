@@ -10,11 +10,16 @@ export const STATE = {
   selectedTripId: null,
   selectedArchiveTripId: null,
   selectedStageId: null,
+  // Route Atlas: which stage card has its ↑↓ Edit Delete Journal row
+  // revealed on the mobile Stages list — hidden by default, one card at
+  // a time, distinct from selectedStageId (which drives journal/aside
+  // context elsewhere and stays selected across screens).
+  stageListSelectedId: null,
   selectedEntryId: null,
   selectedCategoryKey: null,
   lastTripView: 'detail',
   lastArchiveView: 'list',
-  wizard: null, // null | trip | trip-edit | stage | stage-edit | journal | journal-edit | gpx-upload | expense | item
+  wizard: null, // null | trip | trip-edit | stage | stage-edit | journal | journal-edit | gpx-upload | expense | item | road | road-edit
   editTargetId: null,
   gpxUploadTarget: null,
   journalType: 'note',
@@ -71,5 +76,13 @@ export const STATE = {
   archiveMapLayer: 'heatmap',
   archiveDataLoading: false,
   archiveDataError: null,
+  // Roads (Account/You "My roads" — HANDOFF.md): shared road log, but
+  // "My roads" only ever shows the current user's own starred roads,
+  // sorted by their own rating. myRoads carries each road's my_rating
+  // (the viewer's own rating) already joined in by lib/roads.js.
+  myRoads: [],
+  myRoadsLoading: false,
+  myRoadsError: null,
+  roadStageLinksByRoad: {},
   isOnline: typeof navigator === 'undefined' ? true : navigator.onLine !== false,
 };

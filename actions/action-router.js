@@ -24,6 +24,7 @@ import * as stage from './stage-actions.js';
 import * as journal from './journal-actions.js';
 import * as expense from './expense-actions.js';
 import * as item from './item-actions.js';
+import * as road from './road-actions.js';
 import * as gpx from './gpx-actions.js';
 import { dispatchWizardAction } from '../screens/wizards.js';
 import { dispatchExtraWriteAction } from '../screens/extra-writes.js';
@@ -49,7 +50,7 @@ export function claim(event) {
 // is preserved exactly:
 //   screens/wizards.js  >  screens/extra-writes.js  >  screens/app-actions.js
 // ---------------------------------------------------------------------------
-const DOMAINS = [trip, stage, journal, expense, item, gpx, navigation];
+const DOMAINS = [trip, stage, journal, expense, item, road, gpx, navigation];
 
 /**
  * Route a click event to the appropriate domain handler.
@@ -66,7 +67,7 @@ async function route(event, btn, action) {
   // Shared wizard-cancel actions are owned by their originating sidecar
   // in the legacy capture-phase registration order (wizards before
   // extra-writes).
-  if (action === 'rf-v2-cancel-wizard' || action === 'rf-v2-cancel-gpx-upload') {
+  if (action === 'rf-v2-cancel-wizard' || action === 'rf-v2-cancel-gpx-upload' || action === 'rf-v2-choice-select' || action === 'rf-v2-star-select') {
     await dispatchWizardAction(event, btn, action);
     return true;
   }

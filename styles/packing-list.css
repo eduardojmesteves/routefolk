@@ -85,7 +85,7 @@
   margin:0 0 16px;
   padding:14px;
   border:1px solid var(--rf-d2-rule-2);
-  background:rgba(243,240,228,.56);
+  background:rgba(36,41,48,.56);
   background-image:var(--rf-d2-contour-bg);
   background-size:360px;
 }
@@ -100,17 +100,17 @@
   gap:12px;
   padding:14px;
   border:1px solid var(--rf-d2-rule-2);
-  background:rgba(243,240,228,.62);
+  background:rgba(36,41,48,.62);
   background-image:var(--rf-d2-contour-bg);
   background-size:360px;
   border-radius:5px;
 }
 .rf-v2-item-card.is-done{
-  background-color:rgba(243,240,228,.42);
+  background-color:rgba(36,41,48,.42);
 }
 .rf-v2-item-check{
-  width:22px;
-  height:22px;
+  width:30px;
+  height:30px;
   margin-top:2px;
   border:1px solid var(--rf-d2-primary);
   border-radius:4px;
@@ -185,7 +185,7 @@
     padding:9px 12px 11px 50px;
     border:1px solid var(--rf-m2-rule);
     border-top:0;
-    background:rgba(243,240,228,.42);
+    background:rgba(36,41,48,.42);
     display:grid;
     gap:5px;
   }
@@ -220,7 +220,7 @@
     grid-template-columns:28px minmax(0,1fr);
     gap:10px;
     border:1px solid var(--rf-m2-rule-2);
-    background:rgba(243,240,228,.62);
+    background:rgba(36,41,48,.62);
     background-image:var(--rf-m2-contour-bg);
     background-size:330px;
     border-radius:6px;
@@ -231,8 +231,8 @@
     color:var(--rf-m2-muted);
   }
   .rf-clean-item-check{
-    width:23px;
-    height:23px;
+    width:30px;
+    height:30px;
     border:1px solid var(--rf-m2-primary);
     border-radius:5px;
     background:transparent;

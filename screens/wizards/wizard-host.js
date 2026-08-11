@@ -15,21 +15,31 @@ import {
   renderAll,
   clearGpxUploadState,
   setDraftTripVisibility,
+  setActivePreviewBuilder,
+  refreshWizardPreview,
+  setActiveReadoutsRefresh,
+  refreshWizardReadouts,
+  selectChoiceCard,
+  selectStar,
+  autoScrollToNextSection,
 } from './wizard-shared.js';
 import {
   tripWizardHtml,
   tripWizardDataSignature,
+  tripPreviewHtml,
+  refreshTripDurationChip,
   preloadVisibilityDataForWizard,
   syncSelectedUsersVisibility,
   setSignatureRefreshHandler,
   rememberTripVisibility,
 } from './trip-wizard.js';
-import { stageCreateWizardHtml, stageEditWizardHtml } from './stage-wizard.js';
-import { journalCreateWizardHtml, journalEditWizardHtml } from './journal-wizard.js';
-import { expenseWizardHtml } from './expense-wizard.js';
-import { itemWizardHtml } from './item-wizard.js';
+import { stageCreateWizardHtml, stageEditWizardHtml, stagePreviewHtml, refreshStageRideTimeChip } from './stage-wizard.js';
+import { journalCreateWizardHtml, journalEditWizardHtml, journalPreviewHtml } from './journal-wizard.js';
+import { expenseWizardHtml, expensePreviewHtml } from './expense-wizard.js';
+import { itemWizardHtml, itemPreviewHtml } from './item-wizard.js';
 import { gpxUploadWizardHtml, gpxWizardDataSignature } from './gpx-wizard.js';
 import { setPendingGpxFile, getPendingGpxFile, byId } from './wizard-shared.js';
+import { roadCreateWizardHtml, roadEditWizardHtml, roadPreviewHtml, preloadStagesForRoadWizard, roadWizardDataSignature } from './road-wizard.js';
 
 // ---- Contextual action injection ------------------------------------
 function removeExisting() {
@@ -68,6 +78,7 @@ function injectCostCta() {
 function wizardDataSignature(modeClass, targetKey) {
   if (STATE.wizard === 'gpx-upload') return gpxWizardDataSignature(modeClass);
   if (STATE.wizard === 'trip' || STATE.wizard === 'trip-edit') return tripWizardDataSignature(modeClass, targetKey);
+  if (STATE.wizard === 'road' || STATE.wizard === 'road-edit') return roadWizardDataSignature(modeClass, targetKey);
   return `${modeClass}|${targetKey}`;
 }
 
@@ -79,6 +90,8 @@ function wizardHtml() {
   if (STATE.wizard === 'journal-edit') return journalEditWizardHtml();
   if (STATE.wizard === 'gpx-upload') return gpxUploadWizardHtml();
   if (STATE.wizard === 'item' || STATE.wizard === 'item-edit') return itemWizardHtml(STATE.wizard === 'item-edit');
+  if (STATE.wizard === 'road') return roadCreateWizardHtml();
+  if (STATE.wizard === 'road-edit') return roadEditWizardHtml();
   return expenseWizardHtml();
 }
 
@@ -103,6 +116,7 @@ export function renderWizardLayer() {
   }
 
   preloadVisibilityDataForWizard(scheduleRender);
+  preloadStagesForRoadWizard(scheduleRender);
   const signature = wizardDataSignature(modeClass, targetKey);
   const existingHost = wizardHost();
   if (existingHost && existingHost.dataset.wizard === STATE.wizard && existingHost.dataset.targetId === targetKey && existingHost.dataset.signature === signature && existingHost.classList.contains(modeClass)) return;
@@ -117,6 +131,33 @@ export function renderWizardLayer() {
   host.innerHTML = wizardHtml();
   document.body.appendChild(host);
   syncSelectedUsersVisibility(scheduleRender);
+  // Register the open wizard's live-preview builder and computed-readouts
+  // refresher (narrative wizards only — see wizard-shared.js
+  // refreshWizardPreview()/refreshWizardReadouts()). Extend this map as
+  // more wizards migrate to the narrative shell.
+  const NARRATIVE_WIZARDS = {
+    trip: { preview: tripPreviewHtml, readouts: refreshTripDurationChip },
+    'trip-edit': { preview: tripPreviewHtml, readouts: refreshTripDurationChip },
+    stage: { preview: () => stagePreviewHtml(''), readouts: refreshStageRideTimeChip },
+    'stage-edit': { preview: () => stagePreviewHtml('-edit'), readouts: refreshStageRideTimeChip },
+    journal: { preview: () => journalPreviewHtml(''), readouts: null },
+    'journal-edit': { preview: () => journalPreviewHtml('-edit'), readouts: null },
+    expense: { preview: expensePreviewHtml, readouts: null },
+    item: { preview: itemPreviewHtml, readouts: null },
+    'item-edit': { preview: itemPreviewHtml, readouts: null },
+    road: { preview: () => roadPreviewHtml(''), readouts: null },
+    'road-edit': { preview: () => roadPreviewHtml('-edit'), readouts: null },
+  };
+  const narrative = NARRATIVE_WIZARDS[STATE.wizard];
+  setActivePreviewBuilder(narrative?.preview || null);
+  setActiveReadoutsRefresh(narrative?.readouts || null);
+  // The preview/readouts embedded in wizardHtml() above were built before
+  // the host was attached to the document, so any field()/byId() lookup
+  // inside them returned null — real for edit wizards, where the initial
+  // render should reflect the record's actual data. Refresh once now that
+  // the host (and its fields) are live in the DOM.
+  refreshWizardPreview();
+  refreshWizardReadouts();
 
   if (isDesktop()) {
     const first = host.querySelector('input, select, textarea, button');
@@ -152,6 +193,43 @@ document.addEventListener('change', (event) => {
   }
 }, true);
 
+// Narrative wizards (Route Atlas): any field edit refreshes the sticky
+// live-preview in place, without going through the full render loop.
+document.addEventListener('input', (event) => {
+  const target = event.target instanceof Element ? event.target : null;
+  if (target?.closest('.rf-v2-wizard-narrative')) { refreshWizardPreview(); refreshWizardReadouts(); }
+}, true);
+
+// ---- Keyboard accessibility: Escape closes, Tab stays trapped ---------
+// No overlay previously handled Escape or trapped focus, letting Tab walk
+// keyboard users out into the (visually obscured) background page behind
+// the modal backdrop. wizardHost() matches both the wizard overlay and
+// the extra-writes edit overlay, so this one listener covers every
+// wizard/edit panel in the app.
+function focusableElements(host) {
+  return [...host.querySelectorAll('a[href], button:not([disabled]), input:not([disabled]), select:not([disabled]), textarea:not([disabled]), [tabindex]:not([tabindex="-1"])')]
+    .filter((el) => el.offsetParent !== null);
+}
+
+document.addEventListener('keydown', (event) => {
+  const host = wizardHost();
+  if (!host) return;
+  if (event.key === 'Escape') {
+    const cancelBtn = host.querySelector('[data-action="rf-v2-cancel-wizard"], [data-action="rf-v2-cancel-gpx-upload"], [data-action="rf-v2-extra-cancel"]');
+    if (cancelBtn instanceof HTMLElement) { event.preventDefault(); cancelBtn.click(); }
+    return;
+  }
+  if (event.key !== 'Tab') return;
+  const focusable = focusableElements(host);
+  if (!focusable.length) return;
+  const first = focusable[0];
+  const last = focusable[focusable.length - 1];
+  const active = document.activeElement;
+  if (event.shiftKey && active === first) { event.preventDefault(); last.focus(); }
+  else if (!event.shiftKey && active === last) { event.preventDefault(); first.focus(); }
+  else if (!host.contains(active)) { event.preventDefault(); first.focus(); }
+}, true);
+
 /**
  * Dispatch the two shared wizard-cancel actions. The unified
  * action-router (actions/action-router.js) routes
@@ -170,6 +248,27 @@ document.addEventListener('change', (event) => {
 export async function dispatchWizardAction(event, btn, action) {
   if (action === 'rf-v2-cancel-wizard') { setDraftTripVisibility(null); claim(event); STATE.wizard = null; STATE.editTargetId = null; clearGpxUploadState(); renderAll(); return true; }
   if (action === 'rf-v2-cancel-gpx-upload') { claim(event); STATE.wizard = null; clearGpxUploadState(); renderAll(); return true; }
+  if (action === 'rf-v2-choice-select') {
+    claim(event);
+    const group = btn.closest('.rf-v2-choice-cards');
+    if (group) {
+      selectChoiceCard(btn.dataset.field, btn.dataset.value, group);
+      refreshWizardPreview();
+      refreshWizardReadouts();
+      autoScrollToNextSection(btn);
+    }
+    return true;
+  }
+  if (action === 'rf-v2-star-select') {
+    claim(event);
+    const group = btn.closest('.rf-starpicker');
+    if (group) {
+      selectStar(btn.dataset.field, btn.dataset.value, group);
+      refreshWizardPreview();
+      refreshWizardReadouts();
+    }
+    return true;
+  }
   return false;
 }
 

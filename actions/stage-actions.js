@@ -26,6 +26,7 @@ import {
 const STAGE_APP_SUFFIXES = [
   'add-stage',
   'select-stage',
+  'select-stage-card',
   'open-stage',
   'save-stage',
 ];
@@ -54,6 +55,7 @@ export async function saveStageCreate(event) {
       end_location: fieldValue('v2-stage-to'),
       planned_date: field('v2-stage-date')?.value || null,
       distance_km: field('v2-stage-km')?.value || null,
+      custom_route_url: fieldValue('v2-stage-route') || null,
       notes: fieldValue('v2-stage-notes'),
     });
     STATE.stagesByTrip[trip.id] = [...stagesForTrip(trip.id), stage];
@@ -88,6 +90,7 @@ export async function saveStageEdit(event) {
     });
     STATE.stagesByTrip[trip.id] = stagesForTrip(trip.id).map((candidate) => candidate.id === updated.id ? updated : candidate);
     STATE.selectedStageId = updated.id;
+    STATE.stageListSelectedId = null;
     STATE.wizard = null;
     STATE.editTargetId = null;
     await api().loadStagesForTrip?.(trip.id);
@@ -111,6 +114,7 @@ export async function removeStage(event, stageId) {
   await deleteStage(stage.id);
   STATE.stagesByTrip[trip.id] = stagesForTrip(trip.id).filter((candidate) => candidate.id !== stage.id);
   STATE.selectedStageId = stagesForTrip(trip.id)[0]?.id || null;
+  STATE.stageListSelectedId = null;
   STATE.wizard = null;
   STATE.editTargetId = null;
   renderAll();

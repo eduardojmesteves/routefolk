@@ -21,7 +21,10 @@ export function summaryTable(trip) {
   return `<div class="rf-clean-table"><div class="rf-clean-table-head"><span>Stage</span><span>Route / journal</span><span>Date / time</span><span>Distance / type</span><span>Notes / place</span></div>${rows || '<div class="rf-d2-empty">No stages yet.</div>'}</div>`;
 }
 
+// HANDOFF.md: "2×2 stat tile grid (Distance, Spent, Stages, Entries)"
+// above the must-keep stage-by-stage table — reuses the same
+// .rf-d2-stat-grid tile pattern as the trip hero's withStats option.
 export function renderSummary(trip, { hero, tabs }) {
   const s = stats(trip);
-  return `<main class="rf-d2-main is-wide">${hero(trip)}${tabs('summary')}${summaryTable(trip)}<div class="rf-d2-total-strip"><div><span>Total distance</span><strong>${Math.round(s.distance).toLocaleString()} km</strong></div><div><span>Total spent</span><strong>${fmtEuro(s.spent)}</strong></div><div><span>Journal</span><strong>${s.entries} entries</strong></div></div></main>`;
+  return `<main class="rf-d2-main is-wide">${hero(trip)}${tabs('summary')}<div class="rf-d2-stat-grid"><div><span>Distance</span><strong>${Math.round(s.distance).toLocaleString()}</strong><small>km recorded</small></div><div><span>Spent</span><strong>${fmtEuro(s.spent)}</strong><small>so far</small></div><div><span>Stages</span><strong>${s.stages}</strong><small>days</small></div><div><span>Entries</span><strong>${s.entries}</strong><small>journal</small></div></div>${summaryTable(trip)}</main>`;
 }

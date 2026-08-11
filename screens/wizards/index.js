@@ -26,6 +26,8 @@ export {
   entriesForStage,
   selectedEntry,
   selectedItem,
+  selectedRoad,
+  roadStageLinksForRoad,
   field,
   fieldValue,
   showError,
@@ -46,3 +48,13 @@ export { gpxTarget } from './gpx-wizard.js';
 
 // Item wizard — write payload.
 export { itemPayload } from './item-wizard.js';
+
+// Road wizard — write payload + stage-link helpers.
+export {
+  roadPayload,
+  roadRatingValue,
+  selectedStageLinkIds,
+  toggleRoadStagePicker,
+  addRoadStageLink,
+  removeRoadStageLink,
+} from './road-wizard.js';

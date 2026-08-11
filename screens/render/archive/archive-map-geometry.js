@@ -68,6 +68,24 @@ export function collectCompletedGpxTracks(state) {
 }
 
 /**
+ * Real GPX coverage across completed trips — HANDOFF.md: "show a caption
+ * stating how many of the completed trips are actually plotted", computed
+ * from real data, never a static string. A trip counts as "plotted" once
+ * it has at least one uploaded GPX track record, regardless of whether
+ * that track's geometry has finished parsing yet.
+ */
+export function completedTripGpxCoverage(state) {
+  const completed = (state.trips || []).filter((trip) => trip.status === 'completed');
+  const tripIdsWithGpx = new Set(
+    Object.entries(state.gpxByTrip || {})
+      .filter(([, tracks]) => Array.isArray(tracks) && tracks.length > 0)
+      .map(([tripId]) => tripId),
+  );
+  const withGpx = completed.filter((trip) => tripIdsWithGpx.has(trip.id)).length;
+  return { withGpx, total: completed.length };
+}
+
+/**
  * Compute a [minLat, maxLat, minLng, maxLng] bounding box for a flat
  * list of [lat, lng] points. Returns null when the list is empty.
  */

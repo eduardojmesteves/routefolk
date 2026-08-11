@@ -16,8 +16,14 @@ import {
   tripNo,
 } from '../shared.js';
 
+function hasGpx(tripId) {
+  const tracks = STATE.gpxByTrip[tripId];
+  return Array.isArray(tracks) && tracks.length > 0;
+}
+
 function archiveTicket(trip) {
-  return `<article class="rf-clean-archive-card"><button class="rf-clean-archive-row" data-action="rf-m2-select-archived" data-trip-id="${esc(trip.id)}"><div><small>${esc(tripNo(trip))}</small><strong>${esc(trip.title || 'Untitled')}</strong><span>${esc(season(trip))}</span></div><b>${fmtEuro(stats(trip).spent)}</b></button><div class="rf-clean-trip-card-footer"><button data-action="rf-m2-list-edit-trip" data-source="archive" data-trip-id="${esc(trip.id)}">Edit</button><button data-action="rf-m2-list-delete-trip" data-source="archive" data-trip-id="${esc(trip.id)}">Delete</button></div></article>`;
+  const gpxTag = hasGpx(trip.id) ? '<span class="rf-m2-stamp is-accent">GPX</span>' : '';
+  return `<article class="rf-clean-archive-card"><button class="rf-clean-archive-row" data-action="rf-m2-select-archived" data-trip-id="${esc(trip.id)}"><div><small>${esc(tripNo(trip))}</small><strong>${esc(trip.title || 'Untitled')}</strong><span>${esc(season(trip))}${gpxTag}</span></div><b>${fmtEuro(stats(trip).spent)}</b></button><div class="rf-clean-trip-card-footer"><button data-action="rf-m2-list-edit-trip" data-source="archive" data-trip-id="${esc(trip.id)}">Edit</button><button data-action="rf-m2-list-delete-trip" data-source="archive" data-trip-id="${esc(trip.id)}">Delete</button></div></article>`;
 }
 
 export function renderMobileArchive(screen) {

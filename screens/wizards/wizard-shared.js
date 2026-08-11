@@ -5,9 +5,9 @@
 // ============================================================
 
 import { STATE } from '../../state/app-state.js';
-import { esc } from '../../utils/dom.js';
+import { esc, starSvg } from '../../utils/dom.js';
 
-export const WIZARDS = new Set(['trip', 'trip-edit', 'stage', 'stage-edit', 'journal', 'journal-edit', 'gpx-upload', 'expense', 'item', 'item-edit']);
+export const WIZARDS = new Set(['trip', 'trip-edit', 'stage', 'stage-edit', 'journal', 'journal-edit', 'gpx-upload', 'expense', 'item', 'item-edit', 'road', 'road-edit']);
 export const isDesktop = () => window.matchMedia('(min-width:960px)').matches;
 export const byId = (id) => document.getElementById(id);
 
@@ -39,6 +39,8 @@ export const selectedItem = () => {
   if (!trip) return null;
   return itemsForTrip(trip.id).find((item) => item.id === STATE.editTargetId) || null;
 };
+export const selectedRoad = () => STATE.myRoads.find((road) => road.id === STATE.editTargetId) || null;
+export const roadStageLinksForRoad = (roadId) => Array.isArray(STATE.roadStageLinksByRoad[roadId]) ? STATE.roadStageLinksByRoad[roadId] : [];
 
 // ---- Module state ----------------------------------------------------
 let draftTripVisibility = null;
@@ -54,8 +56,13 @@ export function setPendingGpxFile(value) { pendingGpxFile = value; }
 export function getPendingGpxFile() { return pendingGpxFile; }
 
 // ---- Wizard host accessors ------------------------------------------
+// Matches either open-overlay system: the main wizard host (trip, stage,
+// journal, expense, item, gpx) or the legacy extra-writes edit overlay
+// (expense-edit, item-edit — screens/extra-writes.js). Both host exactly
+// one overlay at a time, so field()/fieldValue()/refreshWizardPreview()
+// can stay host-agnostic.
 export function wizardHost() {
-  return document.querySelector('.rf-v2-wizard-host');
+  return document.querySelector('.rf-v2-wizard-host, .rf-v2-extra-host');
 }
 
 export function field(id) {
@@ -114,3 +121,112 @@ export function slug(value) { return String(value || '').trim().toLowerCase().re
 export function emptyWizard(message) {
   return `<aside class="rf-v2-wizard-panel"><div class="rf-v2-wizard-head"><h2 class="rf-d2-aside-title">Nothing selected</h2><p>${esc(message)}</p></div><button class="rf-d2-btn" data-action="rf-v2-cancel-wizard" type="button">Close</button></aside>`;
 }
+
+// ---- Narrative wizard shell (Route Atlas) -----------------------------
+// The multi-section, choice-card, live-preview pattern from HANDOFF.md's
+// "Wizard redesign pattern" — the shape every wizard migrates to.
+// trip-wizard.js is the first (reference) migration; other wizards keep
+// using panelHtml()/row()/select() above until their own migration.
+
+/** Wizard shell: narrative sections + a sticky live-preview + sticky footer. */
+export function narrativeShellHtml({ id, kicker, title, sub = '', sections, previewLabel = 'Preview', previewHtml, errorId, saveAction, saveLabel, cancelAction = 'rf-v2-cancel-wizard' }) {
+  return `<aside class="rf-v2-wizard-panel rf-v2-wizard-narrative" role="dialog" aria-modal="true" aria-labelledby="${esc(id)}">
+    <div class="rf-v2-wizard-head"><div class="rf-d2-aside-kicker">${esc(kicker)}</div><h2 class="rf-d2-aside-title" id="${esc(id)}">${esc(title)}</h2>${sub ? `<p class="rf-d2-aside-sub">${esc(sub)}</p>` : ''}</div>
+    <div class="rf-v2-wizard-scroll">
+      ${sections.join('')}
+      <div class="rf-v2-wizard-preview" id="rf-v2-wizard-preview"><div class="rf-v2-wizard-preview-label">${esc(previewLabel)}</div>${previewHtml}</div>
+    </div>
+    <div class="rf-v2-wizard-error" id="${esc(errorId)}" hidden></div>
+    <div class="rf-v2-wizard-footer"><button class="rf-d2-btn" data-action="${esc(cancelAction)}" type="button">Cancel</button><button class="rf-d2-btn is-primary" data-action="${esc(saveAction)}" type="button">${esc(saveLabel)}</button></div>
+  </aside>`;
+}
+
+/** One narrative section: a conversational question + hint, then its fields. */
+export function narrativeSection(id, question, hint, fieldsHtml) {
+  return `<section class="rf-v2-wizard-section" id="${esc(id)}"><div class="rf-v2-wizard-section-head"><h3>${esc(question)}</h3>${hint ? `<p>${esc(hint)}</p>` : ''}</div>${fieldsHtml}</section>`;
+}
+
+/**
+ * A connected From/To row with a small dashed route-connector between the
+ * two fields (Stage wizard's "Where's this leg go?"; reused verbatim by
+ * the Road wizard's "What does it connect?" per HANDOFF.md).
+ */
+export function connectedRouteRow(fromId, toId, fromValue, toValue, fromAttrs = '', toAttrs = '') {
+  return `<div class="rf-v2-route-row">${input(fromId, fromValue, `placeholder="From" ${fromAttrs}`)}<span class="rf-v2-route-connector" aria-hidden="true"></span>${input(toId, toValue, `placeholder="To" ${toAttrs}`)}</div>`;
+}
+
+/**
+ * Tappable choice-cards for a small, meaningful option set (replaces a
+ * <select> for things like Status/Visibility/entry type). Renders a
+ * hidden input carrying the field id so field()/fieldValue() keep
+ * working unchanged for existing payload-building code.
+ * @param {string} fieldId
+ * @param {{value:string, label:string, description?:string, tone?:string}[]} options
+ * @param {string} selectedValue
+ */
+export function choiceCards(fieldId, options, selectedValue, { disabled = false } = {}) {
+  const cards = options.map((opt) => `<button type="button" class="rf-v2-choice-card ${opt.value === selectedValue ? 'is-active' : ''}" data-action="rf-v2-choice-select" data-field="${esc(fieldId)}" data-value="${esc(opt.value)}" ${disabled ? 'disabled' : ''}><span class="rf-v2-choice-dot" data-tone="${esc(opt.tone || '')}"></span><span class="rf-v2-choice-body"><strong>${esc(opt.label)}</strong>${opt.description ? `<small>${esc(opt.description)}</small>` : ''}</span></button>`).join('');
+  return `<div class="rf-v2-choice-cards ${disabled ? 'is-disabled' : ''}" data-field-group="${esc(fieldId)}">${cards}<input type="hidden" id="${esc(fieldId)}" value="${esc(selectedValue)}"></div>`;
+}
+
+/**
+ * Tappable 1-5 star picker (Road wizard's "How many stars?" — HANDOFF.md:
+ * "NOT a dropdown — tap a star to set the rating, all stars up to and
+ * including the tapped one fill"). Same hidden-input pattern as
+ * choiceCards() so field()/fieldValue() work unchanged.
+ */
+export function starPickerHtml(fieldId, rating = 0) {
+  const stars = [1, 2, 3, 4, 5].map((n) => `<button type="button" class="rf-star ${n <= rating ? 'is-filled' : ''}" data-action="rf-v2-star-select" data-field="${esc(fieldId)}" data-value="${n}" aria-label="${n} star${n === 1 ? '' : 's'}">${starSvg()}</button>`).join('');
+  return `<div class="rf-starpicker" data-field-group="${esc(fieldId)}">${stars}<input type="hidden" id="${esc(fieldId)}" value="${rating}"></div>`;
+}
+
+/** Applies a choice-card click: sets the hidden field, toggles is-active,
+ *  and fires a real 'change' event so existing field-watching listeners
+ *  (e.g. trip visibility) keep working unchanged. */
+export function selectChoiceCard(fieldId, value, groupEl) {
+  const hidden = groupEl.querySelector(`#${CSS.escape(fieldId)}`);
+  if (!hidden) return;
+  hidden.value = value;
+  groupEl.querySelectorAll('.rf-v2-choice-card').forEach((btn) => btn.classList.toggle('is-active', btn.dataset.value === value));
+  hidden.dispatchEvent(new Event('change', { bubbles: true }));
+}
+
+/** Applies a star-picker tap: sets the hidden field to the tapped value
+ *  and fills every star at or below it (HANDOFF.md star-picker rule). */
+export function selectStar(fieldId, value, groupEl) {
+  const hidden = groupEl.querySelector(`#${CSS.escape(fieldId)}`);
+  if (!hidden) return;
+  hidden.value = value;
+  groupEl.querySelectorAll('.rf-star').forEach((btn) => btn.classList.toggle('is-filled', Number(btn.dataset.value) <= Number(value)));
+  hidden.dispatchEvent(new Event('change', { bubbles: true }));
+}
+
+/** Smoothly scrolls the wizard's own internal scroll container (never
+ *  scrollIntoView, which can fight other scroll containers) to bring the
+ *  next section into view. */
+export function autoScrollToNextSection(fromEl) {
+  const section = fromEl.closest('.rf-v2-wizard-section');
+  const scroller = fromEl.closest('.rf-v2-wizard-scroll');
+  const next = section?.nextElementSibling;
+  if (!scroller || !next || !next.classList.contains('rf-v2-wizard-section')) return;
+  scroller.scrollTo({ top: next.offsetTop - 12, behavior: 'smooth' });
+}
+
+// The open narrative wizard registers its own preview builder here so a
+// choice-card click or field input can refresh just the sticky preview
+// without going through the full render loop (the host's data-signature
+// is keyed off STATE, not live in-DOM field values).
+let activePreviewBuilder = null;
+export function setActivePreviewBuilder(fn) { activePreviewBuilder = fn; }
+export function refreshWizardPreview() {
+  const node = wizardHost()?.querySelector('#rf-v2-wizard-preview');
+  if (!node || !activePreviewBuilder) return;
+  node.innerHTML = `<div class="rf-v2-wizard-preview-label">${node.querySelector('.rf-v2-wizard-preview-label')?.textContent || 'Preview'}</div>${activePreviewBuilder()}`;
+}
+
+// A narrative wizard's other live-computed readouts (e.g. a "7 days on
+// the road" duration chip next to a date range) that live outside the
+// sticky preview node and so need their own refresh hook.
+let activeReadoutsRefresh = null;
+export function setActiveReadoutsRefresh(fn) { activeReadoutsRefresh = fn; }
+export function refreshWizardReadouts() { activeReadoutsRefresh?.(); }

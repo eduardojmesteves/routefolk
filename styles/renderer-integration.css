@@ -8,15 +8,15 @@
   display:grid;
   place-items:center;
   padding:32px;
-  background:var(--rf-d2-bg,#e7e4d8);
+  background:var(--rf-d2-bg,#1B1F23);
   background-image:var(--rf-d2-contour-bg,var(--contour));
   background-size:420px 420px;
-  color:var(--rf-d2-ink,#171a26);
+  color:var(--rf-d2-ink,#F4EFE6);
 }
 .rf-auth-card{
   width:min(640px,100%);
   border:1px solid var(--rf-d2-rule-2,rgba(23,26,38,.2));
-  background:rgba(243,240,228,.76);
+  background:rgba(36,41,48,.76);
   background-image:var(--rf-d2-contour-bg,var(--contour));
   background-size:420px 420px;
   padding:42px;
@@ -26,15 +26,17 @@
   font:500 clamp(48px,8vw,86px)/.9 var(--rf-d2-font-serif,serif);
   letter-spacing:-.055em;
   margin:12px 0 18px;
-  color:var(--rf-d2-ink,#171a26);
+  color:var(--rf-d2-ink,#F4EFE6);
 }
 .rf-auth-card p{
   max-width:480px;
   font:18px/1.45 var(--rf-d2-font-ui,sans-serif);
-  color:var(--rf-d2-muted,#787a8a);
+  color:var(--rf-d2-muted,#B6AEA0);
   margin:0 0 28px;
 }
 .rf-auth-card .rf-d2-btn{height:46px;padding:0 22px;}
+.rf-auth-card .rf-eyebrow{margin-bottom:4px;}
+.rf-auth-helper{display:block;margin-top:14px;font:13px var(--rf-d2-font-ui,sans-serif);color:var(--rf-d2-muted,#B6AEA0);}
 
 .rf-clean-summary-entry{
   display:grid;
@@ -43,13 +45,13 @@
   align-items:center;
   padding:10px 16px 10px;
   border-bottom:1px dotted var(--rf-d2-rule,rgba(23,26,38,.1));
-  background:rgba(231,228,216,.34);
-  color:var(--rf-d2-muted,#787a8a);
+  background:rgba(36,41,48,.34);
+  color:var(--rf-d2-muted,#B6AEA0);
   font:13px var(--rf-d2-font-ui,sans-serif);
 }
 .rf-clean-summary-entry strong{
   font:500 15px var(--rf-d2-font-serif,serif);
-  color:var(--rf-d2-ink-2,#3b405a);
+  color:var(--rf-d2-ink-2,#D9D2C4);
 }
 .rf-clean-summary-entry span{
   min-width:0;
@@ -62,7 +64,7 @@
   object-fit:cover;
 }
 .rf-d2-account-card .rf-d2-btn.is-danger{
-  color:var(--rf-d2-danger,#7d3458);
+  color:var(--rf-d2-danger,#FF5D4D);
   border-color:rgba(125,52,88,.34);
   background:rgba(125,52,88,.05);
 }
@@ -83,7 +85,7 @@
   .rf-d2-filter-row:has(.rf-d2-search) .rf-d2-pills{display:none;}
   .rf-d2-filter-row:has(.rf-d2-search) .rf-d2-search{width:100%;}
   .rf-d2-filter-row .rf-d2-search input{height:34px;min-width:0;font-size:13px;padding:0 4px;border:0;background:transparent;}
-  .rf-d2-filter-row .rf-d2-search-close{width:28px;height:28px;flex:0 0 28px;border:0;background:transparent;}
+  .rf-d2-filter-row .rf-d2-search-close{width:32px;height:32px;flex:0 0 32px;border:0;background:transparent;}
   .rf-d2-hero-top{display:grid!important;grid-template-columns:minmax(0,1fr) 230px;gap:28px;align-items:start!important;}
   .rf-d2-hero-stamps{display:grid!important;grid-template-columns:1fr 1fr;gap:8px;justify-items:stretch;align-items:stretch;min-width:0;}
   .rf-d2-hero-stamps>.rf-d2-state-pill,.rf-d2-hero-stamps>.rf-d2-stamp{width:100%;box-sizing:border-box;justify-content:center;min-height:30px;height:30px;padding:0 10px;}
@@ -91,7 +93,6 @@
   .rf-v2-hero-actions .rf-d2-btn{width:100%;height:34px!important;padding:0 12px;white-space:nowrap;}
   .rf-d2-main.is-account{height:100vh;overflow-y:auto;padding:36px 44px 72px;}
   .rf-d2-main.is-account .rf-d2-account-card,
-  .rf-d2-main.is-account .rf-d2-riders-card,
   .rf-d2-main.is-account .rf-d2-mileage,
   .rf-d2-main.is-account .rf-clean-desktop-pref{width:min(920px,100%);max-width:920px;margin-left:auto;margin-right:auto;box-sizing:border-box;}
   .rf-d2-main.is-account .rf-d2-account-card{grid-template-columns:84px minmax(0,1fr) 132px;padding:20px 24px;margin-top:28px;}
@@ -116,5 +117,8 @@
   }
   .rf-auth-card p{
     font-size:16px;
+  }
+  .rf-auth-card .rf-d2-btn{
+    width:100%;
   }
 }

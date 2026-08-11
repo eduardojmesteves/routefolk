@@ -12,7 +12,7 @@
 // ============================================================
 
 import { STATE } from '../../../state/app-state.js';
-import { errorMessage } from './archive-map-geometry.js';
+import { errorMessage, completedTripGpxCoverage } from './archive-map-geometry.js';
 import {
   createLeafletMap,
   destroyLeafletMap,
@@ -54,6 +54,15 @@ function setStatus(message) {
   if (el) el.textContent = message || '';
 }
 
+// HANDOFF.md: caption real GPX coverage across completed trips, e.g.
+// "2 of 5 completed trips plotted from uploaded GPX" — never a static
+// string. Trip-level (a trip may have several stages/tracks), independent
+// of whether every track's geometry has finished parsing.
+function coverageLabel() {
+  const { withGpx, total } = completedTripGpxCoverage(STATE);
+  return `${withGpx} of ${total} completed trip${total === 1 ? '' : 's'} plotted from uploaded GPX`;
+}
+
 function isInDocument(el) {
   return !!el && document.documentElement.contains(el);
 }
@@ -83,7 +92,7 @@ function renderLeafletOverlay(L) {
 
   const result = drawTracksOnMap(L, mapInstance, overlayLayer, STATE);
   if (result.kind === 'empty') {
-    setStatus('No completed GPX tracks found yet.');
+    setStatus(coverageLabel());
   } else if (result.kind === 'no-geometry') {
     setStatus(
       result.loading
@@ -91,9 +100,7 @@ function renderLeafletOverlay(L) {
         : 'Completed GPX tracks exist, but no drawable geometry is available.',
     );
   } else {
-    setStatus(
-      `${result.count} completed GPX route${result.count === 1 ? '' : 's'} shown on OpenStreetMap.`,
-    );
+    setStatus(coverageLabel());
   }
 }
 
@@ -103,11 +110,9 @@ function renderFallback(err) {
   if (err) console.warn('[routefolk] archive map fallback:', errorMessage(err));
   const result = renderSvgFallback(container, STATE, err);
   if (result.kind === 'empty') {
-    setStatus('Interactive map unavailable. No drawable GPX route geometry found yet.');
+    setStatus(`${coverageLabel()}. Interactive map unavailable.`);
   } else {
-    setStatus(
-      `${result.count} completed GPX route${result.count === 1 ? '' : 's'} shown as a local GPX fallback. Interactive map unavailable.`,
-    );
+    setStatus(`${coverageLabel()} (local fallback — interactive map unavailable).`);
   }
 }
 

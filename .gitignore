@@ -4,6 +4,7 @@
 
 # Local administration tooling — never deploy
 /tools/
+/design-inspiration/
 
 # Test infrastructure — run locally, never commit
 /tests/

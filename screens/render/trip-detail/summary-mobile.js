@@ -23,10 +23,11 @@ function totalsGrid(trip) {
   return `<h2>Totals</h2>${metricGrid([['Distance', Math.round(s.distance).toLocaleString(), 'km'], ['Spent', fmtEuro(s.spent), 'total'], ['Stages', String(s.stages), 'days'], ['Entries', String(s.entries), 'journal']])}`;
 }
 
+// HANDOFF.md: stat grid sits above the must-keep stage-by-stage table.
 export function renderMobileSummary(trip, { screen, tripHeader }) {
-  return screen(`${tripHeader(trip, 'summary')}<main class="rf-clean-page">${summaryCard(trip)}${totalsGrid(trip)}</main>`);
+  return screen(`${tripHeader(trip, 'summary')}<main class="rf-clean-page">${totalsGrid(trip)}${summaryCard(trip)}</main>`);
 }
 
 export function renderMobileArchiveSummary(trip, { screen, tripHeader }) {
-  return screen(`${tripHeader(trip, 'summary', 'archive', true)}<main class="rf-clean-page">${summaryCard(trip)}${totalsGrid(trip)}</main>`, 'archive');
+  return screen(`${tripHeader(trip, 'summary', 'archive', true)}<main class="rf-clean-page">${totalsGrid(trip)}${summaryCard(trip)}</main>`, 'archive');
 }

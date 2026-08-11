@@ -12,6 +12,7 @@ import {
   stats,
   subtitle,
   tripNo,
+  tripsHeroHtml,
 } from '../shared.js';
 
 const TRIP_FILTERS = [['all', 'All'], ['planning', 'Planning'], ['active', 'Active']];
@@ -65,7 +66,7 @@ export function renderMobileTrips(screen) {
   if (STATE.tripsError) {
     return screen(`<main class="rf-clean-page"><div class="rf-clean-empty">${esc(STATE.tripsError)}</div></main>`, 'trips');
   }
-  return screen(`<header class="rf-clean-trips-hero"><div><div class="rf-clean-kicker">ROUTEFOLK</div><h1>Trips</h1><p>${activeCount} on the road map · ${completedCount} in archive</p></div><button class="rf-clean-new-trip" data-action="rf-m2-new-trip">+ New</button></header><main class="rf-clean-page"><div class="rf-clean-toolbar"><div>${TRIP_FILTERS.map(([key, label]) => `<button class="${(STATE.tripStatusFilter || 'all') === key ? 'is-active' : ''}" data-action="rf-m2-status-filter" data-value="${key}">${label}</button>`).join('')}</div>${STATE.tripFiltersOpen || STATE.tripSearch ? `<input data-action="rf-m2-search-input" value="${esc(STATE.tripSearch || '')}" placeholder="Search by name"><button data-action="rf-m2-search-toggle">×</button>` : `<button class="rf-clean-search" data-action="rf-m2-search-toggle">⌕</button>`}</div><div class="rf-clean-card-list rf-clean-trip-list">${rows.map(tripTicket).join('') || '<div class="rf-clean-empty">No matching trips.</div>'}</div></main>`, 'trips');
+  return screen(`<header class="rf-clean-trips-hero"><div><div class="rf-clean-kicker">ROUTEFOLK</div><h1>Trips</h1><p>${activeCount} on the road map · ${completedCount} in archive</p></div><button class="rf-clean-new-trip" data-action="rf-m2-new-trip">+ New</button></header><main class="rf-clean-page"><div class="rf-clean-toolbar"><div>${TRIP_FILTERS.map(([key, label]) => `<button class="${(STATE.tripStatusFilter || 'all') === key ? 'is-active' : ''}" data-action="rf-m2-status-filter" data-value="${key}">${label}</button>`).join('')}</div>${STATE.tripFiltersOpen || STATE.tripSearch ? `<input data-action="rf-m2-search-input" value="${esc(STATE.tripSearch || '')}" placeholder="Search by name"><button data-action="rf-m2-search-toggle">×</button>` : `<button class="rf-clean-search" data-action="rf-m2-search-toggle">⌕</button>`}</div>${tripsHeroHtml()}<div class="rf-clean-card-list rf-clean-trip-list">${rows.map(tripTicket).join('') || '<div class="rf-clean-empty">No matching trips.</div>'}</div></main>`, 'trips');
 }
 
 export { statusLabel, statusClass };

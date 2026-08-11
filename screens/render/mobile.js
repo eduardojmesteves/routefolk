@@ -12,6 +12,7 @@ import {
   currentTrip,
   expenses,
   items,
+  offlineBannerHtml,
   season,
   stages,
   subtitle,
@@ -31,7 +32,7 @@ function bottomNav(active) {
 }
 
 function screen(inner, active = 'trips') {
-  return `<div class="rf-clean-mobile"><div class="rf-clean-scroll">${inner}</div>${bottomNav(active)}</div>`;
+  return `${offlineBannerHtml()}<div class="rf-clean-mobile"><div class="rf-clean-scroll">${inner}</div>${bottomNav(active)}</div>`;
 }
 
 function tripHeader(trip, active, backTo = 'trips', summaryOnly = false) {
