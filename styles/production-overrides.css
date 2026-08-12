@@ -65,7 +65,7 @@
 
   .rf-clean-bottom{
     height:auto!important;
-    min-height:44px!important;
+    min-height:48px!important;
     display:flex!important;
     align-items:stretch!important;
     justify-content:space-around!important;
@@ -85,11 +85,11 @@
     display:flex!important;
     align-items:center!important;
     justify-content:center!important;
-    padding:6px 10px!important;
+    padding:7px 11px!important;
     border-radius:var(--rf-radius-pill)!important;
     color:var(--rf-d2-ink)!important;
     opacity:.55!important;
-    font:600 12px/1.2 var(--rf-m2-font-ui)!important;
+    font:600 13px/1.2 var(--rf-m2-font-ui)!important;
     transition:opacity .12s ease,color .12s ease!important;
   }
 
@@ -119,7 +119,7 @@
 
   .rf-clean-trips-hero .rf-clean-kicker{
     margin:0 0 4px!important;
-    font:800 10px/1 var(--rf-m2-font-mono)!important;
+    font:800 11px/1 var(--rf-m2-font-mono)!important;
     letter-spacing:.16em!important;
     color:var(--rf-m2-primary)!important;
     text-transform:uppercase!important;
@@ -127,7 +127,7 @@
 
   .rf-clean-trips-hero h1{
     margin:0!important;
-    font:700 30px/1 var(--rf-m2-font-serif)!important;
+    font:700 32px/1 var(--rf-m2-font-serif)!important;
     color:var(--rf-m2-ink)!important;
     letter-spacing:-.015em!important;
   }
@@ -135,7 +135,7 @@
   .rf-clean-trips-hero p{
     max-width:260px!important;
     margin:4px 0 0!important;
-    font:500 12px/1.28 var(--rf-m2-font-ui)!important;
+    font:500 13px/1.28 var(--rf-m2-font-ui)!important;
     color:var(--rf-m2-muted)!important;
   }
 
@@ -156,14 +156,14 @@
   .rf-clean-fab-new-trip{
     position:absolute!important;
     right:18px!important;
-    bottom:calc(44px + 16px + 14px + env(safe-area-inset-bottom,0px))!important;
+    bottom:calc(48px + 16px + 14px + env(safe-area-inset-bottom,0px))!important;
     z-index:5!important;
     border:0!important;
     border-radius:var(--rf-radius-pill)!important;
-    padding:12px 18px!important;
+    padding:13px 19px!important;
     background:var(--rf-d2-primary)!important;
     color:var(--rf-d2-ink)!important;
-    font:800 13px/1 var(--rf-m2-font-ui)!important;
+    font:800 14px/1 var(--rf-m2-font-ui)!important;
     white-space:nowrap!important;
     box-shadow:var(--rf-shadow-md)!important;
     cursor:pointer!important;
@@ -188,13 +188,13 @@
   .rf-clean-toolbar button,
   .rf-clean-mini-pills button,
   .rf-clean-view-toggle button{
-    min-height:40px!important;
-    padding:9px 13px!important;
+    min-height:42px!important;
+    padding:10px 14px!important;
     border:1px solid var(--rf-m2-rule-2)!important;
     border-radius:999px!important;
     background:transparent!important;
     color:var(--rf-m2-muted)!important;
-    font:800 11px/1 var(--rf-m2-font-ui)!important;
+    font:800 12px/1 var(--rf-m2-font-ui)!important;
     box-shadow:none!important;
     cursor:pointer!important;
   }
@@ -219,18 +219,23 @@
   }
 
   .rf-clean-toolbar input{
-    height:32px!important;
+    height:34px!important;
     min-width:0!important;
     border:1px solid var(--rf-m2-rule-2)!important;
     border-radius:999px!important;
     background:var(--rf-m2-surface)!important;
     color:var(--rf-m2-ink)!important;
     padding:0 12px!important;
-    font:600 12px/1 var(--rf-m2-font-ui)!important;
+    font:600 13px/1 var(--rf-m2-font-ui)!important;
   }
 
   .rf-clean-trip-list{
     gap:12px!important;
+    /* Clears the floating "+ New trip" FAB: without this, a short last
+       card (e.g. a 0km/0-stage planning trip) scrolls to rest directly
+       behind the FAB instead of stopping above it — matches the FAB's
+       own bottom offset + its height + a breathing-room gap. */
+    margin-bottom:calc(48px + 16px + 14px + 40px + 16px + env(safe-area-inset-bottom,0px))!important;
   }
 
   .rf-clean-trip-card,
@@ -239,7 +244,7 @@
     display:block!important;
     width:100%!important;
     min-height:0!important;
-    padding:16px!important;
+    padding:18px!important;
     border:1px solid var(--rf-m2-rule)!important;
     border-radius:4px!important;
     background:var(--rf-m2-surface)!important;
@@ -277,13 +282,13 @@
   }
 
   .rf-clean-trip-card-footer button{
-    min-height:32px!important;
+    min-height:34px!important;
     padding:0 14px!important;
     border:1px solid var(--rf-m2-rule-2)!important;
     border-radius:999px!important;
     background:transparent!important;
     color:var(--rf-m2-muted)!important;
-    font:800 12px/1 var(--rf-m2-font-ui)!important;
+    font:800 13px/1 var(--rf-m2-font-ui)!important;
     cursor:pointer!important;
   }
 
@@ -298,7 +303,7 @@
     display:block!important;
     margin:0!important;
     padding-right:10px!important;
-    font:700 22px/1.1 var(--rf-m2-font-serif)!important;
+    font:700 23px/1.1 var(--rf-m2-font-serif)!important;
     color:var(--rf-m2-ink)!important;
     letter-spacing:-.01em!important;
     overflow-wrap:anywhere!important;
@@ -309,12 +314,12 @@
     max-width:none!important;
     margin-top:2px!important;
     margin-bottom:10px!important;
-    font:italic 13px/1.25 var(--rf-m2-font-serif)!important;
+    font:italic 14px/1.25 var(--rf-m2-font-serif)!important;
     color:var(--rf-m2-muted)!important;
   }
 
   .rf-trip-card-top em{
-    font:italic 12px/1 var(--rf-m2-font-serif)!important;
+    font:italic 13px/1 var(--rf-m2-font-serif)!important;
     color:var(--rf-m2-muted)!important;
     letter-spacing:0!important;
     white-space:nowrap!important;
@@ -323,7 +328,7 @@
   .rf-trip-card-date{
     max-width:none!important;
     margin:0 0 10px!important;
-    font:700 10.5px/1.2 var(--rf-m2-font-mono)!important;
+    font:700 11px/1.2 var(--rf-m2-font-mono)!important;
     letter-spacing:.04em!important;
     color:var(--rf-m2-ink-2)!important;
     text-transform:none!important;
@@ -363,7 +368,7 @@
 
   .rf-trip-card-metrics b{
     display:block!important;
-    font:500 20px/1 var(--rf-m2-font-serif)!important;
+    font:500 21px/1 var(--rf-m2-font-serif)!important;
     color:var(--rf-m2-ink)!important;
     letter-spacing:-.01em!important;
     white-space:nowrap!important;
@@ -372,7 +377,7 @@
   .rf-trip-card-metrics small{
     display:block!important;
     margin-top:2px!important;
-    font:800 10.5px/1.2 var(--rf-m2-font-mono)!important;
+    font:800 11px/1.2 var(--rf-m2-font-mono)!important;
     letter-spacing:.1em!important;
     color:var(--rf-m2-muted)!important;
     text-transform:uppercase!important;
@@ -393,12 +398,12 @@
     align-items:center!important;
     gap:6px!important;
     min-height:0!important;
-    padding:3px 10px!important;
+    padding:4px 11px!important;
     border:1px solid rgba(38,52,94,.2)!important;
     border-radius:999px!important;
     background:var(--rf-m2-primary-soft)!important;
     color:var(--rf-m2-primary)!important;
-    font:800 10.5px/1 var(--rf-m2-font-ui)!important;
+    font:800 11.5px/1 var(--rf-m2-font-ui)!important;
     white-space:nowrap!important;
   }
 
@@ -435,12 +440,12 @@
     display:inline-flex!important;
     align-items:center!important;
     min-height:0!important;
-    padding:2px 8px!important;
+    padding:3px 9px!important;
     border:1.2px solid var(--rf-m2-primary)!important;
     border-radius:2px!important;
     background:rgba(255,255,255,.4)!important;
     color:var(--rf-m2-primary)!important;
-    font:900 10.5px/1.2 var(--rf-m2-font-mono)!important;
+    font:900 11px/1.2 var(--rf-m2-font-mono)!important;
     letter-spacing:.14em!important;
     text-transform:uppercase!important;
     transform:none!important;
@@ -587,15 +592,27 @@
   }
 
   .rf-v2-wizard-host.is-mobile .rf-d2-aside-title{
-    font:700 30px/1.02 var(--rf-m2-font-serif)!important;
+    font:700 32px/1.05 var(--rf-m2-font-serif)!important;
     margin:4px 0 8px!important;
+  }
+
+  .rf-v2-wizard-host.is-mobile .rf-d2-aside-sub{
+    font:italic 14px/1.45 var(--rf-m2-font-serif)!important;
   }
 
   .rf-v2-wizard-host.is-mobile .rf-d2-aside-kicker,
   .rf-v2-wizard-host.is-mobile .rf-d2-form-label{
-    font:800 11px/1 var(--rf-m2-font-mono)!important;
+    font:800 12px/1 var(--rf-m2-font-mono)!important;
     letter-spacing:.18em!important;
     text-transform:uppercase!important;
+  }
+
+  .rf-v2-wizard-host.is-mobile .rf-v2-wizard-section-head h3{
+    font:600 21px/1.2 var(--rf-m2-font-serif)!important;
+  }
+
+  .rf-v2-wizard-host.is-mobile .rf-v2-wizard-section-head p{
+    font:14px/1.4 var(--rf-m2-font-ui)!important;
   }
 
   .rf-v2-wizard-host.is-mobile .rf-d2-form-row,
@@ -610,15 +627,15 @@
   .rf-v2-wizard-host.is-mobile select.rf-d2-input,
   .rf-v2-wizard-host.is-mobile .rf-d2-select{
     width:100%!important;
-    height:48px!important;
-    min-height:48px!important;
-    max-height:48px!important;
+    height:50px!important;
+    min-height:50px!important;
+    max-height:50px!important;
     border:1px solid var(--rf-m2-rule-2)!important;
     background:rgba(36,41,48,.72)!important;
     color:var(--rf-m2-ink)!important;
     padding:0 14px!important;
     border-radius:10px!important;
-    font:600 16px/48px var(--rf-m2-font-ui)!important;
+    font:600 17px/50px var(--rf-m2-font-ui)!important;
     box-sizing:border-box!important;
     pointer-events:auto!important;
     touch-action:manipulation!important;
@@ -634,7 +651,7 @@
     color:var(--rf-m2-ink)!important;
     padding:12px 14px!important;
     border-radius:10px!important;
-    font:600 16px/1.35 var(--rf-m2-font-ui)!important;
+    font:600 17px/1.35 var(--rf-m2-font-ui)!important;
     box-sizing:border-box!important;
     pointer-events:auto!important;
     touch-action:manipulation!important;
@@ -668,9 +685,10 @@
   }
 
   .rf-v2-wizard-host.is-mobile .rf-d2-btn{
-    min-height:44px!important;
-    padding:0 18px!important;
+    min-height:46px!important;
+    padding:0 19px!important;
     border-radius:999px!important;
+    font-size:14px!important;
   }
 
   .rf-clean-map,

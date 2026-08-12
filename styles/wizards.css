@@ -87,7 +87,7 @@
   .rf-v2-wizard-narrative .rf-v2-wizard-head{padding:24px 22px 0;}
   .rf-v2-wizard-scroll{padding:0 22px 6px;}
   .rf-v2-wizard-footer{padding:14px 22px calc(18px + env(safe-area-inset-bottom));}
-  .rf-v2-wizard-footer .rf-d2-btn{flex:1;}
+  .rf-v2-wizard-footer .rf-d2-btn{flex:1;min-height:46px;font-size:14px;}
 }
 @media(max-width:959px){
   .rf-v2-cost-cta{text-align:left;}
