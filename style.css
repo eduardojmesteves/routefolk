@@ -84,10 +84,19 @@
 }
 
 * { box-sizing: border-box; }
-html, body { margin: 0; padding: 0; height: 100%; }
+/* html/body's own background must track the real shipped theme
+   (--rf-d2-bg, the dark Ember Trail token), not the legacy --bg token —
+   --bg still resolves to a light beige for [data-palette="midnight"] in
+   this file's own retired palette block above, a relic from before
+   "midnight" was repurposed as the dark redesign's name. Wherever the
+   app's own content doesn't fully cover the viewport (iOS standalone
+   PWA safe-area gaps, elastic overscroll bounce), THIS is the color
+   that shows through, so it has to be correct on its own, not just
+   covered by content. */
+html, body { margin: 0; padding: 0; height: 100%; background: var(--rf-d2-bg, var(--bg)); overscroll-behavior: none; }
 body {
   font-family: var(--font-ui);
-  background: var(--bg);
+  background: var(--rf-d2-bg, var(--bg));
   color: var(--ink);
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
