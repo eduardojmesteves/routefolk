@@ -25,16 +25,16 @@ import {
 
 /** Expense create actions (exact match) owned by this module. */
 const EXPENSE_WIZARD_ACTIONS = new Set([
-  'rf-v2-add-expense',
-  'rf-v2-add-stage-expense',
-  'rf-v2-save-expense',
+  'rf-add-expense',
+  'rf-add-stage-expense',
+  'rf-save-expense',
 ]);
 
 /** Expense edit/delete actions (exact match) sourced from extra-writes.js. */
 const EXPENSE_EXTRA_ACTIONS = new Set([
-  'rf-v2-edit-expense',
-  'rf-v2-delete-expense',
-  'rf-v2-update-expense',
+  'rf-edit-expense',
+  'rf-delete-expense',
+  'rf-update-expense',
 ]);
 
 /**
@@ -49,12 +49,12 @@ export async function saveExpense(event) {
   if (!endBusy) return;
   try {
     const expense = await createExpense(trip.id, {
-      category: field('v2-expense-category')?.value || 'other',
-      amount: field('v2-expense-amount')?.value || '',
-      user_id: field('v2-expense-payer')?.value || STATE.user?.id,
-      date: field('v2-expense-date')?.value || null,
-      stage_id: field('v2-expense-stage')?.value || null,
-      description: fieldValue('v2-expense-description'),
+      category: field('expense-category')?.value || 'other',
+      amount: field('expense-amount')?.value || '',
+      user_id: field('expense-payer')?.value || STATE.user?.id,
+      date: field('expense-date')?.value || null,
+      stage_id: field('expense-stage')?.value || null,
+      description: fieldValue('expense-description'),
     });
     STATE.expensesByTrip[trip.id] = [...expensesForTrip(trip.id), expense];
     STATE.wizard = null;
@@ -62,7 +62,7 @@ export async function saveExpense(event) {
     await api().loadExpensesForTrip?.(trip.id, { quiet: true });
     renderAll();
   } catch (error) {
-    showError('v2-expense-error', error);
+    showError('expense-error', error);
   } finally {
     endBusy();
   }
@@ -85,14 +85,14 @@ export function owns(action) {
  * @returns {Promise<boolean>} true if handled
  */
 export async function handle(event, btn, action) {
-  if (action === 'rf-v2-add-expense' || action === 'rf-v2-add-stage-expense') {
+  if (action === 'rf-add-expense' || action === 'rf-add-stage-expense') {
     claim(event);
     STATE.wizard = 'expense';
     STATE.editTargetId = btn.dataset.stageId || null;
     renderAll();
     return true;
   }
-  if (action === 'rf-v2-save-expense') {
+  if (action === 'rf-save-expense') {
     await saveExpense(event);
     return true;
   }

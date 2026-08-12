@@ -30,14 +30,14 @@ function notifyWizardLayer() {
   wizardRenderQueued = true;
   requestAnimationFrame(() => {
     wizardRenderQueued = false;
-    document.dispatchEvent(new Event('routefolk:v2-render'));
+    document.dispatchEvent(new Event('routefolk:wizard-render'));
   });
 }
 
 function renderSoon() {
   saveUiState();
   appApi().renderAll?.();
-  if (typeof window.__routefolkV2Render === 'function') window.__routefolkV2Render();
+  if (typeof window.__routefolkWizardRender === 'function') window.__routefolkWizardRender();
   if (!STATE.wizard) notifyWizardLayer();
 }
 
@@ -132,11 +132,11 @@ async function saveStage(event) {
   const trip = activeTrip();
   if (!trip) return;
   const stage = await createStage(trip.id, {
-    start_location: byId('v2-stage-from')?.value?.trim() || '',
-    end_location: byId('v2-stage-to')?.value?.trim() || '',
-    planned_date: byId('v2-stage-date')?.value || '',
-    distance_km: byId('v2-stage-km')?.value?.trim() || '',
-    notes: byId('v2-stage-notes')?.value?.trim() || '',
+    start_location: byId('stage-from')?.value?.trim() || '',
+    end_location: byId('stage-to')?.value?.trim() || '',
+    planned_date: byId('stage-date')?.value || '',
+    distance_km: byId('stage-km')?.value?.trim() || '',
+    notes: byId('stage-notes')?.value?.trim() || '',
   });
   STATE.stagesByTrip[trip.id] = [...tripStages(trip.id), stage];
   STATE.selectedStageId = stage.id;
@@ -150,13 +150,13 @@ async function saveJournal(event) {
   claim(event);
   const stage = selectedStage();
   if (!stage) return;
-  const time = byId('v2-entry-time')?.value || '';
+  const time = byId('entry-time')?.value || '';
   const date = stage.planned_date || new Date().toISOString().slice(0, 10);
   const entry = await createEntry(stage.id, {
-    entry_type: byId('v2-entry-type')?.value || STATE.journalType || 'note',
-    title: byId('v2-entry-title')?.value?.trim() || '',
-    location: byId('v2-entry-place')?.value?.trim() || '',
-    description: byId('v2-entry-note')?.value?.trim() || '',
+    entry_type: byId('entry-type')?.value || STATE.journalType || 'note',
+    title: byId('entry-title')?.value?.trim() || '',
+    location: byId('entry-place')?.value?.trim() || '',
+    description: byId('entry-note')?.value?.trim() || '',
     timestamp: time ? `${date}T${time}:00` : null,
   });
   const existing = STATE.entriesByStage[stage.id];
@@ -309,7 +309,7 @@ export async function dispatchAppAction(event, btn, action) {
   // row (hidden by default); tap the same card again, or select a
   // different one, to move/close the reveal. See HANDOFF.md — this is
   // deliberately a select, not a navigate (Journal opens from the
-  // revealed row's own "Journal" button, via rf-m2-open-stage above).
+  // revealed row's own "Journal" button, via rf-mobile-open-stage above).
   if (action.endsWith('select-stage-card')) {
     claim(event);
     const id = btn.dataset.stageId;
@@ -347,7 +347,7 @@ document.addEventListener('input', (event) => {
 
 document.addEventListener('submit', async (event) => {
   const target = event.target instanceof Element ? event.target : null;
-  const form = target?.closest('[data-action="rf-d2-item-form"]');
+  const form = target?.closest('[data-action="rf-desktop-item-form"]');
   if (!form) return;
   await addItem(event, form);
 }, true);

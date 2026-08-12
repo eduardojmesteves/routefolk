@@ -19,7 +19,7 @@ export function navigateButtonHtml(stage, {
 
   const url = stageRouteUrl(stage);
   if (!url && !hasCoords(stage)) {
-    return `<button class="rf-nav-btn rf-nav-add" data-action="rf-m2-add-route" data-stage-id="${esc(stage?.id || '')}" type="button">+ Add route</button>`;
+    return `<button class="rf-nav-btn rf-nav-add" data-action="rf-mobile-add-route" data-stage-id="${esc(stage?.id || '')}" type="button">+ Add route</button>`;
   }
 
   if (online === false) {
@@ -33,7 +33,7 @@ export function navigateButtonHtml(stage, {
   const remembered = (() => {
     try { return localStorage.getItem('rf_nav_default'); } catch { return null; }
   })();
-  const action = remembered ? 'rf-m2-nav-direct' : 'rf-m2-open-nav-sheet';
+  const action = remembered ? 'rf-mobile-nav-direct' : 'rf-mobile-open-nav-sheet';
   const defaultAttr = remembered ? ` data-target="${esc(remembered)}"` : '';
   return `<button class="rf-nav-btn rf-nav-default" data-action="${action}" data-stage-id="${esc(stage?.id || '')}"${defaultAttr} type="button">Navigate ↗</button>`;
 }

@@ -39,7 +39,7 @@ export function renderSvgFallback(container, state, err) {
 
   if (!tracks.length) {
     const message = errorMessage(err);
-    container.innerHTML = `<div class="rf-v2-map-fallback"><div><strong>Map unavailable</strong><span>${esc(message)}</span></div></div>`;
+    container.innerHTML = `<div class="rf-map-fallback"><div><strong>Map unavailable</strong><span>${esc(message)}</span></div></div>`;
     return { kind: 'empty', message };
   }
 
@@ -56,12 +56,12 @@ export function renderSvgFallback(container, state, err) {
       const [startX, startY] = startCoord.split(',');
       const [endX, endY] = endCoord.split(',');
       const startCircle =
-        index === 0 ? `<circle class="rf-v2-map-start" cx="${startX}" cy="${startY}" r="6"/>` : '';
-      return `<polyline class="rf-v2-map-route" points="${polyline}"><title>${esc(trackLabel(entry.track))}</title></polyline>${startCircle}<circle class="rf-v2-map-end" cx="${endX}" cy="${endY}" r="6"/>`;
+        index === 0 ? `<circle class="rf-map-start" cx="${startX}" cy="${startY}" r="6"/>` : '';
+      return `<polyline class="rf-map-route" points="${polyline}"><title>${esc(trackLabel(entry.track))}</title></polyline>${startCircle}<circle class="rf-map-end" cx="${endX}" cy="${endY}" r="6"/>`;
     })
     .join('');
 
-  container.innerHTML = `<svg class="rf-v2-map-svg" viewBox="0 0 ${VIEW_WIDTH} ${VIEW_HEIGHT}" role="img" aria-label="Archive GPX route map fallback"><defs><pattern id="rf-map-grid" width="80" height="80" patternUnits="userSpaceOnUse"><path d="M 80 0 L 0 0 0 80" fill="none" stroke="currentColor" stroke-opacity="0.08" stroke-width="1"/></pattern></defs><rect width="100%" height="100%" fill="url(#rf-map-grid)"/>${routesMarkup}</svg>`;
+  container.innerHTML = `<svg class="rf-map-svg" viewBox="0 0 ${VIEW_WIDTH} ${VIEW_HEIGHT}" role="img" aria-label="Archive GPX route map fallback"><defs><pattern id="rf-map-grid" width="80" height="80" patternUnits="userSpaceOnUse"><path d="M 80 0 L 0 0 0 80" fill="none" stroke="currentColor" stroke-opacity="0.08" stroke-width="1"/></pattern></defs><rect width="100%" height="100%" fill="url(#rf-map-grid)"/>${routesMarkup}</svg>`;
 
   return { kind: 'drawn', count: tracks.length };
 }

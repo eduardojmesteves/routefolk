@@ -11,15 +11,15 @@ import { fmtEuro } from '../../utils/format.js';
 
 /**
  * @param {Map<string, number>} map  label → amount (agg.cat / agg.payer)
- * @param {{kind:'category'|'payer', prefix:'rf-m2'|'rf-d2', heading?:string}} opts
+ * @param {{kind:'category'|'payer', prefix:'rf-mobile'|'rf-desktop', heading?:string}} opts
  * @returns {string} HTML, or '' when the map is empty
  */
 export function costsBreakdownHtml(map, { kind, prefix, heading } = {}) {
   const rows = [...map.entries()].sort((a, b) => b[1] - a[1]);
   if (!rows.length) return '';
   const max = rows[0][1] || 1;
-  const isM2 = prefix === 'rf-m2';
-  const cls = isM2 ? 'rf-clean-breakdown' : 'rf-d2-breakdown';
+  const isM2 = prefix === 'rf-mobile';
+  const cls = isM2 ? 'rf-clean-breakdown' : 'rf-desktop-breakdown';
   const payer = kind === 'payer' ? ' is-payer' : '';
   const head = isM2 && heading ? `<strong>${esc(heading)}</strong>` : '';
   return `<section class="${cls}${payer}">${head}`

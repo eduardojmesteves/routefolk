@@ -22,7 +22,7 @@ const SHELL_ASSETS = [
   './styles/packing-list.css',
   './styles/weather-nav.css',
   './styles/production-overrides.css',
-  './styles/v3-actions.css',
+  './styles/action-affordances.css',
   './vendor/leaflet/leaflet.css?v=routefolk-local-01',
   './vendor/leaflet/leaflet.js?v=routefolk-local-01',
   './actions/action-router.js',

@@ -31,10 +31,10 @@ const TRIP_APP_SUFFIXES = ['new-trip', 'list-edit-trip', 'list-delete-trip'];
 
 /** Wizard trip actions (exact match) owned by this module. */
 const TRIP_WIZARD_ACTIONS = new Set([
-  'rf-v2-edit-trip',
-  'rf-v2-delete-trip',
-  'rf-v2-save-trip',
-  'rf-v2-update-trip',
+  'rf-edit-trip',
+  'rf-delete-trip',
+  'rf-save-trip',
+  'rf-update-trip',
 ]);
 
 /**
@@ -64,7 +64,7 @@ export async function saveTripCreate(event) {
     await api().openTrip?.(trip.id, 'detail');
     renderAll();
   } catch (error) {
-    showError('v2-trip-error', error);
+    showError('trip-error', error);
   } finally {
     endBusy();
   }
@@ -102,7 +102,7 @@ export async function saveTripEdit(event) {
     await api().openTrip?.(updated.id, STATE.view || 'detail');
     renderAll();
   } catch (error) {
-    showError('v2-trip-error', error);
+    showError('trip-error', error);
   } finally {
     endBusy();
   }
@@ -146,23 +146,23 @@ export function owns(action) {
 export async function handle(event, btn, action) {
   if (action.endsWith('new-trip')) setDraftTripVisibility(null);
 
-  if (action === 'rf-v2-edit-trip') {
+  if (action === 'rf-edit-trip') {
     claim(event);
     STATE.wizard = 'trip-edit';
     setDraftTripVisibility(null);
     renderAll();
     return true;
   }
-  if (action === 'rf-v2-delete-trip') {
+  if (action === 'rf-delete-trip') {
     await removeTrip(event);
     return true;
   }
-  if (action === 'rf-v2-save-trip') {
+  if (action === 'rf-save-trip') {
     setDraftTripVisibility(null);
     await saveTripCreate(event);
     return true;
   }
-  if (action === 'rf-v2-update-trip') {
+  if (action === 'rf-update-trip') {
     setDraftTripVisibility(null);
     await saveTripEdit(event);
     return true;

@@ -20,19 +20,19 @@ const PALETTES = ['midnight'];
 let lastAuthUserId = null;
 let resumeInFlight = false;
 
-function shouldRenderV2Layer() {
+function shouldRenderWizardLayer() {
   if (!STATE.wizard) return true;
   const modeClass = window.matchMedia('(min-width:960px)').matches ? 'is-desktop' : 'is-mobile';
-  const existingHost = document.querySelector('.rf-v2-wizard-host');
+  const existingHost = document.querySelector('.rf-wizard-host');
   return !(existingHost && existingHost.dataset.wizard === STATE.wizard && existingHost.classList.contains(modeClass));
 }
 
 function renderAll() {
   if (STATE.user) saveUiState();
   document.dispatchEvent(new CustomEvent('routefolk:render'));
-  if (shouldRenderV2Layer()) document.dispatchEvent(new CustomEvent('routefolk:v2-render'));
+  if (shouldRenderWizardLayer()) document.dispatchEvent(new CustomEvent('routefolk:wizard-render'));
   if (typeof window.__routefolkRender === 'function') window.__routefolkRender();
-  if (typeof window.__routefolkV2Render === 'function') window.__routefolkV2Render();
+  if (typeof window.__routefolkWizardRender === 'function') window.__routefolkWizardRender();
 }
 
 const {

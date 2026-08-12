@@ -25,12 +25,12 @@ const NAVIGATION_SUFFIXES = [
 
 const NAVIGATION_EXACT = new Set([
   'rf-palette-select',
-  'rf-m2-open-nav-sheet',
-  'rf-m2-close-nav-sheet',
-  'rf-m2-nav-open',
-  'rf-m2-nav-direct',
-  'rf-m2-toggle-nav-remember',
-  'rf-m2-add-route',
+  'rf-mobile-open-nav-sheet',
+  'rf-mobile-close-nav-sheet',
+  'rf-mobile-nav-open',
+  'rf-mobile-nav-direct',
+  'rf-mobile-toggle-nav-remember',
+  'rf-mobile-add-route',
 ]);
 
 function claim(event) {
@@ -40,7 +40,7 @@ function claim(event) {
 
 function renderSoon() {
   window.routefolkData?.renderAll?.();
-  window.__routefolkV2Render?.();
+  window.__routefolkWizardRender?.();
 }
 
 function activeTrip() {
@@ -63,7 +63,7 @@ export function owns(action) {
 }
 
 async function handleNavigateAction(event, btn, action) {
-  if (action === 'rf-m2-open-nav-sheet') {
+  if (action === 'rf-mobile-open-nav-sheet') {
     claim(event);
     const stageId = btn.dataset.stageId || STATE.selectedStageId;
     STATE.navSheet = {
@@ -75,21 +75,21 @@ async function handleNavigateAction(event, btn, action) {
     return true;
   }
 
-  if (action === 'rf-m2-close-nav-sheet') {
+  if (action === 'rf-mobile-close-nav-sheet') {
     claim(event);
     STATE.navSheet = null;
     renderSoon();
     return true;
   }
 
-  if (action === 'rf-m2-toggle-nav-remember') {
+  if (action === 'rf-mobile-toggle-nav-remember') {
     claim(event);
     if (STATE.navSheet) STATE.navSheet = { ...STATE.navSheet, remember: !STATE.navSheet.remember };
     renderSoon();
     return true;
   }
 
-  if (action === 'rf-m2-nav-open' || action === 'rf-m2-nav-direct') {
+  if (action === 'rf-mobile-nav-open' || action === 'rf-mobile-nav-direct') {
     claim(event);
     const target = btn.dataset.target || 'google';
     const stage = stageById(btn.dataset.stageId || STATE.navSheet?.stageId);
@@ -106,7 +106,7 @@ async function handleNavigateAction(event, btn, action) {
     return true;
   }
 
-  if (action === 'rf-m2-add-route') {
+  if (action === 'rf-mobile-add-route') {
     claim(event);
     const stageId = btn.dataset.stageId || STATE.selectedStageId;
     STATE.selectedStageId = stageId;
@@ -114,7 +114,7 @@ async function handleNavigateAction(event, btn, action) {
     STATE.wizard = 'stage-edit';
     STATE.navSheet = null;
     renderSoon();
-    requestAnimationFrame(() => document.getElementById('v2-stage-route-edit')?.focus?.());
+    requestAnimationFrame(() => document.getElementById('stage-route-edit')?.focus?.());
     return true;
   }
 

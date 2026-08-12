@@ -67,11 +67,11 @@ async function route(event, btn, action) {
   // Shared wizard-cancel actions are owned by their originating sidecar
   // in the legacy capture-phase registration order (wizards before
   // extra-writes).
-  if (action === 'rf-v2-cancel-wizard' || action === 'rf-v2-cancel-gpx-upload' || action === 'rf-v2-choice-select' || action === 'rf-v2-star-select') {
+  if (action === 'rf-cancel-wizard' || action === 'rf-cancel-gpx-upload' || action === 'rf-choice-select' || action === 'rf-star-select') {
     await dispatchWizardAction(event, btn, action);
     return true;
   }
-  if (action === 'rf-v2-extra-cancel') {
+  if (action === 'rf-extra-cancel') {
     await dispatchExtraWriteAction(event, btn, action);
     return true;
   }

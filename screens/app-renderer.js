@@ -14,7 +14,7 @@ let lastMarkup = '';
 
 function loadingMarkup() {
   return isDesktop()
-    ? '<div class="rf-d2-app"><main class="rf-d2-main"><div class="rf-d2-empty is-loading">Loading…</div></main></div>'
+    ? '<div class="rf-desktop-app"><main class="rf-desktop-main"><div class="rf-desktop-empty is-loading">Loading…</div></main></div>'
     : '<div class="rf-clean-mobile"><div class="rf-clean-scroll"><main class="rf-clean-page"><div class="rf-clean-empty">Loading…</div></main></div></div>';
 }
 
@@ -23,14 +23,14 @@ export function renderRoutefolk() {
   const content = document.getElementById('content');
   if (!app || !content) return;
 
-  app.classList.add('is-v2');
+  app.classList.add('is-redesigned');
 
   let html = '';
   if (!STATE.user) html = renderSignedOutMarkup();
   else if (isDesktop()) html = renderDesktopMarkup();
   else html = renderMobileMarkup() || loadingMarkup();
 
-  const next = `<div class="rf-v2-root-host">${html}</div>`;
+  const next = `<div class="rf-root-host">${html}</div>`;
   if (next !== lastMarkup) {
     content.innerHTML = next;
     lastMarkup = next;
@@ -39,8 +39,8 @@ export function renderRoutefolk() {
 }
 
 window.__routefolkRender = renderRoutefolk;
-window.__routefolkV2Render = renderRoutefolk;
+window.__routefolkWizardRender = renderRoutefolk;
 document.addEventListener('routefolk:render', renderRoutefolk);
-document.addEventListener('routefolk:v2-render', renderRoutefolk);
+document.addEventListener('routefolk:wizard-render', renderRoutefolk);
 window.addEventListener('resize', renderRoutefolk);
 renderRoutefolk();

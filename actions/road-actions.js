@@ -24,14 +24,14 @@ import {
 
 /** Wizard road actions (exact match) owned by this module. */
 const ROAD_WIZARD_ACTIONS = new Set([
-  'rf-v2-add-road',
-  'rf-v2-edit-road',
-  'rf-v2-delete-road',
-  'rf-v2-save-road',
-  'rf-v2-update-road',
-  'rf-v2-road-link-stage-toggle',
-  'rf-v2-road-link-add',
-  'rf-v2-road-link-remove',
+  'rf-add-road',
+  'rf-edit-road',
+  'rf-delete-road',
+  'rf-save-road',
+  'rf-update-road',
+  'rf-road-link-stage-toggle',
+  'rf-road-link-add',
+  'rf-road-link-remove',
 ]);
 
 /** Applies the checked stage links against a road's existing links,
@@ -69,7 +69,7 @@ export async function saveRoadCreate(event) {
     await api().loadMyRoads?.({ quiet: true });
     renderAll();
   } catch (error) {
-    showError('v2-road-create-error', error);
+    showError('road-create-error', error);
   } finally {
     endBusy();
   }
@@ -95,7 +95,7 @@ export async function saveRoadEdit(event) {
     await api().loadMyRoads?.({ quiet: true });
     renderAll();
   } catch (error) {
-    showError('v2-road-error', error);
+    showError('road-error', error);
   } finally {
     endBusy();
   }
@@ -135,43 +135,43 @@ export function owns(action) {
  * @returns {Promise<boolean>} true if handled
  */
 export async function handle(event, btn, action) {
-  if (action === 'rf-v2-add-road') {
+  if (action === 'rf-add-road') {
     claim(event);
     STATE.wizard = 'road';
     STATE.editTargetId = null;
     renderAll();
     return true;
   }
-  if (action === 'rf-v2-edit-road') {
+  if (action === 'rf-edit-road') {
     claim(event);
     STATE.wizard = 'road-edit';
     STATE.editTargetId = btn.dataset.roadId;
     renderAll();
     return true;
   }
-  if (action === 'rf-v2-delete-road') {
+  if (action === 'rf-delete-road') {
     await removeRoad(event, btn.dataset.roadId);
     return true;
   }
-  if (action === 'rf-v2-save-road') {
+  if (action === 'rf-save-road') {
     await saveRoadCreate(event);
     return true;
   }
-  if (action === 'rf-v2-update-road') {
+  if (action === 'rf-update-road') {
     await saveRoadEdit(event);
     return true;
   }
-  if (action === 'rf-v2-road-link-stage-toggle') {
+  if (action === 'rf-road-link-stage-toggle') {
     claim(event);
     toggleRoadStagePicker();
     return true;
   }
-  if (action === 'rf-v2-road-link-add') {
+  if (action === 'rf-road-link-add') {
     claim(event);
     addRoadStageLink(btn.dataset.stageId);
     return true;
   }
-  if (action === 'rf-v2-road-link-remove') {
+  if (action === 'rf-road-link-remove') {
     claim(event);
     removeRoadStageLink(btn.dataset.stageId);
     return true;

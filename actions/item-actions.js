@@ -30,14 +30,14 @@ import {
 
 /** Item create/update actions (exact match) owned by this module. */
 const ITEM_WIZARD_ACTIONS = new Set([
-  'rf-v2-save-item',
-  'rf-v2-update-item',
+  'rf-save-item',
+  'rf-update-item',
 ]);
 
 /** Item actions handled by extra-writes.js (exact match) — second priority. */
 const ITEM_EXTRA_ACTIONS = new Set([
-  'rf-v2-edit-item',
-  'rf-v2-delete-item',
+  'rf-edit-item',
+  'rf-delete-item',
 ]);
 
 /** Shell-level item actions (suffix-matched) sourced from app-actions.js. */
@@ -67,7 +67,7 @@ export async function saveItemCreate(event) {
     await api().loadItemsForTrip?.(trip.id, { quiet: true });
     renderAll();
   } catch (error) {
-    showError('v2-item-error', error);
+    showError('item-error', error);
   } finally {
     endBusy();
   }
@@ -92,7 +92,7 @@ export async function saveItemEdit(event) {
     await api().loadItemsForTrip?.(trip.id, { quiet: true });
     renderAll();
   } catch (error) {
-    showError('v2-item-error', error);
+    showError('item-error', error);
   } finally {
     endBusy();
   }
@@ -118,11 +118,11 @@ export function owns(action) {
  * @returns {Promise<boolean>} true if handled
  */
 export async function handle(event, btn, action) {
-  if (action === 'rf-v2-save-item') {
+  if (action === 'rf-save-item') {
     await saveItemCreate(event);
     return true;
   }
-  if (action === 'rf-v2-update-item') {
+  if (action === 'rf-update-item') {
     await saveItemEdit(event);
     return true;
   }

@@ -213,7 +213,7 @@ export function orderedEntries(stage) {
 // rather than native drag (no reliable touch story in this codebase).
 export function journalOrderBarHtml(stage) {
   const manual = !!stage.journal_manual_order;
-  return `<div class="rf-sortbar"><button class="${!manual ? 'is-active' : ''}" data-action="rf-v2-journal-order-auto" type="button"><span class="rf-clockdot"></span>Auto · by time</button><button class="${manual ? 'is-active' : ''}" data-action="rf-v2-journal-order-manual" type="button">Override order</button></div>`;
+  return `<div class="rf-sortbar"><button class="${!manual ? 'is-active' : ''}" data-action="rf-journal-order-auto" type="button"><span class="rf-clockdot"></span>Auto · by time</button><button class="${manual ? 'is-active' : ''}" data-action="rf-journal-order-manual" type="button">Override order</button></div>`;
 }
 
 export function gripHtml(manual) {
@@ -315,31 +315,31 @@ function starRowHtml(rating) {
 function roadStageLinkRowsHtml(roadId) {
   const links = arr(STATE.roadStageLinksByRoad[roadId]);
   if (!links.length) return '';
-  return `<div class="rf-v2-road-links">${links.map((link) => {
+  return `<div class="rf-road-links">${links.map((link) => {
     const stage = link.stages;
     const tripTitle = stage?.trips?.title || 'Trip';
     const stageNo = stage?.order_index ? `Stage ${stage.order_index}` : 'Stage';
     const date = fmtDate(link.link_date);
-    return `<div class="rf-v2-road-link-row">${esc(tripTitle)} · ${esc(stageNo)}${date ? ` · ${esc(date)}` : ''}</div>`;
+    return `<div class="rf-road-link-row">${esc(tripTitle)} · ${esc(stageNo)}${date ? ` · ${esc(date)}` : ''}</div>`;
   }).join('')}</div>`;
 }
 
 function roadCardHtml(road) {
-  const connects = road.connection_from || road.connection_to ? `<div class="rf-v2-road-connects">${esc(road.connection_from || 'Start')} <span class="rf-v2-route-arrow">→</span> ${esc(road.connection_to || 'End')}</div>` : '';
-  const notes = road.notes ? `<p class="rf-v2-road-notes">${esc(road.notes)}</p>` : '';
-  return `<article class="rf-v2-road-card" data-road-id="${esc(road.id)}"><div class="rf-v2-road-card-head"><strong>${esc(road.road_number_or_name || 'Unnamed road')}</strong>${starRowHtml(road.my_rating)}</div>${connects}${notes}${roadStageLinkRowsHtml(road.id)}<div class="rf-v2-road-card-actions"><button class="rf-d2-btn" data-action="rf-v2-edit-road" data-road-id="${esc(road.id)}" type="button">Edit</button><button class="rf-d2-btn is-danger" data-action="rf-v2-delete-road" data-road-id="${esc(road.id)}" type="button">Delete</button></div></article>`;
+  const connects = road.connection_from || road.connection_to ? `<div class="rf-road-connects">${esc(road.connection_from || 'Start')} <span class="rf-route-arrow">→</span> ${esc(road.connection_to || 'End')}</div>` : '';
+  const notes = road.notes ? `<p class="rf-road-notes">${esc(road.notes)}</p>` : '';
+  return `<article class="rf-road-card" data-road-id="${esc(road.id)}"><div class="rf-road-card-head"><strong>${esc(road.road_number_or_name || 'Unnamed road')}</strong>${starRowHtml(road.my_rating)}</div>${connects}${notes}${roadStageLinkRowsHtml(road.id)}<div class="rf-road-card-actions"><button class="rf-desktop-btn" data-action="rf-edit-road" data-road-id="${esc(road.id)}" type="button">Edit</button><button class="rf-desktop-btn is-danger" data-action="rf-delete-road" data-road-id="${esc(road.id)}" type="button">Delete</button></div></article>`;
 }
 
 export function myRoadsSectionHtml() {
   const roads = arr(STATE.myRoads);
   const body = STATE.myRoadsLoading && !roads.length
-    ? '<p class="rf-d2-aside-sub">Loading your roads…</p>'
+    ? '<p class="rf-desktop-aside-sub">Loading your roads…</p>'
     : STATE.myRoadsError
-      ? `<p class="rf-d2-aside-sub">${esc(STATE.myRoadsError)}</p>`
+      ? `<p class="rf-desktop-aside-sub">${esc(STATE.myRoadsError)}</p>`
       : roads.length
-        ? `<div class="rf-v2-road-list">${roads.map(roadCardHtml).join('')}</div>`
-        : '<p class="rf-d2-aside-sub">Rate a road you have ridden and it shows up here.</p>';
-  return `<section class="rf-d2-my-roads"><div class="rf-v2-my-roads-head"><h2>My roads</h2><button class="rf-d2-btn is-primary" data-action="rf-v2-add-road" type="button">+ Add road</button></div><p class="rf-d2-aside-sub">Shared with everyone — your stars decide what's pinned to the top of your list.</p>${body}</section>`;
+        ? `<div class="rf-road-list">${roads.map(roadCardHtml).join('')}</div>`
+        : '<p class="rf-desktop-aside-sub">Rate a road you have ridden and it shows up here.</p>';
+  return `<section class="rf-desktop-my-roads"><div class="rf-my-roads-head"><h2>My roads</h2><button class="rf-desktop-btn is-primary" data-action="rf-add-road" type="button">+ Add road</button></div><p class="rf-desktop-aside-sub">Shared with everyone — your stars decide what's pinned to the top of your list.</p>${body}</section>`;
 }
 
 export { fmtEuro };

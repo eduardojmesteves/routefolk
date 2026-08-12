@@ -28,7 +28,7 @@ import { renderMobileSummary, renderMobileArchiveSummary } from './trip-detail/s
 
 
 function bottomNav(active) {
-  return `<nav class="rf-clean-bottom"><button class="${active === 'trips' ? 'is-active' : ''}" data-action="rf-m2-nav" data-tab="trips">Trips</button><button class="${active === 'archive' ? 'is-active' : ''}" data-action="rf-m2-nav" data-tab="archive">Archive</button><button class="${active === 'account' ? 'is-active' : ''}" data-action="rf-m2-nav" data-tab="account">You</button></nav>`;
+  return `<nav class="rf-clean-bottom"><button class="${active === 'trips' ? 'is-active' : ''}" data-action="rf-mobile-nav" data-tab="trips">Trips</button><button class="${active === 'archive' ? 'is-active' : ''}" data-action="rf-mobile-nav" data-tab="archive">Archive</button><button class="${active === 'account' ? 'is-active' : ''}" data-action="rf-mobile-nav" data-tab="account">You</button></nav>`;
 }
 
 function screen(inner, active = 'trips', fab = '') {
@@ -36,10 +36,10 @@ function screen(inner, active = 'trips', fab = '') {
 }
 
 function tripHeader(trip, active, backTo = 'trips', summaryOnly = false) {
-  const backAction = backTo === 'archive' ? 'rf-m2-back-to-archive' : 'rf-m2-back-to-trips';
+  const backAction = backTo === 'archive' ? 'rf-mobile-back-to-archive' : 'rf-mobile-back-to-trips';
   const backLabel = backTo === 'archive' ? 'Archive' : 'Trips';
   const tabs = summaryOnly ? [['summary', 'Summary']] : DETAIL_TABS;
-  return `<header class="rf-clean-trip-head"><button class="rf-clean-back" data-action="${backAction}">← ${backLabel}</button><div class="rf-clean-kicker">${esc(tripNo(trip))} · ${esc(season(trip))}</div><h1>${esc(trip.title || 'Untitled trip')}</h1><p>${esc(subtitle(trip))}</p><div class="rf-m2-detail-stamps">${statePillHtml(trip.status)}${stampHtml(trip.visibility || 'group', 'accent')}</div></header><nav class="rf-clean-tabs">${tabs.map(([key, label]) => `<button class="${active === key ? 'is-active' : ''}" data-action="rf-m2-tab" data-value="${key}">${label}</button>`).join('')}</nav>`;
+  return `<header class="rf-clean-trip-head"><button class="rf-clean-back" data-action="${backAction}">← ${backLabel}</button><div class="rf-clean-kicker">${esc(tripNo(trip))} · ${esc(season(trip))}</div><h1>${esc(trip.title || 'Untitled trip')}</h1><p>${esc(subtitle(trip))}</p><div class="rf-mobile-detail-stamps">${statePillHtml(trip.status)}${stampHtml(trip.visibility || 'group', 'accent')}</div></header><nav class="rf-clean-tabs">${tabs.map(([key, label]) => `<button class="${active === key ? 'is-active' : ''}" data-action="rf-mobile-tab" data-value="${key}">${label}</button>`).join('')}</nav>`;
 }
 
 function statusLabel(status) {
@@ -57,11 +57,11 @@ function stateKey(status) {
 }
 
 function statePillHtml(status) {
-  return `<span class="rf-m2-state-pill is-state-${stateKey(status)}"><span class="rf-m2-state-pill-dot"></span>${esc(statusLabel(status))}</span>`;
+  return `<span class="rf-mobile-state-pill is-state-${stateKey(status)}"><span class="rf-mobile-state-pill-dot"></span>${esc(statusLabel(status))}</span>`;
 }
 
 function stampHtml(value, tone = '') {
-  return `<span class="rf-m2-stamp ${tone ? `is-${tone}` : ''}">${esc(value)}</span>`;
+  return `<span class="rf-mobile-stamp ${tone ? `is-${tone}` : ''}">${esc(value)}</span>`;
 }
 
 function mobileTrips() {

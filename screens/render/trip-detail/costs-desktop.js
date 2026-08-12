@@ -15,13 +15,13 @@ import {
 import { costsBreakdownHtml } from '../../../components/atoms/costs-breakdown.js';
 
 function expenseRow(expense) {
-  return `<div class="rf-d2-table-row"><div>${esc(categoryLabel(expense.category))}</div><div>${esc(payerName(expense.user_id))}</div><div>${esc(fmtDate(expense.date) || '')}</div><div>${fmtEuro(expense.amount || 0)}</div><div class="rf-v2-expense-actions"><button class="rf-d2-btn" data-action="rf-v2-edit-expense" data-expense-id="${esc(expense.id)}">Edit</button><button class="rf-d2-btn is-danger" data-action="rf-v2-delete-expense" data-expense-id="${esc(expense.id)}">Delete</button></div></div>`;
+  return `<div class="rf-desktop-table-row"><div>${esc(categoryLabel(expense.category))}</div><div>${esc(payerName(expense.user_id))}</div><div>${esc(fmtDate(expense.date) || '')}</div><div>${fmtEuro(expense.amount || 0)}</div><div class="rf-expense-actions"><button class="rf-desktop-btn" data-action="rf-edit-expense" data-expense-id="${esc(expense.id)}">Edit</button><button class="rf-desktop-btn is-danger" data-action="rf-delete-expense" data-expense-id="${esc(expense.id)}">Delete</button></div></div>`;
 }
 
 export function renderCosts(trip, { hero, tabs, stamp }) {
   const ex = expenses(trip.id);
   const agg = aggregateExpense(ex);
-  const catCard = costsBreakdownHtml(agg.cat, { kind: 'category', prefix: 'rf-d2' });
-  const payerCard = costsBreakdownHtml(agg.payer, { kind: 'payer', prefix: 'rf-d2' });
-  return `<main class="rf-d2-main">${hero(trip)}${tabs('costs')}<div class="rf-d2-ledger-hero"><div><div class="rf-d2-ledger-label">The trip ledger</div><div class="rf-d2-ledger-value">${fmtEuro(agg.total)}</div>${stamp(`${ex.length} entries`)}</div><button class="rf-d2-btn is-primary" data-action="rf-v2-add-expense" type="button">+ Log expense</button></div><div class="rf-d2-costs-breakdown-row">${catCard ? `<div><div class="rf-d2-ledger-label">By category</div>${catCard}</div>` : ''}${payerCard ? `<div><div class="rf-d2-ledger-label">By payer</div>${payerCard}</div>` : ''}</div><div class="rf-d2-table">${ex.map(expenseRow).join('') || '<div class="rf-d2-empty">No costs yet.</div>'}</div></main>`;
+  const catCard = costsBreakdownHtml(agg.cat, { kind: 'category', prefix: 'rf-desktop' });
+  const payerCard = costsBreakdownHtml(agg.payer, { kind: 'payer', prefix: 'rf-desktop' });
+  return `<main class="rf-desktop-main">${hero(trip)}${tabs('costs')}<div class="rf-desktop-ledger-hero"><div><div class="rf-desktop-ledger-label">The trip ledger</div><div class="rf-desktop-ledger-value">${fmtEuro(agg.total)}</div>${stamp(`${ex.length} entries`)}</div><button class="rf-desktop-btn is-primary" data-action="rf-add-expense" type="button">+ Log expense</button></div><div class="rf-desktop-costs-breakdown-row">${catCard ? `<div><div class="rf-desktop-ledger-label">By category</div>${catCard}</div>` : ''}${payerCard ? `<div><div class="rf-desktop-ledger-label">By payer</div>${payerCard}</div>` : ''}</div><div class="rf-desktop-table">${ex.map(expenseRow).join('') || '<div class="rf-desktop-empty">No costs yet.</div>'}</div></main>`;
 }

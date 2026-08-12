@@ -34,12 +34,12 @@ const STAGE_APP_SUFFIXES = [
 
 /** Wizard stage actions (exact match) owned by this module. */
 const STAGE_WIZARD_ACTIONS = new Set([
-  'rf-v2-save-stage',
-  'rf-v2-edit-stage',
-  'rf-v2-delete-stage',
-  'rf-v2-update-stage',
-  'rf-v2-stage-up',
-  'rf-v2-stage-down',
+  'rf-save-stage',
+  'rf-edit-stage',
+  'rf-delete-stage',
+  'rf-update-stage',
+  'rf-stage-up',
+  'rf-stage-down',
 ]);
 
 /**
@@ -54,12 +54,12 @@ export async function saveStageCreate(event) {
   if (!endBusy) return;
   try {
     const stage = await createStage(trip.id, {
-      start_location: fieldValue('v2-stage-from'),
-      end_location: fieldValue('v2-stage-to'),
-      planned_date: field('v2-stage-date')?.value || null,
-      distance_km: field('v2-stage-km')?.value || null,
-      custom_route_url: fieldValue('v2-stage-route') || null,
-      notes: fieldValue('v2-stage-notes'),
+      start_location: fieldValue('stage-from'),
+      end_location: fieldValue('stage-to'),
+      planned_date: field('stage-date')?.value || null,
+      distance_km: field('stage-km')?.value || null,
+      custom_route_url: fieldValue('stage-route') || null,
+      notes: fieldValue('stage-notes'),
     });
     STATE.stagesByTrip[trip.id] = [...stagesForTrip(trip.id), stage];
     STATE.selectedStageId = stage.id;
@@ -69,7 +69,7 @@ export async function saveStageCreate(event) {
     await api().loadStagesForTrip?.(trip.id);
     renderAll();
   } catch (error) {
-    showError('v2-stage-create-error', error);
+    showError('stage-create-error', error);
   } finally {
     endBusy();
   }
@@ -88,12 +88,12 @@ export async function saveStageEdit(event) {
   if (!endBusy) return;
   try {
     const updated = await updateStage(stage.id, {
-      start_location: fieldValue('v2-stage-from-edit'),
-      end_location: fieldValue('v2-stage-to-edit'),
-      planned_date: field('v2-stage-date-edit')?.value || null,
-      distance_km: field('v2-stage-km-edit')?.value || null,
-      custom_route_url: fieldValue('v2-stage-route-edit') || null,
-      notes: fieldValue('v2-stage-notes-edit'),
+      start_location: fieldValue('stage-from-edit'),
+      end_location: fieldValue('stage-to-edit'),
+      planned_date: field('stage-date-edit')?.value || null,
+      distance_km: field('stage-km-edit')?.value || null,
+      custom_route_url: fieldValue('stage-route-edit') || null,
+      notes: fieldValue('stage-notes-edit'),
     });
     STATE.stagesByTrip[trip.id] = stagesForTrip(trip.id).map((candidate) => candidate.id === updated.id ? updated : candidate);
     STATE.selectedStageId = updated.id;
@@ -103,7 +103,7 @@ export async function saveStageEdit(event) {
     await api().loadStagesForTrip?.(trip.id);
     renderAll();
   } catch (error) {
-    showError('v2-stage-error', error);
+    showError('stage-error', error);
   } finally {
     endBusy();
   }
@@ -133,9 +133,9 @@ export async function removeStage(event, stageId) {
 // and resets scrollTop to 0) can restore the viewport position — e.g. after a
 // reorder, the list stays where the user was looking.
 function captureScrollPosition() {
-  const el = document.querySelector('.rf-clean-scroll, .rf-d2-main');
+  const el = document.querySelector('.rf-clean-scroll, .rf-desktop-main');
   if (!el) return null;
-  return { selector: el.classList.contains('rf-clean-scroll') ? '.rf-clean-scroll' : '.rf-d2-main', top: el.scrollTop };
+  return { selector: el.classList.contains('rf-clean-scroll') ? '.rf-clean-scroll' : '.rf-desktop-main', top: el.scrollTop };
 }
 
 function restoreScrollPosition(snap) {
@@ -200,27 +200,27 @@ export function owns(action) {
  * @returns {Promise<boolean>} true if handled
  */
 export async function handle(event, btn, action) {
-  if (action === 'rf-v2-save-stage') {
+  if (action === 'rf-save-stage') {
     await saveStageCreate(event);
     return true;
   }
-  if (action === 'rf-v2-update-stage') {
+  if (action === 'rf-update-stage') {
     await saveStageEdit(event);
     return true;
   }
-  if (action === 'rf-v2-edit-stage') {
+  if (action === 'rf-edit-stage') {
     claim(event);
     STATE.wizard = 'stage-edit';
     STATE.editTargetId = btn.dataset.stageId;
     renderAll();
     return true;
   }
-  if (action === 'rf-v2-delete-stage') {
+  if (action === 'rf-delete-stage') {
     await removeStage(event, btn.dataset.stageId);
     return true;
   }
-  if (action === 'rf-v2-stage-up' || action === 'rf-v2-stage-down') {
-    await reorderStage(event, btn.dataset.stageId, action === 'rf-v2-stage-up' ? -1 : 1);
+  if (action === 'rf-stage-up' || action === 'rf-stage-down') {
+    await reorderStage(event, btn.dataset.stageId, action === 'rf-stage-up' ? -1 : 1);
     return true;
   }
   return dispatchAppAction(event, btn, action);

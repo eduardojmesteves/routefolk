@@ -35,19 +35,19 @@ const JOURNAL_APP_SUFFIXES = [
 
 /** Wizard journal actions (exact match) owned by this module. */
 const JOURNAL_WIZARD_ACTIONS = new Set([
-  'rf-v2-save-journal',
-  'rf-v2-edit-entry',
-  'rf-v2-delete-entry',
-  'rf-v2-update-entry',
+  'rf-save-journal',
+  'rf-edit-entry',
+  'rf-delete-entry',
+  'rf-update-entry',
 ]);
 
 /** Entry-ordering actions (exact match) owned by this module — the
  *  Auto/Override toggle and manual-mode ↑/↓ reorder. */
 const JOURNAL_ORDER_ACTIONS = new Set([
-  'rf-v2-journal-order-auto',
-  'rf-v2-journal-order-manual',
-  'rf-v2-journal-entry-up',
-  'rf-v2-journal-entry-down',
+  'rf-journal-order-auto',
+  'rf-journal-order-manual',
+  'rf-journal-entry-up',
+  'rf-journal-entry-down',
 ]);
 
 /**
@@ -61,16 +61,16 @@ export async function saveEntryCreate(event) {
   const endBusy = beginBusy(event);
   if (!endBusy) return;
   try {
-    const time = field('v2-entry-time')?.value || '';
+    const time = field('entry-time')?.value || '';
     const date = stage.planned_date || new Date().toISOString().slice(0, 10);
     const payload = {
-      entry_type: field('v2-entry-type')?.value || STATE.journalType || 'note',
-      title: fieldValue('v2-entry-title'),
-      location: fieldValue('v2-entry-place'),
-      description: fieldValue('v2-entry-note'),
-      location_url: fieldValue('v2-entry-location-url') || null,
-      info_url: fieldValue('v2-entry-info-url') || null,
-      photo_album_url: fieldValue('v2-entry-photo-url') || null,
+      entry_type: field('entry-type')?.value || STATE.journalType || 'note',
+      title: fieldValue('entry-title'),
+      location: fieldValue('entry-place'),
+      description: fieldValue('entry-note'),
+      location_url: fieldValue('entry-location-url') || null,
+      info_url: fieldValue('entry-info-url') || null,
+      photo_album_url: fieldValue('entry-photo-url') || null,
       timestamp: time ? `${date}T${time}:00` : null,
     };
     if (!payload.title && !payload.location && !payload.description) {
@@ -85,7 +85,7 @@ export async function saveEntryCreate(event) {
     await api().loadEntriesForStage?.(stage.id, { quiet: true });
     renderAll();
   } catch (error) {
-    showError('v2-entry-create-error', error);
+    showError('entry-create-error', error);
   } finally {
     endBusy();
   }
@@ -103,16 +103,16 @@ export async function saveEntryEdit(event) {
   const endBusy = beginBusy(event);
   if (!endBusy) return;
   try {
-    const time = field('v2-entry-time-edit')?.value || '';
+    const time = field('entry-time-edit')?.value || '';
     const date = stage.planned_date || new Date().toISOString().slice(0, 10);
     const updated = await updateEntry(entry.id, {
-      entry_type: field('v2-entry-type-edit')?.value || 'note',
-      title: fieldValue('v2-entry-title-edit'),
-      location: fieldValue('v2-entry-place-edit'),
-      description: fieldValue('v2-entry-note-edit'),
-      location_url: fieldValue('v2-entry-location-url-edit') || null,
-      info_url: fieldValue('v2-entry-info-url-edit') || null,
-      photo_album_url: fieldValue('v2-entry-photo-url-edit') || null,
+      entry_type: field('entry-type-edit')?.value || 'note',
+      title: fieldValue('entry-title-edit'),
+      location: fieldValue('entry-place-edit'),
+      description: fieldValue('entry-note-edit'),
+      location_url: fieldValue('entry-location-url-edit') || null,
+      info_url: fieldValue('entry-info-url-edit') || null,
+      photo_album_url: fieldValue('entry-photo-url-edit') || null,
       timestamp: time ? `${date}T${time}:00` : null,
     });
     STATE.entriesByStage[stage.id] = entriesForStage(stage.id).map((candidate) => candidate.id === updated.id ? updated : candidate);
@@ -121,7 +121,7 @@ export async function saveEntryEdit(event) {
     await api().loadEntriesForStage?.(stage.id, { quiet: true });
     renderAll();
   } catch (error) {
-    showError('v2-entry-error', error);
+    showError('entry-error', error);
   } finally {
     endBusy();
   }
@@ -225,35 +225,35 @@ export function owns(action) {
  * @returns {Promise<boolean>} true if handled
  */
 export async function handle(event, btn, action) {
-  if (action === 'rf-v2-save-journal') {
+  if (action === 'rf-save-journal') {
     await saveEntryCreate(event);
     return true;
   }
-  if (action === 'rf-v2-update-entry') {
+  if (action === 'rf-update-entry') {
     await saveEntryEdit(event);
     return true;
   }
-  if (action === 'rf-v2-edit-entry') {
+  if (action === 'rf-edit-entry') {
     claim(event);
     STATE.wizard = 'journal-edit';
     STATE.editTargetId = btn.dataset.entryId;
     renderAll();
     return true;
   }
-  if (action === 'rf-v2-delete-entry') {
+  if (action === 'rf-delete-entry') {
     await removeEntry(event, btn.dataset.entryId);
     return true;
   }
-  if (action === 'rf-v2-journal-order-auto') {
+  if (action === 'rf-journal-order-auto') {
     await setJournalOrder(event, false);
     return true;
   }
-  if (action === 'rf-v2-journal-order-manual') {
+  if (action === 'rf-journal-order-manual') {
     await setJournalOrder(event, true);
     return true;
   }
-  if (action === 'rf-v2-journal-entry-up' || action === 'rf-v2-journal-entry-down') {
-    await reorderEntry(event, btn.dataset.entryId, action === 'rf-v2-journal-entry-up' ? -1 : 1);
+  if (action === 'rf-journal-entry-up' || action === 'rf-journal-entry-down') {
+    await reorderEntry(event, btn.dataset.entryId, action === 'rf-journal-entry-up' ? -1 : 1);
     return true;
   }
   return dispatchAppAction(event, btn, action);

@@ -51,7 +51,7 @@ function relativeArrow(windDeg, headingDeg) {
   return ARROW_SYMBOLS[ARROWS[index]] || ARROW_SYMBOLS.up;
 }
 
-export function wxCellHtml(w, headingDeg, prefix = 'rf-m2') {
+export function wxCellHtml(w, headingDeg, prefix = 'rf-mobile') {
   if (!w || typeof w !== 'object') return '';
   const mark = String(w.mark || '').toLowerCase();
   const label = LABELS[mark] || 'Point';

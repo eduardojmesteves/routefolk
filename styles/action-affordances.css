@@ -1,0 +1,92 @@
+/* ============================================================
+   routefolk — action affordances
+   Edit/delete/reorder controls for stages and journal entries,
+   plus cost breakdown bars. Imported LAST so the few overrides of
+   existing .rf-clean-* / .rf-desktop-* rules win the cascade.
+   Tokens only (+ neutral rgba overlays); no brand hex.
+   ============================================================ */
+
+/* ---- M1: mobile stage card split (tap-body + footer) ----
+   Scoped to .is-split so the summary's plain .rf-clean-stage-card keeps
+   its own padding. */
+.rf-clean-stage-card.is-split{padding:0;overflow:hidden;margin:16px 0}
+.rf-clean-stage-card.is-split.is-selected{box-shadow:inset 3px 0 0 var(--rf-mobile-primary)}
+.rf-clean-stage-tap{width:100%;display:grid;grid-template-columns:38px 1fr;gap:12px;text-align:left;padding:14px;border:0;background:transparent;color:var(--rf-mobile-ink)}
+.rf-clean-stage-tap>span{font:italic 28px var(--rf-mobile-font-serif);color:var(--rf-mobile-primary)}
+.rf-clean-stage-tap strong{font:500 20px/1.12 var(--rf-mobile-font-serif)}
+.rf-clean-stage-tap small{display:block;color:var(--rf-mobile-muted);font:11px var(--rf-mobile-font-mono);letter-spacing:.07em}
+.rf-clean-stage-tap p{margin:6px 0 0;color:var(--rf-mobile-muted);font-size:14px}
+
+/* ---- M2: mobile stage action footer (↑ ↓ Journal Edit Delete) ---- */
+.rf-clean-stage-foot{display:grid;grid-template-columns:44px 44px 1fr 1fr;border-top:1px solid var(--rf-mobile-rule);background:rgba(0,0,0,.025)}
+.rf-clean-stage-foot.is-quint{grid-template-columns:44px 44px 1fr 1fr 1fr}
+.rf-clean-stage-foot button{appearance:none;border:0;background:transparent;font:600 12px var(--rf-mobile-font-ui);color:var(--rf-mobile-ink);min-height:44px;padding:9px 0;border-right:1px dotted var(--rf-mobile-rule);cursor:pointer;letter-spacing:.01em;display:flex;align-items:center;justify-content:center}
+.rf-clean-stage-foot button:last-child{border-right:0}
+.rf-clean-stage-foot button.icon{font-size:13px;color:var(--rf-mobile-muted)}
+.rf-clean-stage-foot button.danger{color:var(--rf-mobile-danger)}
+.rf-clean-stage-foot button[disabled]{color:var(--rf-mobile-rule-2);cursor:not-allowed}
+.rf-clean-stage-foot button.danger[disabled]{color:var(--rf-mobile-danger);opacity:.4}
+.rf-clean-stage-foot button:hover:not([disabled]){background:rgba(0,0,0,.04)}
+
+/* ---- M3: mobile drill-in stage action pills ---- */
+.rf-mobile-stage-actions{display:flex;gap:7px;flex-wrap:wrap;align-items:center;margin:10px 0}
+.rf-mobile-stage-actions .rf-mobile-pill-action{border:1px solid var(--rf-mobile-rule-2);background:transparent;border-radius:999px;padding:6px 12px;font:800 12px var(--rf-mobile-font-ui);color:var(--rf-mobile-ink);cursor:pointer}
+.rf-mobile-stage-actions .rf-mobile-pill-action.danger{color:var(--rf-mobile-danger);background:var(--rf-mobile-danger-soft);border-color:transparent}
+.rf-mobile-stage-actions .rf-mobile-pill-action[disabled]{opacity:.45;cursor:not-allowed}
+
+/* ---- M4: mobile journal entry ✎ ✕ ---- */
+.rf-clean-note{grid-template-columns:30px 1fr auto}
+.rf-clean-note-acts{display:flex;gap:2px;align-items:start}
+.rf-clean-note-acts button{width:44px;height:44px;display:inline-flex;align-items:center;justify-content:center;border:0;border-radius:999px;background:transparent;color:var(--rf-mobile-muted);font:14px var(--rf-mobile-font-ui);cursor:pointer}
+.rf-clean-note-acts button:hover:not([disabled]){background:var(--rf-mobile-surface-2)}
+.rf-clean-note-acts button.danger{color:var(--rf-mobile-danger)}
+.rf-clean-note-acts button[disabled]{opacity:.45;cursor:not-allowed}
+
+/* ---- D1: desktop aside stage actions ---- */
+.rf-desktop-stage-actions{display:flex;gap:8px;flex-wrap:wrap;align-items:center;margin-top:10px}
+.rf-desktop-stage-actions .rf-desktop-act{border:1px solid var(--rf-desktop-rule-2);background:transparent;border-radius:999px;padding:6px 12px;font:800 13px var(--rf-desktop-font-ui);color:var(--rf-desktop-ink);cursor:pointer}
+.rf-desktop-stage-actions .rf-desktop-act.icon{padding:6px 10px;color:var(--rf-desktop-muted)}
+.rf-desktop-stage-actions .rf-desktop-act.danger{color:var(--rf-desktop-danger);background:var(--rf-desktop-danger-soft);border-color:transparent}
+.rf-desktop-stage-actions .rf-desktop-act[disabled]{opacity:.45;cursor:not-allowed}
+
+/* ---- D2: desktop journal entry ✎ ✕ ---- */
+.rf-desktop-entry{grid-template-columns:28px 1fr auto}
+.rf-desktop-entry-acts{display:flex;gap:4px;align-items:start}
+.rf-desktop-entry-acts button{width:26px;height:26px;border:0;border-radius:999px;background:transparent;color:var(--rf-desktop-muted);font:14px var(--rf-desktop-font-ui);cursor:pointer}
+.rf-desktop-entry-acts button:hover:not([disabled]){background:var(--rf-desktop-surface-2)}
+.rf-desktop-entry-acts button.danger{color:var(--rf-desktop-danger)}
+.rf-desktop-entry-acts button[disabled]{opacity:.45;cursor:not-allowed}
+
+/* ---- S1: costs breakdown card + proportional bars (mobile) ---- */
+.rf-clean-breakdown{background:var(--rf-mobile-surface);border:1px solid var(--rf-mobile-rule);border-radius:6px;padding:10px 12px;margin-top:6px}
+.rf-clean-breakdown>strong{display:block;font:700 10px var(--rf-mobile-font-ui);letter-spacing:.12em;text-transform:uppercase;color:var(--rf-mobile-ink);margin-bottom:6px}
+.rf-clean-breakdown .br-row{display:grid;grid-template-columns:1fr auto;gap:8px;align-items:center;padding:4px 0 2px;font:13px var(--rf-mobile-font-serif);color:var(--rf-mobile-ink-2)}
+.rf-clean-breakdown .br-row b{font:600 13px var(--rf-mobile-font-serif);color:var(--rf-mobile-ink)}
+.rf-clean-breakdown .bar{height:4px;background:var(--rf-mobile-bg);border-radius:999px;margin:0 0 6px;overflow:hidden}
+.rf-clean-breakdown .bar>i{display:block;height:100%;background:var(--rf-mobile-primary);border-radius:999px}
+.rf-clean-breakdown.is-payer .bar>i{background:var(--rf-mobile-accent)}
+
+/* ---- S1: costs breakdown bars (desktop) ---- */
+/* Category/payer breakdown cards live in the main column next to the
+   ledger total (Route Atlas Desktop — Costs frame), not in a persistent
+   aside — the aside is reserved for the expense wizard overlay. */
+.rf-desktop-costs-breakdown-row{display:flex;gap:24px;max-width:700px;margin:18px 0}
+.rf-desktop-costs-breakdown-row>div{flex:1;min-width:0}
+.rf-desktop-breakdown .br-row{display:grid;grid-template-columns:1fr auto;gap:10px;align-items:center;font:16px var(--rf-desktop-font-serif);color:var(--rf-desktop-ink-2)}
+.rf-desktop-breakdown .br-row b{font:600 16px var(--rf-desktop-font-serif);color:var(--rf-desktop-ink)}
+.rf-desktop-breakdown .bar{height:3px;background:var(--rf-desktop-rule);border-radius:999px;margin:2px 0 8px;overflow:hidden}
+.rf-desktop-breakdown .bar>i{display:block;height:100%;background:var(--rf-desktop-primary);border-radius:999px}
+.rf-desktop-breakdown.is-payer .bar>i{background:var(--rf-desktop-accent)}
+
+/* ---- Packing items — Edit/Delete footer reusing the M2 stage-foot design ---- */
+.rf-clean-stage-foot.is-pair{grid-template-columns:1fr 1fr}
+.rf-clean-item-card.is-split{display:block;padding:0;overflow:hidden}
+.rf-clean-item-card.is-split .rf-clean-item-tap{width:100%;display:grid;grid-template-columns:28px minmax(0,1fr);gap:10px;align-items:center;padding:13px;border:0;background:transparent;text-align:left;color:inherit;cursor:pointer}
+.rf-clean-item-card.is-split .rf-clean-item-tap .rf-clean-item-check{display:grid;place-items:center}
+
+/* ---- M5: touch-target floor for the mobile back link ----
+   .rf-clean-back is only ever rendered on mobile trip-detail headers,
+   so this override is unconditional; imported last, it wins over the
+   base rule in interface-polish.css without needing !important. */
+.rf-clean-back{min-height:44px;display:inline-flex;align-items:center}
+.rf-clean-metrics small{font-size:10.5px;line-height:1.2;}

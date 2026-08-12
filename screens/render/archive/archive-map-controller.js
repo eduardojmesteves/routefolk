@@ -46,11 +46,11 @@ function getRoutefolkData() {
 }
 
 function getMapContainer() {
-  return document.getElementById('rf-v2-archive-map');
+  return document.getElementById('rf-archive-map');
 }
 
 function setStatus(message) {
-  const el = document.getElementById('rf-v2-archive-map-status');
+  const el = document.getElementById('rf-archive-map-status');
   if (el) el.textContent = message || '';
 }
 
@@ -211,7 +211,7 @@ function scheduleRefresh() {
 
 // ----- Wiring ---------------------------------------------------------
 
-document.addEventListener('routefolk:v2-render', scheduleRefresh);
+document.addEventListener('routefolk:wizard-render', scheduleRefresh);
 document.addEventListener('routefolk:render', scheduleRefresh);
 document.addEventListener('routefolk:archive-map-refresh', scheduleRefresh);
 window.addEventListener('resize', () => {

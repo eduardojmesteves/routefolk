@@ -4,7 +4,7 @@
 // in-progress upload, and delete an attached GPX track.
 //
 // Upload handler logic lives here (migrated out of screens/wizards.js).
-// The wizard-cancel action (rf-v2-cancel-gpx-upload) is routed straight
+// The wizard-cancel action (rf-cancel-gpx-upload) is routed straight
 // to screens/wizards.js by action-router before the domain loop runs, so
 // it is not handled here.
 // ============================================================
@@ -28,13 +28,13 @@ import {
 
 /** GPX upload-wizard actions (exact match) owned by this module. */
 const GPX_WIZARD_ACTIONS = new Set([
-  'rf-v2-open-gpx-upload',
-  'rf-v2-cancel-gpx-upload',
-  'rf-v2-save-gpx-upload',
+  'rf-open-gpx-upload',
+  'rf-cancel-gpx-upload',
+  'rf-save-gpx-upload',
 ]);
 
 /** GPX track deletion action. */
-const GPX_DELETE_ACTION = 'rf-v2-delete-gpx';
+const GPX_DELETE_ACTION = 'rf-delete-gpx';
 
 /**
  * Upload the captured GPX file for the current trip/stage target.
@@ -43,7 +43,7 @@ const GPX_DELETE_ACTION = 'rf-v2-delete-gpx';
 export async function saveGpxUpload(event) {
   claim(event);
   const { tripId, stageId } = gpxTarget();
-  const inputFile = field('v2-gpx-file')?.files?.[0] || null;
+  const inputFile = field('gpx-file')?.files?.[0] || null;
   const file = getPendingGpxFile() || inputFile;
   const endBusy = beginBusy(event);
   if (!endBusy) return;
@@ -59,7 +59,7 @@ export async function saveGpxUpload(event) {
     await api().loadGpxForTrip?.(tripId, { quiet: true });
     renderAll();
   } catch (error) {
-    showError('v2-gpx-error', error);
+    showError('gpx-error', error);
   } finally {
     endBusy();
   }
@@ -104,7 +104,7 @@ export function owns(action) {
  * @returns {Promise<boolean>} true if handled
  */
 export async function handle(event, btn, action) {
-  if (action === 'rf-v2-open-gpx-upload') {
+  if (action === 'rf-open-gpx-upload') {
     claim(event);
     clearGpxUploadState();
     STATE.wizard = 'gpx-upload';
@@ -115,7 +115,7 @@ export async function handle(event, btn, action) {
     renderAll();
     return true;
   }
-  if (action === 'rf-v2-save-gpx-upload') {
+  if (action === 'rf-save-gpx-upload') {
     await saveGpxUpload(event);
     return true;
   }

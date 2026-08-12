@@ -58,36 +58,36 @@ function stageOptionsHtml(trip, selectedStageId) {
 
 /** Sticky live-preview: the actual ledger row this expense will render as. */
 export function expensePreviewHtml() {
-  const category = field('v2-expense-category')?.value || 'other';
-  const amount = field('v2-expense-amount')?.value || '';
-  const date = field('v2-expense-date')?.value || '';
-  const payerId = field('v2-expense-payer')?.value || STATE.user?.id;
+  const category = field('expense-category')?.value || 'other';
+  const amount = field('expense-amount')?.value || '';
+  const date = field('expense-date')?.value || '';
+  const payerId = field('expense-payer')?.value || STATE.user?.id;
   const payer = [STATE.user, ...STATE.profiles].find((profile) => profile?.id === payerId);
   const payerLabel = payer?.full_name || payer?.email || 'Rider';
-  return `<div class="rf-d2-table-row rf-v2-preview-card"><div>${esc(EXPENSE_CATEGORY_META[category]?.label || 'Other')}</div><div>${esc(payerLabel)}</div><div>${esc(fmtDate(date) || 'No date yet')}</div><div>${fmtEuro(Number(amount) || 0)}</div></div>`;
+  return `<div class="rf-desktop-table-row rf-preview-card"><div>${esc(EXPENSE_CATEGORY_META[category]?.label || 'Other')}</div><div>${esc(payerLabel)}</div><div>${esc(fmtDate(date) || 'No date yet')}</div><div>${fmtEuro(Number(amount) || 0)}</div></div>`;
 }
 
 export function expenseWizardHtml() {
   const trip = activeTrip();
   const requestedStageId = STATE.editTargetId || '';
   const sections = [
-    narrativeSection('v2-expense-section-category', 'What was it for?', '', choiceCards('v2-expense-category', CATEGORY_OPTIONS, 'fuel')),
-    narrativeSection('v2-expense-section-who', 'Who paid, and how much?', '', [
-      `<div class="rf-d2-form-row-pair">${row('v2-expense-payer', 'Paid by', select('v2-expense-payer', payerOptionsHtml(STATE.user?.id)))}${row('v2-expense-amount', 'Amount EUR', input('v2-expense-amount', '', 'inputmode="decimal" placeholder="42.80"'))}</div>`,
-      `<div class="rf-d2-form-row-pair">${row('v2-expense-date', 'Date', input('v2-expense-date', new Date().toISOString().slice(0, 10), 'type="date"'))}${row('v2-expense-stage', 'Stage', select('v2-expense-stage', stageOptionsHtml(trip, requestedStageId)))}</div>`,
-      row('v2-expense-description', 'Description', input('v2-expense-description', '', 'placeholder="e.g. Fuel, lunch, lodging"')),
+    narrativeSection('expense-section-category', 'What was it for?', '', choiceCards('expense-category', CATEGORY_OPTIONS, 'fuel')),
+    narrativeSection('expense-section-who', 'Who paid, and how much?', '', [
+      `<div class="rf-desktop-form-row-pair">${row('expense-payer', 'Paid by', select('expense-payer', payerOptionsHtml(STATE.user?.id)))}${row('expense-amount', 'Amount EUR', input('expense-amount', '', 'inputmode="decimal" placeholder="42.80"'))}</div>`,
+      `<div class="rf-desktop-form-row-pair">${row('expense-date', 'Date', input('expense-date', new Date().toISOString().slice(0, 10), 'type="date"'))}${row('expense-stage', 'Stage', select('expense-stage', stageOptionsHtml(trip, requestedStageId)))}</div>`,
+      row('expense-description', 'Description', input('expense-description', '', 'placeholder="e.g. Fuel, lunch, lodging"')),
     ].join('')),
   ];
   return narrativeShellHtml({
-    id: 'rf-v2-expense-title',
+    id: 'rf-expense-title',
     kicker: 'New expense',
     title: 'Log an expense',
     sub: 'Keep it simple: category, amount, payer, date and optional stage.',
     sections,
     previewLabel: 'Ledger preview',
     previewHtml: expensePreviewHtml(),
-    errorId: 'v2-expense-error',
-    saveAction: 'rf-v2-save-expense',
+    errorId: 'expense-error',
+    saveAction: 'rf-save-expense',
     saveLabel: 'Save expense',
   });
 }

@@ -33,7 +33,7 @@ export function rememberTripVisibility(value) {
 }
 
 export function currentWizardVisibility() {
-  const visibleValue = field('v2-trip-visibility')?.value;
+  const visibleValue = field('trip-visibility')?.value;
   if (visibleValue === 'private' || visibleValue === 'selected' || visibleValue === 'group') return visibleValue;
   const draft = getDraftTripVisibility();
   if (draft === 'private' || draft === 'selected' || draft === 'group') return draft;
@@ -57,23 +57,23 @@ function memberDisplayName(member) {
 }
 
 export function selectedMemberEmailsFromWizard() {
-  return [...document.querySelectorAll('input[name="v2-trip-selected-user"]:checked')].map((input) => String(input.value || '').trim().toLowerCase()).filter(Boolean);
+  return [...document.querySelectorAll('input[name="trip-selected-user"]:checked')].map((input) => String(input.value || '').trim().toLowerCase()).filter(Boolean);
 }
 
 function selectedTripUserCheckboxes(trip, disabled = false) {
-  if (STATE.selectableTripMembersLoading) return '<p class="rf-d2-aside-sub">Loading active Routefolk members…</p>';
-  if (STATE.selectableTripMembersError) return `<p class="rf-d2-aside-sub">Could not load active Routefolk members. Confirm migration 015 was applied. ${esc(STATE.selectableTripMembersError)}</p>`;
+  if (STATE.selectableTripMembersLoading) return '<p class="rf-desktop-aside-sub">Loading active Routefolk members…</p>';
+  if (STATE.selectableTripMembersError) return `<p class="rf-desktop-aside-sub">Could not load active Routefolk members. Confirm migration 015 was applied. ${esc(STATE.selectableTripMembersError)}</p>`;
   const currentEmail = String(STATE.user?.email || '').toLowerCase();
   const selected = selectedTripMemberEmails(trip);
   selectedMemberEmailsFromWizard().forEach((email) => selected.add(email));
   const members = (STATE.selectableTripMembers || []).filter((member) => member.email && member.email !== currentEmail);
-  if (!members.length) return '<p class="rf-d2-aside-sub">No other active Routefolk members are available yet. Add another active app member before using selected-user visibility.</p>';
-  return `<div class="rf-v2-selected-users">${members.map((member) => `<label class="rf-v2-selected-user"><input type="checkbox" name="v2-trip-selected-user" value="${esc(member.email)}" ${selected.has(member.email) ? 'checked' : ''} ${disabled ? 'disabled' : ''}><span><strong>${esc(memberDisplayName(member))}</strong></span></label>`).join('')}<p class="rf-d2-aside-sub">Selected users can view and edit the whole trip. Only the creator can manage this list.</p></div>`;
+  if (!members.length) return '<p class="rf-desktop-aside-sub">No other active Routefolk members are available yet. Add another active app member before using selected-user visibility.</p>';
+  return `<div class="rf-selected-users">${members.map((member) => `<label class="rf-selected-user"><input type="checkbox" name="trip-selected-user" value="${esc(member.email)}" ${selected.has(member.email) ? 'checked' : ''} ${disabled ? 'disabled' : ''}><span><strong>${esc(memberDisplayName(member))}</strong></span></label>`).join('')}<p class="rf-desktop-aside-sub">Selected users can view and edit the whole trip. Only the creator can manage this list.</p></div>`;
 }
 
 function selectedUsersRowHtml(trip, canManageVisibility, visibility) {
   const hidden = visibility === 'selected' ? '' : ' hidden';
-  return `<div class="rf-d2-form-row" id="v2-trip-selected-users-row"${hidden}><label class="rf-d2-form-label" for="v2-trip-selected-users">Selected users</label><div id="v2-trip-selected-users">${selectedTripUserCheckboxes(trip, !canManageVisibility)}</div></div>`;
+  return `<div class="rf-desktop-form-row" id="trip-selected-users-row"${hidden}><label class="rf-desktop-form-label" for="trip-selected-users">Selected users</label><div id="trip-selected-users">${selectedTripUserCheckboxes(trip, !canManageVisibility)}</div></div>`;
 }
 
 // The host injects this so an in-place control refresh can re-stamp the
@@ -117,18 +117,18 @@ export function preloadVisibilityDataForWizard(relayout) {
  * not throw the freshly-loaded control away.
  */
 export function refreshTripSelectedUsersControl() {
-  const node = byId('v2-trip-selected-users');
+  const node = byId('trip-selected-users');
   if (!node || (STATE.wizard !== 'trip' && STATE.wizard !== 'trip-edit')) return false;
   const trip = STATE.wizard === 'trip-edit' ? activeTrip() : null;
   node.innerHTML = selectedTripUserCheckboxes(trip, !canManageTripVisibility(trip));
-  const visRow = byId('v2-trip-selected-users-row');
+  const visRow = byId('trip-selected-users-row');
   if (visRow) visRow.hidden = currentWizardVisibility() !== 'selected';
   onSignatureRefresh?.();
   return true;
 }
 
 export function syncSelectedUsersVisibility(relayout) {
-  const visRow = byId('v2-trip-selected-users-row');
+  const visRow = byId('trip-selected-users-row');
   if (!visRow || (STATE.wizard !== 'trip' && STATE.wizard !== 'trip-edit')) return false;
   const isSelected = currentWizardVisibility() === 'selected';
   visRow.hidden = !isSelected;
@@ -162,23 +162,23 @@ function durationLabel(start, end) {
 
 /** Re-renders the "N days on the road" chip next to the date fields. */
 export function refreshTripDurationChip() {
-  const chip = byId('v2-trip-duration');
+  const chip = byId('trip-duration');
   if (!chip) return;
-  const label = durationLabel(field('v2-trip-start')?.value, field('v2-trip-end')?.value);
+  const label = durationLabel(field('trip-start')?.value, field('trip-end')?.value);
   chip.textContent = label;
   chip.hidden = !label;
 }
 
 /** Sticky live-preview: the actual Trips-list card this trip will render as. */
 export function tripPreviewHtml() {
-  const title = fieldValue('v2-trip-title') || 'Untitled trip';
-  const desc = fieldValue('v2-trip-desc');
-  const start = field('v2-trip-start')?.value || '';
-  const end = field('v2-trip-end')?.value || '';
-  const status = field('v2-trip-status')?.value || 'planning';
-  const visibility = field('v2-trip-visibility')?.value || 'group';
+  const title = fieldValue('trip-title') || 'Untitled trip';
+  const desc = fieldValue('trip-desc');
+  const start = field('trip-start')?.value || '';
+  const end = field('trip-end')?.value || '';
+  const status = field('trip-status')?.value || 'planning';
+  const visibility = field('trip-visibility')?.value || 'group';
   const dateLabel = start || end ? fmtDateRange(start, end) : 'Planned for later';
-  return `<div class="rf-d2-trip-row rf-v2-preview-card"><div class="rf-d2-trip-row-no">No. --</div><div class="rf-d2-trip-row-title">${esc(title)}</div><div class="rf-d2-trip-row-sub">${esc(desc || dateLabel)}</div><div class="rf-d2-trip-row-meta"><span>${esc(dateLabel)}</span></div><span class="rf-d2-state-pill is-${esc(status)}"><span class="rf-d2-state-dot"></span>${esc(STATUS_LABELS[status] || 'Planning')}</span><span class="rf-d2-stamp is-accent">${esc(VISIBILITY_LABELS[visibility] || 'Everyone')}</span></div>`;
+  return `<div class="rf-desktop-trip-row rf-preview-card"><div class="rf-desktop-trip-row-no">No. --</div><div class="rf-desktop-trip-row-title">${esc(title)}</div><div class="rf-desktop-trip-row-sub">${esc(desc || dateLabel)}</div><div class="rf-desktop-trip-row-meta"><span>${esc(dateLabel)}</span></div><span class="rf-desktop-state-pill is-${esc(status)}"><span class="rf-desktop-state-dot"></span>${esc(STATUS_LABELS[status] || 'Planning')}</span><span class="rf-desktop-stamp is-accent">${esc(VISIBILITY_LABELS[visibility] || 'Everyone')}</span></div>`;
 }
 
 export function tripWizardHtml(editing = false) {
@@ -188,15 +188,15 @@ export function tripWizardHtml(editing = false) {
   const status = trip?.status || 'planning';
 
   const sections = [
-    narrativeSection('v2-trip-section-name', 'What should we call it?', '', [
-      row('v2-trip-title', 'Title', input('v2-trip-title', trip?.title || '', 'placeholder="e.g. Pyrenees Crossing"')),
-      row('v2-trip-desc', 'Subtitle / short description', input('v2-trip-desc', trip?.description || '', 'placeholder="Bordeaux to Barcelona"')),
+    narrativeSection('trip-section-name', 'What should we call it?', '', [
+      row('trip-title', 'Title', input('trip-title', trip?.title || '', 'placeholder="e.g. Pyrenees Crossing"')),
+      row('trip-desc', 'Subtitle / short description', input('trip-desc', trip?.description || '', 'placeholder="Bordeaux to Barcelona"')),
     ].join('')),
-    narrativeSection('v2-trip-section-when', 'When does it roll?', '', [
-      `<div class="rf-d2-form-row-pair">${row('v2-trip-start', 'Start', input('v2-trip-start', trip?.start_date || '', 'type="date"'))}${row('v2-trip-end', 'End', input('v2-trip-end', trip?.end_date || '', 'type="date"'))}</div>`,
-      `<p class="rf-v2-duration-chip" id="v2-trip-duration" ${durationLabel(trip?.start_date, trip?.end_date) ? '' : 'hidden'}>${esc(durationLabel(trip?.start_date, trip?.end_date))}</p>`,
+    narrativeSection('trip-section-when', 'When does it roll?', '', [
+      `<div class="rf-desktop-form-row-pair">${row('trip-start', 'Start', input('trip-start', trip?.start_date || '', 'type="date"'))}${row('trip-end', 'End', input('trip-end', trip?.end_date || '', 'type="date"'))}</div>`,
+      `<p class="rf-duration-chip" id="trip-duration" ${durationLabel(trip?.start_date, trip?.end_date) ? '' : 'hidden'}>${esc(durationLabel(trip?.start_date, trip?.end_date))}</p>`,
     ].join('')),
-    narrativeSection('v2-trip-section-status', "Where's it at?", '', choiceCards('v2-trip-status', [
+    narrativeSection('trip-section-status', "Where's it at?", '', choiceCards('trip-status', [
       { value: 'planning', label: 'Planning', description: 'Still coming together', tone: 'info' },
       { value: 'active', label: 'Active', description: 'On the road right now', tone: 'primary' },
       // Completed/cancelled only make sense for a trip that already
@@ -209,8 +209,8 @@ export function tripWizardHtml(editing = false) {
         { value: 'cancelled', label: 'Cancelled', description: "Called off — moves to the archive", tone: 'muted' },
       ] : []),
     ], status)),
-    narrativeSection('v2-trip-section-who', "Who's riding along?", '', [
-      choiceCards('v2-trip-visibility', [
+    narrativeSection('trip-section-who', "Who's riding along?", '', [
+      choiceCards('trip-visibility', [
         { value: 'group', label: 'Everyone', description: 'Visible to every active member', tone: 'accent' },
         { value: 'selected', label: 'Selected users', description: 'Only the riders you pick', tone: 'info' },
         { value: 'private', label: 'Private', description: 'Visible only to you', tone: 'muted' },
@@ -220,15 +220,15 @@ export function tripWizardHtml(editing = false) {
   ];
 
   return narrativeShellHtml({
-    id: 'rf-v2-trip-title',
+    id: 'rf-trip-title',
     kicker: editing ? 'Edit trip' : 'New trip',
     title: editing ? 'Edit road journal' : 'Plan a road journal',
     sub: 'Stages, costs, GPX and notes stay attached to this trip.',
     sections,
     previewLabel: 'Trips list preview',
     previewHtml: tripPreviewHtml(),
-    errorId: 'v2-trip-error',
-    saveAction: editing ? 'rf-v2-update-trip' : 'rf-v2-save-trip',
+    errorId: 'trip-error',
+    saveAction: editing ? 'rf-update-trip' : 'rf-save-trip',
     saveLabel: editing ? 'Save changes' : 'Create trip',
   });
 }
@@ -243,12 +243,12 @@ export function assertSelectedVisibilityHasMembers(payload) {
 
 export function tripPayload() {
   return {
-    title: fieldValue('v2-trip-title'),
-    description: fieldValue('v2-trip-desc'),
-    start_date: field('v2-trip-start')?.value || null,
-    end_date: field('v2-trip-end')?.value || null,
-    status: field('v2-trip-status')?.value || 'planning',
-    visibility: field('v2-trip-visibility')?.value || activeTrip()?.visibility || 'group',
+    title: fieldValue('trip-title'),
+    description: fieldValue('trip-desc'),
+    start_date: field('trip-start')?.value || null,
+    end_date: field('trip-end')?.value || null,
+    status: field('trip-status')?.value || 'planning',
+    visibility: field('trip-visibility')?.value || activeTrip()?.visibility || 'group',
     selected_member_emails: selectedMemberEmailsFromWizard(),
   };
 }

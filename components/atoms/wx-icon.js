@@ -1,6 +1,6 @@
 // ============================================================
 // routefolk — wx-icon.js
-// Inline SVG icons for the v3 weather atom.
+// Inline SVG icons for the weather atom.
 // ============================================================
 
 import { esc } from '../../utils/dom.js';

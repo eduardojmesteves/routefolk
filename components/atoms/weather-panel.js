@@ -1,6 +1,6 @@
 // ============================================================
 // routefolk — weather-panel.js
-// Shared mobile/desktop v3 weather panel.
+// Shared mobile/desktop weather panel.
 // ============================================================
 
 import { esc } from '../../utils/dom.js';
@@ -16,7 +16,7 @@ function fallbackMessage(stage, wx, prefix) {
   return `<section class="${prefix}-wx"><div class="${prefix}-wx-tag">Along the day</div><p>Weather unavailable for this stage.</p></section>`;
 }
 
-export function weatherPanelHtml(stage, wx, { prefix = 'rf-m2' } = {}) {
+export function weatherPanelHtml(stage, wx, { prefix = 'rf-mobile' } = {}) {
   if (!wx || wx === 'loading' || !Array.isArray(wx?.waypoints) || !wx.waypoints.length) {
     return fallbackMessage(stage, wx, prefix);
   }

@@ -2,7 +2,7 @@
 // routefolk — screens/wizards/wizard-host.js
 // Wizard host container management: builds/removes the overlay,
 // injects contextual action buttons, owns the render loop and
-// the routefolk:v2-render listener.
+// the routefolk:wizard-render listener.
 // ============================================================
 
 import { STATE } from '../../state/app-state.js';
@@ -43,18 +43,18 @@ import { roadCreateWizardHtml, roadEditWizardHtml, roadPreviewHtml, preloadStage
 
 // ---- Contextual action injection ------------------------------------
 function removeExisting() {
-  document.querySelectorAll('.rf-v2-wizard-host, .rf-v2-cost-cta, .rf-v2-hero-actions, .rf-v2-stage-actions, .rf-v2-entry-actions').forEach((node) => node.remove());
+  document.querySelectorAll('.rf-wizard-host, .rf-cost-cta, .rf-hero-actions, .rf-stage-actions, .rf-entry-actions').forEach((node) => node.remove());
 }
 
 function injectTripActions() {
   const trip = activeTrip();
   if (!trip || !STATE.viewTripId || STATE.wizard) return;
   if (!['trips', 'archive'].includes(STATE.tab)) return;
-  const target = document.querySelector('.rf-d2-hero .rf-d2-hero-stamps, .rf-clean-trip-head .rf-m2-detail-stamps, .rf-m2-detail-hero');
-  if (!target || target.querySelector('.rf-v2-hero-actions')) return;
+  const target = document.querySelector('.rf-desktop-hero .rf-desktop-hero-stamps, .rf-clean-trip-head .rf-mobile-detail-stamps, .rf-mobile-detail-hero');
+  if (!target || target.querySelector('.rf-hero-actions')) return;
   const wrap = document.createElement('div');
-  wrap.className = 'rf-v2-hero-actions';
-  wrap.innerHTML = `<button class="rf-d2-btn" data-action="rf-v2-edit-trip" type="button">Edit trip</button><button class="rf-d2-btn is-danger" data-action="rf-v2-delete-trip" type="button">Delete</button>`;
+  wrap.className = 'rf-hero-actions';
+  wrap.innerHTML = `<button class="rf-desktop-btn" data-action="rf-edit-trip" type="button">Edit trip</button><button class="rf-desktop-btn is-danger" data-action="rf-delete-trip" type="button">Delete</button>`;
   target.appendChild(wrap);
 }
 
@@ -66,11 +66,11 @@ function injectTripActions() {
 function injectCostCta() {
   const trip = activeTrip();
   if (!trip || STATE.tab !== 'trips' || STATE.view !== 'costs' || STATE.wizard) return;
-  const target = document.querySelector('.rf-d2-ledger-hero, .rf-m2-ledger-hero');
-  if (!target || target.querySelector('.rf-v2-cost-cta')) return;
+  const target = document.querySelector('.rf-desktop-ledger-hero, .rf-mobile-ledger-hero');
+  if (!target || target.querySelector('.rf-cost-cta')) return;
   const wrap = document.createElement('div');
-  wrap.className = 'rf-v2-cost-cta';
-  wrap.innerHTML = '<button class="rf-d2-btn rf-v2-add-expense-btn is-primary" data-action="rf-v2-add-expense" type="button">+ Log expense</button>';
+  wrap.className = 'rf-cost-cta';
+  wrap.innerHTML = '<button class="rf-desktop-btn rf-add-expense-btn is-primary" data-action="rf-add-expense" type="button">+ Log expense</button>';
   target.appendChild(wrap);
 }
 
@@ -124,7 +124,7 @@ export function renderWizardLayer() {
   removeExisting();
 
   const host = document.createElement('div');
-  host.className = `rf-v2-wizard-host ${modeClass}`;
+  host.className = `rf-wizard-host ${modeClass}`;
   host.dataset.wizard = STATE.wizard;
   host.dataset.targetId = targetKey;
   host.dataset.signature = signature;
@@ -179,13 +179,13 @@ setSignatureRefreshHandler(restampHostSignature);
 // singleton ES module) cannot introduce duplicate document listeners.
 document.addEventListener('change', (event) => {
   const target = event.target instanceof Element ? event.target : null;
-  if (target?.id === 'v2-trip-visibility') {
+  if (target?.id === 'trip-visibility') {
     rememberTripVisibility(target.value);
     syncSelectedUsersVisibility(scheduleRender);
   }
-  if (target instanceof HTMLInputElement && target.id === 'v2-gpx-file') {
+  if (target instanceof HTMLInputElement && target.id === 'gpx-file') {
     setPendingGpxFile(target.files?.[0] || null);
-    const label = byId('v2-gpx-selected-file');
+    const label = byId('gpx-selected-file');
     if (label) {
       const file = getPendingGpxFile();
       label.textContent = file ? `Selected: ${file.name}` : 'No file selected yet.';
@@ -197,7 +197,7 @@ document.addEventListener('change', (event) => {
 // live-preview in place, without going through the full render loop.
 document.addEventListener('input', (event) => {
   const target = event.target instanceof Element ? event.target : null;
-  if (target?.closest('.rf-v2-wizard-narrative')) { refreshWizardPreview(); refreshWizardReadouts(); }
+  if (target?.closest('.rf-wizard-narrative')) { refreshWizardPreview(); refreshWizardReadouts(); }
 }, true);
 
 // ---- Keyboard accessibility: Escape closes, Tab stays trapped ---------
@@ -215,7 +215,7 @@ document.addEventListener('keydown', (event) => {
   const host = wizardHost();
   if (!host) return;
   if (event.key === 'Escape') {
-    const cancelBtn = host.querySelector('[data-action="rf-v2-cancel-wizard"], [data-action="rf-v2-cancel-gpx-upload"], [data-action="rf-v2-extra-cancel"]');
+    const cancelBtn = host.querySelector('[data-action="rf-cancel-wizard"], [data-action="rf-cancel-gpx-upload"], [data-action="rf-extra-cancel"]');
     if (cancelBtn instanceof HTMLElement) { event.preventDefault(); cancelBtn.click(); }
     return;
   }
@@ -233,7 +233,7 @@ document.addEventListener('keydown', (event) => {
 /**
  * Dispatch the two shared wizard-cancel actions. The unified
  * action-router (actions/action-router.js) routes
- * `rf-v2-cancel-wizard` and `rf-v2-cancel-gpx-upload` straight here
+ * `rf-cancel-wizard` and `rf-cancel-gpx-upload` straight here
  * before its domain loop, because cancelling closes the wizard host —
  * a concern owned by this rendering module rather than any one domain.
  *
@@ -246,11 +246,11 @@ document.addEventListener('keydown', (event) => {
  * @returns {Promise<boolean>}
  */
 export async function dispatchWizardAction(event, btn, action) {
-  if (action === 'rf-v2-cancel-wizard') { setDraftTripVisibility(null); claim(event); STATE.wizard = null; STATE.editTargetId = null; clearGpxUploadState(); renderAll(); return true; }
-  if (action === 'rf-v2-cancel-gpx-upload') { claim(event); STATE.wizard = null; clearGpxUploadState(); renderAll(); return true; }
-  if (action === 'rf-v2-choice-select') {
+  if (action === 'rf-cancel-wizard') { setDraftTripVisibility(null); claim(event); STATE.wizard = null; STATE.editTargetId = null; clearGpxUploadState(); renderAll(); return true; }
+  if (action === 'rf-cancel-gpx-upload') { claim(event); STATE.wizard = null; clearGpxUploadState(); renderAll(); return true; }
+  if (action === 'rf-choice-select') {
     claim(event);
-    const group = btn.closest('.rf-v2-choice-cards');
+    const group = btn.closest('.rf-choice-cards');
     if (group) {
       selectChoiceCard(btn.dataset.field, btn.dataset.value, group);
       refreshWizardPreview();
@@ -259,7 +259,7 @@ export async function dispatchWizardAction(event, btn, action) {
     }
     return true;
   }
-  if (action === 'rf-v2-star-select') {
+  if (action === 'rf-star-select') {
     claim(event);
     const group = btn.closest('.rf-starpicker');
     if (group) {
@@ -272,6 +272,6 @@ export async function dispatchWizardAction(event, btn, action) {
   return false;
 }
 
-document.addEventListener('routefolk:v2-render', scheduleRender);
+document.addEventListener('routefolk:wizard-render', scheduleRender);
 document.addEventListener('routefolk:wizard-relayout', scheduleRender);
 requestAnimationFrame(renderWizardLayer);

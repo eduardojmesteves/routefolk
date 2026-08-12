@@ -24,34 +24,34 @@ export function gpxPanelHtml(trip, stage, tracks) {
 
   if (raw === 'loading' || STATE.gpxLoading) {
     return `
-      <div class="rf-d2-section-head">
-        <div class="rf-d2-section-title">GPX tracks</div>
+      <div class="rf-desktop-section-head">
+        <div class="rf-desktop-section-title">GPX tracks</div>
       </div>
-      <div class="rf-v2-gpx-card">Loading GPX tracks…</div>`;
+      <div class="rf-gpx-card">Loading GPX tracks…</div>`;
   }
 
   const error = STATE.gpxError
-    ? `<div class="rf-v2-gpx-error">${esc(STATE.gpxError)}</div>`
+    ? `<div class="rf-gpx-error">${esc(STATE.gpxError)}</div>`
     : '';
   const trackRows = tracks.length
     ? tracks.map(trackRowHtml).join('')
-    : '<div class="rf-v2-gpx-empty">No GPX track attached to this stage yet.</div>';
+    : '<div class="rf-gpx-empty">No GPX track attached to this stage yet.</div>';
 
   return `
-    <div class="rf-d2-section-head">
-      <div class="rf-d2-section-title">GPX tracks</div>
+    <div class="rf-desktop-section-head">
+      <div class="rf-desktop-section-title">GPX tracks</div>
     </div>
-    <div class="rf-v2-gpx-card">
+    <div class="rf-gpx-card">
       ${error}
       ${trackRows}
-      <button class="rf-v2-gpx-upload"
-              data-action="rf-v2-open-gpx-upload"
+      <button class="rf-gpx-upload"
+              data-action="rf-open-gpx-upload"
               data-trip-id="${esc(trip.id)}"
               data-stage-id="${esc(stage.id)}"
               type="button">
         <span>Upload GPX</span>
       </button>
-      <div class="rf-v2-gpx-help">Use GPX exports from your navigation/tracking app. These files will power the archive geography.</div>
+      <div class="rf-gpx-help">Use GPX exports from your navigation/tracking app. These files will power the archive geography.</div>
     </div>`;
 }
 
@@ -63,13 +63,13 @@ function trackRowHtml(track) {
     ? `${Number(track.point_count).toLocaleString()} pts`
     : '—';
   return `
-    <div class="rf-v2-gpx-row">
+    <div class="rf-gpx-row">
       <div>
         <strong>${esc(trackFileName(track))}</strong>
         <small>${esc(distance)} · ${esc(points)}</small>
       </div>
-      <button class="rf-d2-btn is-danger"
-              data-action="rf-v2-delete-gpx"
+      <button class="rf-desktop-btn is-danger"
+              data-action="rf-delete-gpx"
               data-track-id="${esc(track.id)}"
               type="button">Delete</button>
     </div>`;

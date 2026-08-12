@@ -3,11 +3,11 @@
    Component-specific CSS lives in styles/*.css — this file now
    holds only what's still genuinely load-bearing: palette tokens,
    base element reset, the .rf-app/.rf-screen structural shell (still
-   partially referenced by the .is-v2 compound selectors in
+   partially referenced by the .is-redesigned compound selectors in
    styles/app-ui.css), and a few accessibility/utility rules with no
    other home. Trimmed from the pre-redesign component library
    (trip cards, stages, entries, ledger, account, palette switcher,
-   etc.) that .rf-clean-*/.rf-d2-*/.rf-m2-* fully superseded — none of
+   etc.) that .rf-clean-*/.rf-desktop-*/.rf-mobile-* fully superseded — none of
    those old classes are referenced by any markup anymore.
    ────────────────────────────────────────────────────────────── */
 
@@ -18,7 +18,7 @@
    this app shipped with pre-redesign were removed here (confirmed dead:
    nothing ever sets data-palette to any of them — see PALETTES in
    app.js / screens/render/shared.js). These unprefixed tokens are now
-   only a fallback source for the real --rf-d2-*/--rf-m2-* tokens
+   only a fallback source for the real --rf-desktop-*/--rf-mobile-* tokens
    (styles/interface-polish.css) — the html/body background rule below
    is the one rule that still leans on that fallback directly. */
 [data-palette="midnight"] {
@@ -49,7 +49,7 @@
 
 * { box-sizing: border-box; }
 /* html/body's own background must track the real shipped theme
-   (--rf-d2-bg, the dark Ember Trail token), not the legacy --bg token —
+   (--rf-desktop-bg, the dark Ember Trail token), not the legacy --bg token —
    --bg still resolves to a light beige for [data-palette="midnight"] in
    this file's own palette block above, a relic from before "midnight"
    was repurposed as the dark redesign's name. Wherever the app's own
@@ -57,10 +57,10 @@
    safe-area gaps, elastic overscroll bounce), THIS is the color that
    shows through, so it has to be correct on its own, not just covered
    by content. */
-html, body { margin: 0; padding: 0; height: 100%; background: var(--rf-d2-bg, var(--bg)); overscroll-behavior: none; }
+html, body { margin: 0; padding: 0; height: 100%; background: var(--rf-desktop-bg, var(--bg)); overscroll-behavior: none; }
 body {
   font-family: var(--font-ui);
-  background: var(--rf-d2-bg, var(--bg));
+  background: var(--rf-desktop-bg, var(--bg));
   color: var(--ink);
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
@@ -71,9 +71,9 @@ a { color: inherit; text-decoration: none; }
 ul, ol { margin: 0; padding: 0; list-style: none; }
 
 /* ─── App shell ─────────────────────────────────────────────── */
-/* Still partially live: screens/app-renderer.js adds "is-v2" to this
-   same #app element, and styles/app-ui.css's .rf-app.is-v2 / .rf-app.
-   is-v2 .rf-screen compound selectors override specific properties
+/* Still partially live: screens/app-renderer.js adds "is-redesigned" to this
+   same #app element, and styles/app-ui.css's .rf-app.is-redesigned / .rf-app.
+   is-redesigned .rf-screen compound selectors override specific properties
    (display, background, padding) on top of — not instead of — the
    base rules below (flex layout, min-height, position). */
 .rf-app {

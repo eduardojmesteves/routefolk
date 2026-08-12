@@ -62,7 +62,7 @@ export function getPendingGpxFile() { return pendingGpxFile; }
 // one overlay at a time, so field()/fieldValue()/refreshWizardPreview()
 // can stay host-agnostic.
 export function wizardHost() {
-  return document.querySelector('.rf-v2-wizard-host, .rf-v2-extra-host');
+  return document.querySelector('.rf-wizard-host, .rf-extra-host');
 }
 
 export function field(id) {
@@ -78,7 +78,7 @@ export function api() { return window.routefolkData || {}; }
 
 export function renderAll() {
   api().renderAll?.();
-  window.__routefolkV2Render?.();
+  window.__routefolkWizardRender?.();
   requestAnimationFrame(() => {
     document.dispatchEvent(new Event('routefolk:wizard-relayout'));
   });
@@ -113,7 +113,7 @@ export function beginBusy(event) {
 }
 
 export function showError(id, error) {
-  const fallback = wizardHost()?.querySelector('.rf-v2-wizard-error') || document.querySelector('.rf-v2-wizard-error');
+  const fallback = wizardHost()?.querySelector('.rf-wizard-error') || document.querySelector('.rf-wizard-error');
   const node = wizardHost()?.querySelector(`#${CSS.escape(id)}`) || byId(id) || fallback;
   if (!node) return;
   node.textContent = error?.message || String(error || 'Something went wrong.');
@@ -124,25 +124,25 @@ export function clearGpxUploadState() { pendingGpxFile = null; STATE.gpxUploadTa
 
 // ---- Shared markup helpers ------------------------------------------
 export function panelHtml({ id, kicker, title, sub = '', body, errorId, saveAction, saveLabel }) {
-  return `<aside class="rf-v2-wizard-panel" role="dialog" aria-modal="true" aria-labelledby="${esc(id)}">
-    <div class="rf-v2-wizard-head"><div class="rf-d2-aside-kicker">${esc(kicker)}</div><h2 class="rf-d2-aside-title" id="${esc(id)}">${esc(title)}</h2>${sub ? `<p class="rf-d2-aside-sub">${esc(sub)}</p>` : ''}</div>
+  return `<aside class="rf-wizard-panel" role="dialog" aria-modal="true" aria-labelledby="${esc(id)}">
+    <div class="rf-wizard-head"><div class="rf-desktop-aside-kicker">${esc(kicker)}</div><h2 class="rf-desktop-aside-title" id="${esc(id)}">${esc(title)}</h2>${sub ? `<p class="rf-desktop-aside-sub">${esc(sub)}</p>` : ''}</div>
     ${body}
-    <div class="rf-v2-wizard-error" id="${esc(errorId)}" hidden></div>
-    <div class="rf-d2-form-actions"><button class="rf-d2-btn" data-action="rf-v2-cancel-wizard" type="button">Cancel</button><button class="rf-d2-btn is-primary" data-action="${esc(saveAction)}" type="button">${esc(saveLabel)}</button></div>
+    <div class="rf-wizard-error" id="${esc(errorId)}" hidden></div>
+    <div class="rf-desktop-form-actions"><button class="rf-desktop-btn" data-action="rf-cancel-wizard" type="button">Cancel</button><button class="rf-desktop-btn is-primary" data-action="${esc(saveAction)}" type="button">${esc(saveLabel)}</button></div>
   </aside>`;
 }
 
-export function row(id, label, controlHtml) { return `<div class="rf-d2-form-row"><label class="rf-d2-form-label" for="${esc(id)}">${esc(label)}</label>${controlHtml}</div>`; }
-export function pair(left, right) { return `<div class="rf-d2-form-row-pair">${left}${right}</div>`; }
-export function input(id, value = '', attrs = '') { return `<input class="rf-d2-input" id="${esc(id)}" value="${esc(value ?? '')}" ${attrs}>`; }
-export function fileInput(id, attrs = '') { return `<input class="rf-d2-input" id="${esc(id)}" type="file" ${attrs}>`; }
-export function textarea(id, value = '', attrs = '') { return `<textarea class="rf-d2-textarea" id="${esc(id)}" ${attrs}>${esc(value ?? '')}</textarea>`; }
-export function select(id, optionsHtml, attrs = '') { return `<select class="rf-d2-input" id="${esc(id)}" ${attrs}>${optionsHtml}</select>`; }
+export function row(id, label, controlHtml) { return `<div class="rf-desktop-form-row"><label class="rf-desktop-form-label" for="${esc(id)}">${esc(label)}</label>${controlHtml}</div>`; }
+export function pair(left, right) { return `<div class="rf-desktop-form-row-pair">${left}${right}</div>`; }
+export function input(id, value = '', attrs = '') { return `<input class="rf-desktop-input" id="${esc(id)}" value="${esc(value ?? '')}" ${attrs}>`; }
+export function fileInput(id, attrs = '') { return `<input class="rf-desktop-input" id="${esc(id)}" type="file" ${attrs}>`; }
+export function textarea(id, value = '', attrs = '') { return `<textarea class="rf-desktop-textarea" id="${esc(id)}" ${attrs}>${esc(value ?? '')}</textarea>`; }
+export function select(id, optionsHtml, attrs = '') { return `<select class="rf-desktop-input" id="${esc(id)}" ${attrs}>${optionsHtml}</select>`; }
 export function option(value, label, selected) { return `<option value="${esc(value)}" ${selected === value ? 'selected' : ''}>${esc(label)}</option>`; }
 export function slug(value) { return String(value || '').trim().toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '') || 'other'; }
 
 export function emptyWizard(message) {
-  return `<aside class="rf-v2-wizard-panel"><div class="rf-v2-wizard-head"><h2 class="rf-d2-aside-title">Nothing selected</h2><p>${esc(message)}</p></div><button class="rf-d2-btn" data-action="rf-v2-cancel-wizard" type="button">Close</button></aside>`;
+  return `<aside class="rf-wizard-panel"><div class="rf-wizard-head"><h2 class="rf-desktop-aside-title">Nothing selected</h2><p>${esc(message)}</p></div><button class="rf-desktop-btn" data-action="rf-cancel-wizard" type="button">Close</button></aside>`;
 }
 
 // ---- Narrative wizard shell (Route Atlas) -----------------------------
@@ -152,21 +152,21 @@ export function emptyWizard(message) {
 // using panelHtml()/row()/select() above until their own migration.
 
 /** Wizard shell: narrative sections + a sticky live-preview + sticky footer. */
-export function narrativeShellHtml({ id, kicker, title, sub = '', sections, previewLabel = 'Preview', previewHtml, errorId, saveAction, saveLabel, cancelAction = 'rf-v2-cancel-wizard' }) {
-  return `<aside class="rf-v2-wizard-panel rf-v2-wizard-narrative" role="dialog" aria-modal="true" aria-labelledby="${esc(id)}">
-    <div class="rf-v2-wizard-head"><div class="rf-d2-aside-kicker">${esc(kicker)}</div><h2 class="rf-d2-aside-title" id="${esc(id)}">${esc(title)}</h2>${sub ? `<p class="rf-d2-aside-sub">${esc(sub)}</p>` : ''}</div>
-    <div class="rf-v2-wizard-scroll">
+export function narrativeShellHtml({ id, kicker, title, sub = '', sections, previewLabel = 'Preview', previewHtml, errorId, saveAction, saveLabel, cancelAction = 'rf-cancel-wizard' }) {
+  return `<aside class="rf-wizard-panel rf-wizard-narrative" role="dialog" aria-modal="true" aria-labelledby="${esc(id)}">
+    <div class="rf-wizard-head"><div class="rf-desktop-aside-kicker">${esc(kicker)}</div><h2 class="rf-desktop-aside-title" id="${esc(id)}">${esc(title)}</h2>${sub ? `<p class="rf-desktop-aside-sub">${esc(sub)}</p>` : ''}</div>
+    <div class="rf-wizard-scroll">
       ${sections.join('')}
-      <div class="rf-v2-wizard-preview" id="rf-v2-wizard-preview"><div class="rf-v2-wizard-preview-label">${esc(previewLabel)}</div>${previewHtml}</div>
+      <div class="rf-wizard-preview" id="rf-wizard-preview"><div class="rf-wizard-preview-label">${esc(previewLabel)}</div>${previewHtml}</div>
     </div>
-    <div class="rf-v2-wizard-error" id="${esc(errorId)}" hidden></div>
-    <div class="rf-v2-wizard-footer"><button class="rf-d2-btn" data-action="${esc(cancelAction)}" type="button">Cancel</button><button class="rf-d2-btn is-primary" data-action="${esc(saveAction)}" type="button">${esc(saveLabel)}</button></div>
+    <div class="rf-wizard-error" id="${esc(errorId)}" hidden></div>
+    <div class="rf-wizard-footer"><button class="rf-desktop-btn" data-action="${esc(cancelAction)}" type="button">Cancel</button><button class="rf-desktop-btn is-primary" data-action="${esc(saveAction)}" type="button">${esc(saveLabel)}</button></div>
   </aside>`;
 }
 
 /** One narrative section: a conversational question + hint, then its fields. */
 export function narrativeSection(id, question, hint, fieldsHtml) {
-  return `<section class="rf-v2-wizard-section" id="${esc(id)}"><div class="rf-v2-wizard-section-head"><h3>${esc(question)}</h3>${hint ? `<p>${esc(hint)}</p>` : ''}</div>${fieldsHtml}</section>`;
+  return `<section class="rf-wizard-section" id="${esc(id)}"><div class="rf-wizard-section-head"><h3>${esc(question)}</h3>${hint ? `<p>${esc(hint)}</p>` : ''}</div>${fieldsHtml}</section>`;
 }
 
 /**
@@ -175,7 +175,7 @@ export function narrativeSection(id, question, hint, fieldsHtml) {
  * the Road wizard's "What does it connect?" per HANDOFF.md).
  */
 export function connectedRouteRow(fromId, toId, fromValue, toValue, fromAttrs = '', toAttrs = '') {
-  return `<div class="rf-v2-route-row">${input(fromId, fromValue, `placeholder="From" ${fromAttrs}`)}<span class="rf-v2-route-connector" aria-hidden="true"></span>${input(toId, toValue, `placeholder="To" ${toAttrs}`)}</div>`;
+  return `<div class="rf-route-row">${input(fromId, fromValue, `placeholder="From" ${fromAttrs}`)}<span class="rf-route-connector" aria-hidden="true"></span>${input(toId, toValue, `placeholder="To" ${toAttrs}`)}</div>`;
 }
 
 /**
@@ -188,8 +188,8 @@ export function connectedRouteRow(fromId, toId, fromValue, toValue, fromAttrs = 
  * @param {string} selectedValue
  */
 export function choiceCards(fieldId, options, selectedValue, { disabled = false } = {}) {
-  const cards = options.map((opt) => `<button type="button" class="rf-v2-choice-card ${opt.value === selectedValue ? 'is-active' : ''}" data-action="rf-v2-choice-select" data-field="${esc(fieldId)}" data-value="${esc(opt.value)}" ${disabled ? 'disabled' : ''}><span class="rf-v2-choice-dot" data-tone="${esc(opt.tone || '')}"></span><span class="rf-v2-choice-body"><strong>${esc(opt.label)}</strong>${opt.description ? `<small>${esc(opt.description)}</small>` : ''}</span></button>`).join('');
-  return `<div class="rf-v2-choice-cards ${disabled ? 'is-disabled' : ''}" data-field-group="${esc(fieldId)}">${cards}<input type="hidden" id="${esc(fieldId)}" value="${esc(selectedValue)}"></div>`;
+  const cards = options.map((opt) => `<button type="button" class="rf-choice-card ${opt.value === selectedValue ? 'is-active' : ''}" data-action="rf-choice-select" data-field="${esc(fieldId)}" data-value="${esc(opt.value)}" ${disabled ? 'disabled' : ''}><span class="rf-choice-dot" data-tone="${esc(opt.tone || '')}"></span><span class="rf-choice-body"><strong>${esc(opt.label)}</strong>${opt.description ? `<small>${esc(opt.description)}</small>` : ''}</span></button>`).join('');
+  return `<div class="rf-choice-cards ${disabled ? 'is-disabled' : ''}" data-field-group="${esc(fieldId)}">${cards}<input type="hidden" id="${esc(fieldId)}" value="${esc(selectedValue)}"></div>`;
 }
 
 /**
@@ -199,7 +199,7 @@ export function choiceCards(fieldId, options, selectedValue, { disabled = false 
  * choiceCards() so field()/fieldValue() work unchanged.
  */
 export function starPickerHtml(fieldId, rating = 0) {
-  const stars = [1, 2, 3, 4, 5].map((n) => `<button type="button" class="rf-star ${n <= rating ? 'is-filled' : ''}" data-action="rf-v2-star-select" data-field="${esc(fieldId)}" data-value="${n}" aria-label="${n} star${n === 1 ? '' : 's'}">${starSvg()}</button>`).join('');
+  const stars = [1, 2, 3, 4, 5].map((n) => `<button type="button" class="rf-star ${n <= rating ? 'is-filled' : ''}" data-action="rf-star-select" data-field="${esc(fieldId)}" data-value="${n}" aria-label="${n} star${n === 1 ? '' : 's'}">${starSvg()}</button>`).join('');
   return `<div class="rf-starpicker" data-field-group="${esc(fieldId)}">${stars}<input type="hidden" id="${esc(fieldId)}" value="${rating}"></div>`;
 }
 
@@ -210,7 +210,7 @@ export function selectChoiceCard(fieldId, value, groupEl) {
   const hidden = groupEl.querySelector(`#${CSS.escape(fieldId)}`);
   if (!hidden) return;
   hidden.value = value;
-  groupEl.querySelectorAll('.rf-v2-choice-card').forEach((btn) => btn.classList.toggle('is-active', btn.dataset.value === value));
+  groupEl.querySelectorAll('.rf-choice-card').forEach((btn) => btn.classList.toggle('is-active', btn.dataset.value === value));
   hidden.dispatchEvent(new Event('change', { bubbles: true }));
 }
 
@@ -228,10 +228,10 @@ export function selectStar(fieldId, value, groupEl) {
  *  scrollIntoView, which can fight other scroll containers) to bring the
  *  next section into view. */
 export function autoScrollToNextSection(fromEl) {
-  const section = fromEl.closest('.rf-v2-wizard-section');
-  const scroller = fromEl.closest('.rf-v2-wizard-scroll');
+  const section = fromEl.closest('.rf-wizard-section');
+  const scroller = fromEl.closest('.rf-wizard-scroll');
   const next = section?.nextElementSibling;
-  if (!scroller || !next || !next.classList.contains('rf-v2-wizard-section')) return;
+  if (!scroller || !next || !next.classList.contains('rf-wizard-section')) return;
   scroller.scrollTo({ top: next.offsetTop - 12, behavior: 'smooth' });
 }
 
@@ -242,9 +242,9 @@ export function autoScrollToNextSection(fromEl) {
 let activePreviewBuilder = null;
 export function setActivePreviewBuilder(fn) { activePreviewBuilder = fn; }
 export function refreshWizardPreview() {
-  const node = wizardHost()?.querySelector('#rf-v2-wizard-preview');
+  const node = wizardHost()?.querySelector('#rf-wizard-preview');
   if (!node || !activePreviewBuilder) return;
-  node.innerHTML = `<div class="rf-v2-wizard-preview-label">${node.querySelector('.rf-v2-wizard-preview-label')?.textContent || 'Preview'}</div>${activePreviewBuilder()}`;
+  node.innerHTML = `<div class="rf-wizard-preview-label">${node.querySelector('.rf-wizard-preview-label')?.textContent || 'Preview'}</div>${activePreviewBuilder()}`;
 }
 
 // A narrative wizard's other live-computed readouts (e.g. a "7 days on
