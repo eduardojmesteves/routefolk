@@ -14,6 +14,32 @@
 }
 
 @media(max-width:959px){
+  /* Full-bleed status bar (iOS standalone PWA): the app now runs with
+     apple-mobile-web-app-status-bar-style=black-translucent (index.html),
+     which makes the status bar/Dynamic Island area transparent so the
+     app's own dark background shows through instead of Apple's white
+     "default" status-bar banner. That means every mobile header now
+     owns the safe-area-inset-top clearance itself — without this, page
+     titles would render underneath the clock/Dynamic Island/battery
+     icons. Both header patterns used across every mobile screen (trip
+     detail, Account, Archive via .rf-clean-trip-head; Trips list via
+     .rf-clean-trips-hero below) get the same treatment: extra top
+     padding, so their own dark background fills the safe area
+     seamlessly instead of leaving a gap. */
+  .rf-clean-trip-head{
+    padding-top:calc(22px + env(safe-area-inset-top,0px))!important;
+  }
+
+  /* A few screens skip the header entirely and put .rf-clean-page
+     straight inside .rf-clean-scroll: the journal drill-in view (no
+     stage selected + the main view, stages-mobile.js) and the Trips
+     list's loading/error states (trips-mobile.js). Scoped to :first-child
+     so screens that DO have a header above .rf-clean-page (the common
+     case) aren't double-padded. */
+  .rf-clean-scroll > .rf-clean-page:first-child{
+    padding-top:calc(20px + env(safe-area-inset-top,0px))!important;
+  }
+
   /* Bottom nav — floating pill, per the Route Atlas design handoff's
      .rf-bottomnav (shared/routefolk-shared.css): a rounded, elevated bar
      with margin on three sides, not the old edge-to-edge bar with a top
@@ -83,7 +109,7 @@
     justify-content:space-between!important;
     gap:12px!important;
     min-height:0!important;
-    padding:18px 22px 16px!important;
+    padding:calc(18px + env(safe-area-inset-top,0px)) 22px 16px!important;
     border-bottom:1px solid var(--rf-m2-rule)!important;
     background:var(--rf-m2-bg)!important;
     background-image:var(--rf-m2-contour-bg)!important;

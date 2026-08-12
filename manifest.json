@@ -10,8 +10,8 @@
     "standalone",
     "browser"
   ],
-  "background_color": "#e7e4d8",
-  "theme_color": "#171a26",
+  "background_color": "#1B1F23",
+  "theme_color": "#1B1F23",
   "orientation": "portrait",
   "lang": "en-GB",
   "dir": "ltr",
