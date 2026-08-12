@@ -25,9 +25,11 @@ function totalsGrid(trip) {
 
 // HANDOFF.md: stat grid sits above the must-keep stage-by-stage table.
 export function renderMobileSummary(trip, { screen, tripHeader }) {
-  return screen(`${tripHeader(trip, 'summary')}<main class="rf-clean-page">${totalsGrid(trip)}${summaryCard(trip)}</main>`);
+  const body = `<main class="rf-clean-page">${totalsGrid(trip)}${summaryCard(trip)}</main>`;
+  return screen(body, undefined, { header: tripHeader(trip, 'summary') });
 }
 
 export function renderMobileArchiveSummary(trip, { screen, tripHeader }) {
-  return screen(`${tripHeader(trip, 'summary', 'archive', true)}<main class="rf-clean-page">${totalsGrid(trip)}${summaryCard(trip)}</main>`, 'archive');
+  const body = `<main class="rf-clean-page">${totalsGrid(trip)}${summaryCard(trip)}</main>`;
+  return screen(body, 'archive', { header: tripHeader(trip, 'summary', 'archive', true) });
 }

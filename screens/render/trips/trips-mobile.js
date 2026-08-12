@@ -66,13 +66,17 @@ export function renderMobileTrips(screen) {
   const rows = activeTrips();
   const activeCount = STATE.trips.filter((trip) => trip.status === 'active').length;
   const completedCount = STATE.trips.filter((trip) => trip.status === 'completed').length;
+  // Route Atlas mockup: the "Trips" title is a fixed header sibling of
+  // the scroll container on every state of this frame, not just the
+  // loaded one.
+  const header = `<header class="rf-clean-trips-hero"><div><div class="rf-clean-kicker">ROUTEFOLK</div><h1>Trips</h1><p>${activeCount} on the road map · ${completedCount} in archive</p></div></header>`;
   if (STATE.tripsLoading && !STATE.trips.length) {
-    return screen('<main class="rf-clean-page"><div class="rf-clean-empty">Loading trips…</div></main>', 'trips', NEW_TRIP_FAB);
+    return screen('<main class="rf-clean-page"><div class="rf-clean-empty">Loading trips…</div></main>', 'trips', { fab: NEW_TRIP_FAB, header });
   }
   if (STATE.tripsError) {
-    return screen(`<main class="rf-clean-page"><div class="rf-clean-empty">${esc(STATE.tripsError)}</div></main>`, 'trips', NEW_TRIP_FAB);
+    return screen(`<main class="rf-clean-page"><div class="rf-clean-empty">${esc(STATE.tripsError)}</div></main>`, 'trips', { fab: NEW_TRIP_FAB, header });
   }
-  return screen(`<header class="rf-clean-trips-hero"><div><div class="rf-clean-kicker">ROUTEFOLK</div><h1>Trips</h1><p>${activeCount} on the road map · ${completedCount} in archive</p></div></header><main class="rf-clean-page"><div class="rf-clean-toolbar"><div>${TRIP_FILTERS.map(([key, label]) => `<button class="${(STATE.tripStatusFilter || 'all') === key ? 'is-active' : ''}" data-action="rf-mobile-status-filter" data-value="${key}">${label}</button>`).join('')}</div>${STATE.tripFiltersOpen || STATE.tripSearch ? `<input data-action="rf-mobile-search-input" value="${esc(STATE.tripSearch || '')}" placeholder="Search by name" aria-label="Search trips"><button data-action="rf-mobile-search-toggle" aria-label="Close search">×</button>` : `<button class="rf-clean-search" data-action="rf-mobile-search-toggle" aria-label="Search trips">⌕</button>`}</div>${tripsHeroHtml()}<div class="rf-clean-card-list rf-clean-trip-list">${rows.map(tripTicket).join('') || '<div class="rf-clean-empty">No matching trips.</div>'}</div></main>`, 'trips', NEW_TRIP_FAB);
+  return screen(`<main class="rf-clean-page"><div class="rf-clean-toolbar"><div>${TRIP_FILTERS.map(([key, label]) => `<button class="${(STATE.tripStatusFilter || 'all') === key ? 'is-active' : ''}" data-action="rf-mobile-status-filter" data-value="${key}">${label}</button>`).join('')}</div>${STATE.tripFiltersOpen || STATE.tripSearch ? `<input data-action="rf-mobile-search-input" value="${esc(STATE.tripSearch || '')}" placeholder="Search by name" aria-label="Search trips"><button data-action="rf-mobile-search-toggle" aria-label="Close search">×</button>` : `<button class="rf-clean-search" data-action="rf-mobile-search-toggle" aria-label="Search trips">⌕</button>`}</div>${tripsHeroHtml()}<div class="rf-clean-card-list rf-clean-trip-list">${rows.map(tripTicket).join('') || '<div class="rf-clean-empty">No matching trips.</div>'}</div></main>`, 'trips', { fab: NEW_TRIP_FAB, header });
 }
 
 export { statusLabel, statusClass };

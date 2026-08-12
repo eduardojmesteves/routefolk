@@ -31,8 +31,13 @@ function bottomNav(active) {
   return `<nav class="rf-clean-bottom"><button class="${active === 'trips' ? 'is-active' : ''}" data-action="rf-mobile-nav" data-tab="trips">Trips</button><button class="${active === 'archive' ? 'is-active' : ''}" data-action="rf-mobile-nav" data-tab="archive">Archive</button><button class="${active === 'account' ? 'is-active' : ''}" data-action="rf-mobile-nav" data-tab="account">You</button></nav>`;
 }
 
-function screen(inner, active = 'trips', fab = '') {
-  return `${offlineBannerHtml()}<div class="rf-clean-mobile"><div class="rf-clean-scroll">${inner}</div>${fab}${bottomNav(active)}</div>`;
+// Route Atlas mockup: on every mobile frame, the header (title, back
+// button, and the Stages/Summary/Costs/Items tab row where present) is
+// a fixed sibling OUTSIDE the scroll container — only the body content
+// scrolls beneath it. header defaults to '' for screens with nothing
+// to pin (loading/error placeholders).
+function screen(body, active = 'trips', { fab = '', header = '' } = {}) {
+  return `${offlineBannerHtml()}<div class="rf-clean-mobile">${header}<div class="rf-clean-scroll">${body}</div>${fab}${bottomNav(active)}</div>`;
 }
 
 function tripHeader(trip, active, backTo = 'trips', summaryOnly = false) {

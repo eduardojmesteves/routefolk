@@ -14,6 +14,18 @@
 }
 
 @media(max-width:959px){
+  /* The journal drill-in screen's stage-route h1 now lives in the fixed
+     .rf-clean-trip-head header (was inside .rf-clean-page, whose own
+     h1.rf-clean-title rule required that exact ancestor) — restate the
+     same treatment under its new parent so it doesn't fall back to
+     .rf-clean-trip-head's bare h1 style (serif, much larger). */
+  .rf-clean-trip-head h1.rf-clean-title{
+    font:700 36px/1 var(--rf-mobile-font-ui)!important;
+    letter-spacing:-.04em!important;
+    margin:8px 0 16px!important;
+    color:var(--rf-mobile-ink)!important;
+  }
+
   /* Full-bleed status bar (iOS standalone PWA): the app now runs with
      apple-mobile-web-app-status-bar-style=black-translucent (index.html),
      which makes the status bar/Dynamic Island area transparent so the
@@ -30,13 +42,15 @@
     padding-top:calc(22px + env(safe-area-inset-top,0px))!important;
   }
 
-  /* A few screens skip the header entirely and put .rf-clean-page
-     straight inside .rf-clean-scroll: the journal drill-in view (no
-     stage selected + the main view, stages-mobile.js) and the Trips
-     list's loading/error states (trips-mobile.js). Scoped to :first-child
-     so screens that DO have a header above .rf-clean-page (the common
-     case) aren't double-padded. */
-  .rf-clean-scroll > .rf-clean-page:first-child{
+  /* Headers now render as fixed siblings of .rf-clean-scroll (see
+     screens/render/mobile.js screen()), not as its first child, so this
+     only ever matches the one screen with no header at all: the journal
+     drill-in's "no stage selected" fallback (stages-mobile.js). Scoped to
+     .rf-clean-scroll ALSO being :first-child of .rf-clean-mobile — every
+     screen that has a header (the common case, including Trips list's
+     loading/error states) puts a header sibling before .rf-clean-scroll,
+     which disqualifies this selector, so they aren't double-padded. */
+  .rf-clean-mobile > .rf-clean-scroll:first-child > .rf-clean-page:first-child{
     padding-top:calc(20px + env(safe-area-inset-top,0px))!important;
   }
 
@@ -57,6 +71,16 @@
     flex-direction:column!important;
   }
 
+  /* Headers (.rf-clean-trip-head / .rf-clean-trips-hero) now render as
+     fixed flex-item siblings of .rf-clean-scroll, not inside it — pin
+     their height so unusually tall header content can never get
+     compressed by the flex layout; .rf-clean-scroll (flex:1) absorbs
+     all remaining space and scrolls beneath them. */
+  .rf-clean-mobile > .rf-clean-trip-head,
+  .rf-clean-mobile > .rf-clean-trips-hero{
+    flex:0 0 auto!important;
+  }
+
   .rf-clean-scroll{
     height:auto!important;
     flex:1 1 auto!important;
@@ -65,7 +89,7 @@
 
   .rf-clean-bottom{
     height:auto!important;
-    min-height:48px!important;
+    min-height:44px!important;
     display:flex!important;
     align-items:stretch!important;
     justify-content:space-around!important;
@@ -85,11 +109,11 @@
     display:flex!important;
     align-items:center!important;
     justify-content:center!important;
-    padding:7px 11px!important;
+    padding:6px 10px!important;
     border-radius:var(--rf-radius-pill)!important;
     color:var(--rf-desktop-ink)!important;
     opacity:.55!important;
-    font:600 13px/1.2 var(--rf-mobile-font-ui)!important;
+    font:600 12px/1.2 var(--rf-mobile-font-ui)!important;
     transition:opacity .12s ease,color .12s ease!important;
   }
 
@@ -156,7 +180,7 @@
   .rf-clean-fab-new-trip{
     position:absolute!important;
     right:18px!important;
-    bottom:calc(48px + 16px + 14px + env(safe-area-inset-bottom,0px))!important;
+    bottom:calc(44px + 16px + 14px + env(safe-area-inset-bottom,0px))!important;
     z-index:5!important;
     border:0!important;
     border-radius:var(--rf-radius-pill)!important;
@@ -235,7 +259,7 @@
        card (e.g. a 0km/0-stage planning trip) scrolls to rest directly
        behind the FAB instead of stopping above it — matches the FAB's
        own bottom offset + its height + a breathing-room gap. */
-    margin-bottom:calc(48px + 16px + 14px + 40px + 16px + env(safe-area-inset-bottom,0px))!important;
+    margin-bottom:calc(44px + 16px + 14px + 40px + 16px + env(safe-area-inset-bottom,0px))!important;
   }
 
   .rf-clean-trip-card,
