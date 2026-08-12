@@ -12,6 +12,7 @@ import { createStage, updateStage, deleteStage, swapStageOrder } from '../lib/st
 import { dispatchAppAction } from '../screens/app-actions.js';
 import {
   claim,
+  beginBusy,
   renderAll,
   api,
   activeTrip,
@@ -49,6 +50,8 @@ export async function saveStageCreate(event) {
   claim(event);
   const trip = activeTrip();
   if (!trip) return;
+  const endBusy = beginBusy(event);
+  if (!endBusy) return;
   try {
     const stage = await createStage(trip.id, {
       start_location: fieldValue('v2-stage-from'),
@@ -67,6 +70,8 @@ export async function saveStageCreate(event) {
     renderAll();
   } catch (error) {
     showError('v2-stage-create-error', error);
+  } finally {
+    endBusy();
   }
 }
 
@@ -79,6 +84,8 @@ export async function saveStageEdit(event) {
   const stage = selectedStage();
   const trip = activeTrip();
   if (!stage || !trip) return;
+  const endBusy = beginBusy(event);
+  if (!endBusy) return;
   try {
     const updated = await updateStage(stage.id, {
       start_location: fieldValue('v2-stage-from-edit'),
@@ -97,6 +104,8 @@ export async function saveStageEdit(event) {
     renderAll();
   } catch (error) {
     showError('v2-stage-error', error);
+  } finally {
+    endBusy();
   }
 }
 

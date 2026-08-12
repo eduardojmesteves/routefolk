@@ -57,8 +57,8 @@ function stageActionFooterHtml(stage, { index, total, trip }) {
   if (!showStageActions(trip)) return '';
   const w = writeDisabledAttr(trip);
   return `<div class="rf-clean-stage-foot is-quint">`
-    + `<button class="icon" data-action="rf-v2-stage-up" data-stage-id="${esc(stage.id)}" ${index === 0 ? 'disabled' : w}>↑</button>`
-    + `<button class="icon" data-action="rf-v2-stage-down" data-stage-id="${esc(stage.id)}" ${index === total - 1 ? 'disabled' : w}>↓</button>`
+    + `<button class="icon" data-action="rf-v2-stage-up" data-stage-id="${esc(stage.id)}" aria-label="Move stage up" ${index === 0 ? 'disabled' : w}>↑</button>`
+    + `<button class="icon" data-action="rf-v2-stage-down" data-stage-id="${esc(stage.id)}" aria-label="Move stage down" ${index === total - 1 ? 'disabled' : w}>↓</button>`
     + `<button data-action="rf-m2-open-stage" data-stage-id="${esc(stage.id)}">Journal</button>`
     + `<button data-action="rf-v2-edit-stage" data-stage-id="${esc(stage.id)}"${w}>Edit</button>`
     + `<button class="danger" data-action="rf-v2-delete-stage" data-stage-id="${esc(stage.id)}"${w}>Delete</button>`

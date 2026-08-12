@@ -18,6 +18,7 @@ import { dispatchAppAction } from '../screens/app-actions.js';
 import { dispatchExtraWriteAction } from '../screens/extra-writes.js';
 import {
   claim,
+  beginBusy,
   renderAll,
   api,
   activeTrip,
@@ -56,6 +57,8 @@ export async function saveItemCreate(event) {
   claim(event);
   const trip = activeTrip();
   if (!trip) return;
+  const endBusy = beginBusy(event);
+  if (!endBusy) return;
   try {
     const item = await createTripItem(trip.id, itemPayload());
     STATE.itemsByTrip[trip.id] = [...itemsForTrip(trip.id), item];
@@ -65,6 +68,8 @@ export async function saveItemCreate(event) {
     renderAll();
   } catch (error) {
     showError('v2-item-error', error);
+  } finally {
+    endBusy();
   }
 }
 
@@ -77,6 +82,8 @@ export async function saveItemEdit(event) {
   const trip = activeTrip();
   const item = selectedItem();
   if (!trip || !item) return;
+  const endBusy = beginBusy(event);
+  if (!endBusy) return;
   try {
     const updated = await updateTripItem(item.id, itemPayload());
     STATE.itemsByTrip[trip.id] = itemsForTrip(trip.id).map((candidate) => candidate.id === updated.id ? updated : candidate);
@@ -86,6 +93,8 @@ export async function saveItemEdit(event) {
     renderAll();
   } catch (error) {
     showError('v2-item-error', error);
+  } finally {
+    endBusy();
   }
 }
 

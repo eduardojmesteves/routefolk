@@ -89,6 +89,29 @@ export function claim(event) {
   event.stopImmediatePropagation();
 }
 
+/**
+ * Disables the button that triggered `event` for the duration of an
+ * async save, so a slow/stalled request can't be double-submitted by an
+ * impatient tap. Returns a restore function to call in a `finally` block,
+ * or `null` if the button was already mid-request — callers should treat
+ * a `null` return as "ignore this click, a save is already running".
+ * @param {Event} event
+ * @returns {(() => void) | null}
+ */
+export function beginBusy(event) {
+  const btn = event.target instanceof Element ? event.target.closest('button') : null;
+  if (!btn || btn.disabled) return null;
+  const label = btn.textContent;
+  btn.disabled = true;
+  btn.textContent = 'Saving…';
+  return () => {
+    if (btn.isConnected) {
+      btn.disabled = false;
+      btn.textContent = label;
+    }
+  };
+}
+
 export function showError(id, error) {
   const fallback = wizardHost()?.querySelector('.rf-v2-wizard-error') || document.querySelector('.rf-v2-wizard-error');
   const node = wizardHost()?.querySelector(`#${CSS.escape(id)}`) || byId(id) || fallback;

@@ -13,6 +13,7 @@ import { createExpense } from '../lib/expenses.js';
 import { dispatchExtraWriteAction } from '../screens/extra-writes.js';
 import {
   claim,
+  beginBusy,
   renderAll,
   api,
   activeTrip,
@@ -44,6 +45,8 @@ export async function saveExpense(event) {
   claim(event);
   const trip = activeTrip();
   if (!trip) return;
+  const endBusy = beginBusy(event);
+  if (!endBusy) return;
   try {
     const expense = await createExpense(trip.id, {
       category: field('v2-expense-category')?.value || 'other',
@@ -60,6 +63,8 @@ export async function saveExpense(event) {
     renderAll();
   } catch (error) {
     showError('v2-expense-error', error);
+  } finally {
+    endBusy();
   }
 }
 

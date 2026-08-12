@@ -13,6 +13,7 @@ import { STATE } from '../state/app-state.js';
 import { uploadStageGpx, deleteGpxTrack, trackFileName } from '../lib/gpx.js';
 import {
   claim,
+  beginBusy,
   renderAll,
   api,
   activeTrip,
@@ -44,6 +45,8 @@ export async function saveGpxUpload(event) {
   const { tripId, stageId } = gpxTarget();
   const inputFile = field('v2-gpx-file')?.files?.[0] || null;
   const file = getPendingGpxFile() || inputFile;
+  const endBusy = beginBusy(event);
+  if (!endBusy) return;
   try {
     if (!tripId || !stageId) throw new Error('Trip and stage are required before uploading GPX.');
     if (!file) throw new Error('Choose a GPX file first.');
@@ -57,6 +60,8 @@ export async function saveGpxUpload(event) {
     renderAll();
   } catch (error) {
     showError('v2-gpx-error', error);
+  } finally {
+    endBusy();
   }
 }
 

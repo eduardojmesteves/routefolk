@@ -15,6 +15,7 @@ import { dispatchAppAction } from '../screens/app-actions.js';
 import { orderedEntries } from '../screens/render/shared.js';
 import {
   claim,
+  beginBusy,
   renderAll,
   api,
   selectedStage,
@@ -57,6 +58,8 @@ export async function saveEntryCreate(event) {
   claim(event);
   const stage = selectedStage();
   if (!stage) return;
+  const endBusy = beginBusy(event);
+  if (!endBusy) return;
   try {
     const time = field('v2-entry-time')?.value || '';
     const date = stage.planned_date || new Date().toISOString().slice(0, 10);
@@ -83,6 +86,8 @@ export async function saveEntryCreate(event) {
     renderAll();
   } catch (error) {
     showError('v2-entry-create-error', error);
+  } finally {
+    endBusy();
   }
 }
 
@@ -95,6 +100,8 @@ export async function saveEntryEdit(event) {
   const entry = selectedEntry();
   const stage = selectedStage();
   if (!entry || !stage) return;
+  const endBusy = beginBusy(event);
+  if (!endBusy) return;
   try {
     const time = field('v2-entry-time-edit')?.value || '';
     const date = stage.planned_date || new Date().toISOString().slice(0, 10);
@@ -115,6 +122,8 @@ export async function saveEntryEdit(event) {
     renderAll();
   } catch (error) {
     showError('v2-entry-error', error);
+  } finally {
+    endBusy();
   }
 }
 

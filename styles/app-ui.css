@@ -37,7 +37,7 @@
 .rf-clean-stage-rail{position:relative;}
 .rf-clean-stage-rail::before{content:"";position:absolute;left:32px;top:16px;bottom:16px;border-left:2px dashed var(--rf-m2-rule-2);z-index:0;}
 .rf-clean-stage-card{position:relative;z-index:1;}
-.rf-clean-stage-tap>span.is-done{color:var(--rf-m2-accent);}
+.rf-clean-stage-tap>span.is-done{color:var(--rf-m2-accent);text-decoration:underline;text-underline-offset:4px;text-decoration-thickness:1.5px;}
 .rf-clean-stage-tap>span.is-upcoming{color:var(--rf-m2-primary);}
 
 /* HANDOFF.md "Offline / empty states": orange left-accent callout, shown

@@ -18,11 +18,11 @@
 .rf-clean-stage-tap p{margin:6px 0 0;color:var(--rf-m2-muted);font-size:14px}
 
 /* ---- M2: mobile stage action footer (↑ ↓ Journal Edit Delete) ---- */
-.rf-clean-stage-foot{display:grid;grid-template-columns:40px 40px 1fr 1fr;border-top:1px solid var(--rf-m2-rule);background:rgba(0,0,0,.025)}
-.rf-clean-stage-foot.is-quint{grid-template-columns:40px 40px 1fr 1fr 1fr}
-.rf-clean-stage-foot button{appearance:none;border:0;background:transparent;font:600 12px var(--rf-m2-font-ui);color:var(--rf-m2-ink);padding:9px 0;border-right:1px dotted var(--rf-m2-rule);cursor:pointer;letter-spacing:.01em}
+.rf-clean-stage-foot{display:grid;grid-template-columns:44px 44px 1fr 1fr;border-top:1px solid var(--rf-m2-rule);background:rgba(0,0,0,.025)}
+.rf-clean-stage-foot.is-quint{grid-template-columns:44px 44px 1fr 1fr 1fr}
+.rf-clean-stage-foot button{appearance:none;border:0;background:transparent;font:600 12px var(--rf-m2-font-ui);color:var(--rf-m2-ink);min-height:44px;padding:9px 0;border-right:1px dotted var(--rf-m2-rule);cursor:pointer;letter-spacing:.01em;display:flex;align-items:center;justify-content:center}
 .rf-clean-stage-foot button:last-child{border-right:0}
-.rf-clean-stage-foot button.icon{font-size:13px;color:var(--rf-m2-muted);padding:8px 0}
+.rf-clean-stage-foot button.icon{font-size:13px;color:var(--rf-m2-muted)}
 .rf-clean-stage-foot button.danger{color:var(--rf-m2-danger)}
 .rf-clean-stage-foot button[disabled]{color:var(--rf-m2-rule-2);cursor:not-allowed}
 .rf-clean-stage-foot button.danger[disabled]{color:var(--rf-m2-danger);opacity:.4}
@@ -36,8 +36,8 @@
 
 /* ---- M4: mobile journal entry ✎ ✕ ---- */
 .rf-clean-note{grid-template-columns:30px 1fr auto}
-.rf-clean-note-acts{display:flex;gap:4px;align-items:start}
-.rf-clean-note-acts button{width:32px;height:32px;border:0;border-radius:999px;background:transparent;color:var(--rf-m2-muted);font:14px var(--rf-m2-font-ui);cursor:pointer}
+.rf-clean-note-acts{display:flex;gap:2px;align-items:start}
+.rf-clean-note-acts button{width:44px;height:44px;display:inline-flex;align-items:center;justify-content:center;border:0;border-radius:999px;background:transparent;color:var(--rf-m2-muted);font:14px var(--rf-m2-font-ui);cursor:pointer}
 .rf-clean-note-acts button:hover:not([disabled]){background:var(--rf-m2-surface-2)}
 .rf-clean-note-acts button.danger{color:var(--rf-m2-danger)}
 .rf-clean-note-acts button[disabled]{opacity:.45;cursor:not-allowed}
@@ -81,4 +81,12 @@
 /* ---- Packing items — Edit/Delete footer reusing the M2 stage-foot design ---- */
 .rf-clean-stage-foot.is-pair{grid-template-columns:1fr 1fr}
 .rf-clean-item-card.is-split{display:block;padding:0;overflow:hidden}
-.rf-clean-item-card.is-split .rf-clean-item-tap{display:grid;grid-template-columns:28px minmax(0,1fr);gap:10px;align-items:center;padding:13px}
+.rf-clean-item-card.is-split .rf-clean-item-tap{width:100%;display:grid;grid-template-columns:28px minmax(0,1fr);gap:10px;align-items:center;padding:13px;border:0;background:transparent;text-align:left;color:inherit;cursor:pointer}
+.rf-clean-item-card.is-split .rf-clean-item-tap .rf-clean-item-check{display:grid;place-items:center}
+
+/* ---- M5: touch-target floor for the mobile back link ----
+   .rf-clean-back is only ever rendered on mobile trip-detail headers,
+   so this override is unconditional; imported last, it wins over the
+   base rule in interface-polish.css without needing !important. */
+.rf-clean-back{min-height:44px;display:inline-flex;align-items:center}
+.rf-clean-metrics small{font-size:10.5px;line-height:1.2;}

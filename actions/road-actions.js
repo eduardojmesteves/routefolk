@@ -8,6 +8,7 @@ import { STATE } from '../state/app-state.js';
 import { createRoad, updateRoad, deleteRoad, rateRoad, linkRoadToStage, unlinkRoadStage } from '../lib/roads.js';
 import {
   claim,
+  beginBusy,
   renderAll,
   api,
   selectedRoad,
@@ -56,6 +57,8 @@ async function syncStageLinks(roadId) {
 export async function saveRoadCreate(event) {
   claim(event);
   if (!STATE.user) return;
+  const endBusy = beginBusy(event);
+  if (!endBusy) return;
   try {
     const road = await createRoad(roadPayload());
     const rating = roadRatingValue();
@@ -67,6 +70,8 @@ export async function saveRoadCreate(event) {
     renderAll();
   } catch (error) {
     showError('v2-road-create-error', error);
+  } finally {
+    endBusy();
   }
 }
 
@@ -78,6 +83,8 @@ export async function saveRoadEdit(event) {
   claim(event);
   const road = selectedRoad();
   if (!STATE.user || !road) return;
+  const endBusy = beginBusy(event);
+  if (!endBusy) return;
   try {
     await updateRoad(road.id, roadPayload('-edit'));
     const rating = roadRatingValue('-edit');
@@ -89,6 +96,8 @@ export async function saveRoadEdit(event) {
     renderAll();
   } catch (error) {
     showError('v2-road-error', error);
+  } finally {
+    endBusy();
   }
 }
 

@@ -15,6 +15,7 @@ import { rememberArchiveContext, rememberTripContext } from '../state/ui-state.j
 import { dispatchAppAction } from '../screens/app-actions.js';
 import {
   claim,
+  beginBusy,
   renderAll,
   api,
   activeTrip,
@@ -42,6 +43,8 @@ const TRIP_WIZARD_ACTIONS = new Set([
  */
 export async function saveTripCreate(event) {
   claim(event);
+  const endBusy = beginBusy(event);
+  if (!endBusy) return;
   try {
     const payload = tripPayload();
     assertSelectedVisibilityHasMembers(payload);
@@ -62,6 +65,8 @@ export async function saveTripCreate(event) {
     renderAll();
   } catch (error) {
     showError('v2-trip-error', error);
+  } finally {
+    endBusy();
   }
 }
 
@@ -73,6 +78,8 @@ export async function saveTripEdit(event) {
   claim(event);
   const trip = activeTrip();
   if (!trip) return;
+  const endBusy = beginBusy(event);
+  if (!endBusy) return;
   try {
     const payload = tripPayload();
     const canManageVisibility = canManageTripVisibility(trip);
@@ -96,6 +103,8 @@ export async function saveTripEdit(event) {
     renderAll();
   } catch (error) {
     showError('v2-trip-error', error);
+  } finally {
+    endBusy();
   }
 }
 
