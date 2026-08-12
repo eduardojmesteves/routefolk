@@ -31,8 +31,8 @@ function bottomNav(active) {
   return `<nav class="rf-clean-bottom"><button class="${active === 'trips' ? 'is-active' : ''}" data-action="rf-m2-nav" data-tab="trips">Trips</button><button class="${active === 'archive' ? 'is-active' : ''}" data-action="rf-m2-nav" data-tab="archive">Archive</button><button class="${active === 'account' ? 'is-active' : ''}" data-action="rf-m2-nav" data-tab="account">You</button></nav>`;
 }
 
-function screen(inner, active = 'trips') {
-  return `${offlineBannerHtml()}<div class="rf-clean-mobile"><div class="rf-clean-scroll">${inner}</div>${bottomNav(active)}</div>`;
+function screen(inner, active = 'trips', fab = '') {
+  return `${offlineBannerHtml()}<div class="rf-clean-mobile"><div class="rf-clean-scroll">${inner}</div>${fab}${bottomNav(active)}</div>`;
 }
 
 function tripHeader(trip, active, backTo = 'trips', summaryOnly = false) {

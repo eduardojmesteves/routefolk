@@ -14,6 +14,68 @@
 }
 
 @media(max-width:959px){
+  /* Bottom nav — floating pill, per the Route Atlas design handoff's
+     .rf-bottomnav (shared/routefolk-shared.css): a rounded, elevated bar
+     with margin on three sides, not the old edge-to-edge bar with a top
+     rule. Active state reads via opacity + accent color, not an
+     underline bar. Replaces the .rf-clean-mobile/.rf-clean-scroll fixed
+     68px height math with flex sizing, since the pill's footprint is no
+     longer a round number.
+     Tap targets: the handoff's button padding (2px 10px, 12px text) is
+     kept verbatim for the visible label, but each button is stretched to
+     fill the full pill height and an equal third of its width via flex,
+     so the invisible hit-area still clears the 44px touch-target floor
+     without changing anything visible. */
+  .rf-clean-mobile{
+    display:flex!important;
+    flex-direction:column!important;
+  }
+
+  .rf-clean-scroll{
+    height:auto!important;
+    flex:1 1 auto!important;
+    min-height:0!important;
+  }
+
+  .rf-clean-bottom{
+    height:auto!important;
+    min-height:44px!important;
+    display:flex!important;
+    align-items:stretch!important;
+    justify-content:space-around!important;
+    gap:4px!important;
+    margin:0 16px calc(16px + env(safe-area-inset-bottom,0px))!important;
+    padding:0 8px!important;
+    border-top:0!important;
+    border-radius:var(--rf-radius-pill)!important;
+    background:var(--rf-d2-surface)!important;
+    box-shadow:var(--rf-shadow-md)!important;
+    backdrop-filter:none!important;
+  }
+
+  .rf-clean-bottom button{
+    flex:1 1 0!important;
+    height:auto!important;
+    display:flex!important;
+    align-items:center!important;
+    justify-content:center!important;
+    padding:6px 10px!important;
+    border-radius:var(--rf-radius-pill)!important;
+    color:var(--rf-d2-ink)!important;
+    opacity:.55!important;
+    font:600 12px/1.2 var(--rf-m2-font-ui)!important;
+    transition:opacity .12s ease,color .12s ease!important;
+  }
+
+  .rf-clean-bottom button.is-active{
+    opacity:1!important;
+    color:var(--rf-d2-primary)!important;
+  }
+
+  .rf-clean-bottom button.is-active::before{
+    content:none!important;
+  }
+
   .rf-clean-trips-hero{
     position:relative!important;
     display:flex!important;
@@ -51,19 +113,33 @@
     color:var(--rf-m2-muted)!important;
   }
 
-  .rf-clean-new-trip{
-    position:static!important;
-    flex:0 0 auto!important;
-    align-self:flex-start!important;
-    min-width:unset!important;
-    min-height:34px!important;
-    padding:0 16px!important;
+  /* "+ New trip" — floating action button anchored above the pill nav,
+     per the design handoff's mobile "Trips list" frame (rf-btn-primary,
+     position:absolute, right:18px). Replaces the old in-header button;
+     .rf-clean-mobile carries the position:relative it anchors to
+     (mirrors the handoff's .rf-phone-screen{position:relative}). Uses
+     the handoff's accent-primary fill verbatim — this is the one
+     mobile CTA pill matching that color; every other CTA pill (Log
+     expense, Add item, form Save buttons) is still the app's ink/surface
+     neutral pill, a pre-existing gap from the handoff worth a separate
+     pass, not folded into this one. */
+  .rf-clean-mobile{
+    position:relative!important;
+  }
+
+  .rf-clean-fab-new-trip{
+    position:absolute!important;
+    right:18px!important;
+    bottom:calc(44px + 16px + 14px + env(safe-area-inset-bottom,0px))!important;
+    z-index:5!important;
     border:0!important;
-    border-radius:999px!important;
-    background:var(--rf-m2-ink)!important;
-    color:var(--rf-m2-surface)!important;
+    border-radius:var(--rf-radius-pill)!important;
+    padding:12px 18px!important;
+    background:var(--rf-d2-primary)!important;
+    color:var(--rf-d2-ink)!important;
     font:800 13px/1 var(--rf-m2-font-ui)!important;
-    box-shadow:none!important;
+    white-space:nowrap!important;
+    box-shadow:var(--rf-shadow-md)!important;
     cursor:pointer!important;
   }
 
