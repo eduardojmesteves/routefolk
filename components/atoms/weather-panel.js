@@ -4,15 +4,9 @@
 // ============================================================
 
 import { esc } from '../../utils/dom.js';
+import { fmtTime } from '../../utils/datetime.js';
 import { wxCellHtml } from './wx-cell.js';
 import { weatherHeadline } from '../../lib/weather-headline.js';
-
-function timeHHMM(value) {
-  if (!value) return '';
-  const date = new Date(value);
-  if (Number.isNaN(date.getTime())) return '';
-  return date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
-}
 
 function fallbackMessage(stage, wx, prefix) {
   if (!stage?.planned_date) return `<section class="${prefix}-wx"><div class="${prefix}-wx-tag">Along the day</div><p>Set a planned date to see the weather forecast.</p></section>`;
@@ -36,7 +30,7 @@ export function weatherPanelHtml(stage, wx, { prefix = 'rf-m2' } = {}) {
     : '';
   const start = wx.rideWindow?.start || '09:30';
   const end = wx.rideWindow?.end || '17:00';
-  const fetched = timeHHMM(wx.fetchedAt);
+  const fetched = fmtTime(wx.fetchedAt);
 
   return `<section class="${prefix}-wx">
     <div class="${prefix}-wx-tag">Along the day</div>

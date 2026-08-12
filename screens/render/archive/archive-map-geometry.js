@@ -132,17 +132,6 @@ export function trackLabel(track) {
 }
 
 /**
- * Escape characters that would break out of HTML attribute / text
- * contexts. Used by the SVG fallback when injecting track labels.
- */
-export function escapeHtml(value) {
-  return String(value ?? '').replace(
-    /[&<>"]/g,
-    (ch) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' })[ch],
-  );
-}
-
-/**
  * Normalize an arbitrary thrown value into a human-readable message
  * suitable for showing in the fallback UI.
  */

@@ -4,17 +4,16 @@
 // Bump CACHE whenever shell assets change.
 // ============================================================
 
-const CACHE = 'routefolk-shell-v133-repo-cleanup';
+const CACHE = 'routefolk-shell-v134-nomenclature-cleanup';
 
 const SHELL_ASSETS = [
   './',
   './index.html',
   // CSS entry point (loaded by index.html)
-  './styles/index.css?v=20260523-weather-nav-01',
+  './styles/index.css?v=20260811-route-atlas-17',
   // Individual CSS files (fetched separately by browser via @import — must be cached for offline)
   // @import never carries a query string, so these must match the unversioned URL actually requested.
   './style.css',
-  './style-fidelity.css',
   './styles/shell.css',
   './styles/app-ui.css',
   './styles/wizards.css',
@@ -34,10 +33,11 @@ const SHELL_ASSETS = [
   './actions/expense-actions.js',
   './actions/item-actions.js',
   './actions/gpx-actions.js',
-  './app.js?v=20260520-desktop-weather-02',
-  './screens/app-renderer.js?v=20260520-desktop-weather-02',
+  './actions/road-actions.js',
+  './app.js?v=20260811-route-atlas-narrative-17',
+  './screens/app-renderer.js?v=20260811-route-atlas-narrative-17',
   // Loaded by <script src> above with this exact query — keep the version.
-  './screens/wizards.js?v=20260522-wizard-split-01',
+  './screens/wizards.js?v=20260811-route-atlas-narrative-17',
   // Loaded via ESM import (no query string) — must match the unversioned URL.
   './screens/wizards/index.js',
   './screens/wizards/wizard-shared.js',
@@ -48,9 +48,10 @@ const SHELL_ASSETS = [
   './screens/wizards/expense-wizard.js',
   './screens/wizards/item-wizard.js',
   './screens/wizards/gpx-wizard.js',
-  './screens/extra-writes.js?v=20260520-mobile-fields-02',
-  './screens/archive-geo-map.js?v=20260519-local-map-01',
-  './screens/render/archive/archive-map-controller.js',
+  './screens/wizards/road-wizard.js',
+  './screens/extra-writes.js?v=20260811-route-atlas-narrative-17',
+  // Loaded by <script src> above with this exact query — keep the version.
+  './screens/render/archive/archive-map-controller.js?v=20260811-route-atlas-narrative-17',
   './screens/render/archive/archive-map-leaflet.js',
   './screens/render/archive/archive-map-fallback.js',
   './screens/render/archive/archive-map-geometry.js',
@@ -72,7 +73,7 @@ const SHELL_ASSETS = [
   './screens/render/archive/archive-list-mobile.js',
   './screens/render/trips/trips-desktop.js',
   './screens/render/trips/trips-mobile.js',
-  './screens/app-actions.js?v=20260520-wizard-loop-04',
+  './screens/app-actions.js?v=20260811-route-atlas-narrative-17',
   './manifest.json',
   './icons/icon-192.png',
   './icons/icon-512.png',
@@ -114,6 +115,7 @@ const SHELL_ASSETS = [
   './lib/expenses.js',
   './lib/items.js',
   './lib/gpx.js',
+  './lib/roads.js',
 ];
 
 self.addEventListener('install', (event) => {

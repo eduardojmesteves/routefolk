@@ -5,7 +5,7 @@
 
 import { STATE } from '../../../state/app-state.js';
 import { esc } from '../../../utils/dom.js';
-import { fmtDate } from '../../../utils/datetime.js';
+import { fmtDate, fmtTime } from '../../../utils/datetime.js';
 import {
   categoryLabel,
   day,
@@ -34,7 +34,7 @@ function stageTracks(tripId, stageId) {
 // D2 — desktop journal entry with ✎ ✕ icon actions (hidden on archived
 // trips), plus the ordering grip and (manual mode only) ↑ ↓ buttons.
 function entryHtml(entry, index, total, manual, trip) {
-  const time = entry.timestamp ? new Date(entry.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : '';
+  const time = fmtTime(entry.timestamp);
   const acts = showStageActions(trip)
     ? `<div class="rf-d2-entry-acts">${manual ? `<button data-action="rf-v2-journal-entry-up" data-entry-id="${esc(entry.id)}" type="button" ${index === 0 ? 'disabled' : ''} aria-label="Move up">↑</button><button data-action="rf-v2-journal-entry-down" data-entry-id="${esc(entry.id)}" type="button" ${index === total - 1 ? 'disabled' : ''} aria-label="Move down">↓</button>` : ''}<button data-action="rf-v2-edit-entry" data-entry-id="${esc(entry.id)}" type="button"${writeDisabledAttr(trip)} aria-label="Edit entry">✎</button><button class="danger" data-action="rf-v2-delete-entry" data-entry-id="${esc(entry.id)}" type="button"${writeDisabledAttr(trip)} aria-label="Delete entry">✕</button></div>`
     : '';

@@ -14,11 +14,11 @@ import {
   bbox,
   collectCompletedGpxTracks,
   errorMessage,
-  escapeHtml,
   pointsForTrack,
   projectPointsToSvg,
   trackLabel,
 } from './archive-map-geometry.js';
+import { esc } from '../../../utils/dom.js';
 
 const VIEW_WIDTH = 1200;
 const VIEW_HEIGHT = 360;
@@ -39,7 +39,7 @@ export function renderSvgFallback(container, state, err) {
 
   if (!tracks.length) {
     const message = errorMessage(err);
-    container.innerHTML = `<div class="rf-v2-map-fallback"><div><strong>Map unavailable</strong><span>${escapeHtml(message)}</span></div></div>`;
+    container.innerHTML = `<div class="rf-v2-map-fallback"><div><strong>Map unavailable</strong><span>${esc(message)}</span></div></div>`;
     return { kind: 'empty', message };
   }
 
@@ -57,7 +57,7 @@ export function renderSvgFallback(container, state, err) {
       const [endX, endY] = endCoord.split(',');
       const startCircle =
         index === 0 ? `<circle class="rf-v2-map-start" cx="${startX}" cy="${startY}" r="6"/>` : '';
-      return `<polyline class="rf-v2-map-route" points="${polyline}"><title>${escapeHtml(trackLabel(entry.track))}</title></polyline>${startCircle}<circle class="rf-v2-map-end" cx="${endX}" cy="${endY}" r="6"/>`;
+      return `<polyline class="rf-v2-map-route" points="${polyline}"><title>${esc(trackLabel(entry.track))}</title></polyline>${startCircle}<circle class="rf-v2-map-end" cx="${endX}" cy="${endY}" r="6"/>`;
     })
     .join('');
 

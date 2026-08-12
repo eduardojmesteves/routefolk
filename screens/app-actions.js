@@ -347,7 +347,7 @@ document.addEventListener('input', (event) => {
 
 document.addEventListener('submit', async (event) => {
   const target = event.target instanceof Element ? event.target : null;
-  const form = target?.closest('[data-action="rf-d2-item-form"], [data-action="rf-m2-item-form"], [data-action="rf-v2-item-form"], [data-action="rf-v3-item-form"]');
+  const form = target?.closest('[data-action="rf-d2-item-form"]');
   if (!form) return;
   await addItem(event, form);
 }, true);

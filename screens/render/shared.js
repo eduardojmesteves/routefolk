@@ -20,11 +20,10 @@ export const ARCHIVE_FILTERS = [['all', 'All'], ['completed', 'Completed'], ['ca
 export const PALETTES = [
   ['midnight', 'Ember Trail', 'Dark charcoal · amber · teal'],
 ];
-export const DEFAULT_CATEGORIES = ['Clothing', 'Luggage', 'Tools & spares', 'Filming & gear', 'Chargers & power', 'Documents', 'First aid', 'Other'];
+const DEFAULT_CATEGORIES = ['Clothing', 'Luggage', 'Tools & spares', 'Filming & gear', 'Chargers & power', 'Documents', 'First aid', 'Other'];
 
 export const arr = (value) => Array.isArray(value) ? value : [];
 export const isDesktop = () => window.matchMedia('(min-width:960px)').matches;
-export const isMobile = () => !isDesktop();
 export const stages = (tripId) => arr(STATE.stagesByTrip[tripId]);
 export const expenses = (tripId) => arr(STATE.expensesByTrip[tripId]);
 export const items = (tripId) => arr(STATE.itemsByTrip[tripId]);
@@ -163,7 +162,7 @@ function nowRidingProgress(trip) {
 }
 
 /** Resolves which of the hero's three states applies right now. */
-export function tripsHeroState() {
+function tripsHeroState() {
   const active = STATE.trips.find((trip) => trip.status === 'active');
   if (active) return { kind: 'now-riding', trip: active, ...nowRidingProgress(active) };
   const planning = STATE.trips.filter((trip) => trip.status === 'planning');

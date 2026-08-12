@@ -7,7 +7,6 @@
    ============================================================ */
 
 @import "../style.css";
-@import "../style-fidelity.css";
 @import "./shell.css";
 @import "./app-ui.css";
 @import "./wizards.css";
