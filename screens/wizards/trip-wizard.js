@@ -199,6 +199,15 @@ export function tripWizardHtml(editing = false) {
     narrativeSection('v2-trip-section-status', "Where's it at?", '', choiceCards('v2-trip-status', [
       { value: 'planning', label: 'Planning', description: 'Still coming together', tone: 'info' },
       { value: 'active', label: 'Active', description: 'On the road right now', tone: 'primary' },
+      // Completed/cancelled only make sense for a trip that already
+      // exists — a brand-new trip can't be born finished. Both lock the
+      // trip from further stage/journal/expense edits on save (see
+      // canWriteToTrip() in screens/render/shared.js) and move it into
+      // the Archive, so they're edit-only, never offered at creation.
+      ...(editing ? [
+        { value: 'completed', label: 'Completed', description: 'Wrapped up — moves to the archive', tone: 'accent' },
+        { value: 'cancelled', label: 'Cancelled', description: "Called off — moves to the archive", tone: 'muted' },
+      ] : []),
     ], status)),
     narrativeSection('v2-trip-section-who', "Who's riding along?", '', [
       choiceCards('v2-trip-visibility', [
