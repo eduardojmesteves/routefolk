@@ -14,6 +14,28 @@
 }
 
 @media(max-width:959px){
+  /* styles/app-ui.css's .rf-app.is-redesigned .rf-screen{min-height:100vh}
+     (line 75) is a two-class selector with no media-query scope, so it
+     out-specificities every plain-.rf-screen min-height rule meant for
+     mobile only — including app-ui.css's own mobile media query a few
+     lines below it. That leaves the one ancestor box everything in this
+     shell nests inside (#app > .rf-screen) permanently sized against the
+     old static 100vh unit: the classic iOS-inflated viewport value, taller
+     than what's actually visible. Neither the --app-vh fix on
+     .rf-clean-mobile nor making the nav/FAB position:fixed touched this —
+     an oversized ancestor can still perturb how iOS resolves the
+     containing block for position:fixed descendants. Force every level of
+     the chain (not just the innermost div) onto the JS-verified height,
+     matching the fix used by other projects that hit this same bug. */
+  html, body, #app, .rf-screen,
+  .rf-app.is-redesigned,
+  .rf-app.is-redesigned .rf-main,
+  .rf-app.is-redesigned .rf-screen{
+    height:calc(var(--app-vh, 100dvh))!important;
+    min-height:calc(var(--app-vh, 100dvh))!important;
+  }
+
+
   /* The journal drill-in screen's stage-route h1 now lives in the fixed
      .rf-clean-trip-head header (was inside .rf-clean-page, whose own
      h1.rf-clean-title rule required that exact ancestor) — restate the
