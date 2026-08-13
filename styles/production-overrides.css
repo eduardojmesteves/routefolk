@@ -67,6 +67,15 @@
      so the invisible hit-area still clears the 44px touch-target floor
      without changing anything visible. */
   .rf-clean-mobile{
+    /* 100dvh (interface-polish.css's base rule) has been unreliable in
+       iOS standalone-PWA mode — it can resolve taller than the actual
+       visible viewport, leaving this box's flex children (and anything
+       position:absolute against it, like the FAB) measured against a
+       bottom edge that isn't the real screen bottom. --app-vh is a
+       JS-verified pixel height set on <html> by lib/palette-init.js,
+       which runs before this stylesheet's first paint; falls back to
+       100dvh if that hasn't run for some reason. */
+    height:calc(var(--app-vh, 100dvh))!important;
     display:flex!important;
     flex-direction:column!important;
   }
