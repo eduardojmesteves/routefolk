@@ -7,10 +7,11 @@
 
 import { STATE } from '../state/app-state.js';
 import { renderDesktopMarkup, renderSignedOutMarkup } from './render/desktop.js';
-import { renderMobileMarkup } from './render/mobile.js';
+import { renderMobileMarkup, mobileChrome } from './render/mobile.js';
 import { isDesktop } from './render/shared.js';
 
 let lastMarkup = '';
+let lastChromeMarkup = '';
 
 function loadingMarkup() {
   return isDesktop()
@@ -21,20 +22,29 @@ function loadingMarkup() {
 export function renderRoutefolk() {
   const app = document.getElementById('app');
   const content = document.getElementById('content');
+  const chrome = document.getElementById('rf-mobile-chrome');
   if (!app || !content) return;
 
   app.classList.add('is-redesigned');
 
   let html = '';
+  let chromeHtml = '';
   if (!STATE.user) html = renderSignedOutMarkup();
   else if (isDesktop()) html = renderDesktopMarkup();
-  else html = renderMobileMarkup() || loadingMarkup();
+  else {
+    html = renderMobileMarkup() || loadingMarkup();
+    chromeHtml = mobileChrome();
+  }
 
   const next = `<div class="rf-root-host">${html}</div>`;
   if (next !== lastMarkup) {
     content.innerHTML = next;
     lastMarkup = next;
     if (STATE.tab === 'archive') requestAnimationFrame(() => document.dispatchEvent(new Event('routefolk:archive-map-refresh')));
+  }
+  if (chrome && chromeHtml !== lastChromeMarkup) {
+    chrome.innerHTML = chromeHtml;
+    lastChromeMarkup = chromeHtml;
   }
 }
 

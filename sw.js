@@ -4,7 +4,7 @@
 // Bump CACHE whenever shell assets change.
 // ============================================================
 
-const CACHE = 'routefolk-shell-v138-screen-vh-fix';
+const CACHE = 'routefolk-shell-v139-body-level-chrome';
 
 const SHELL_ASSETS = [
   './',
@@ -34,10 +34,10 @@ const SHELL_ASSETS = [
   './actions/item-actions.js',
   './actions/gpx-actions.js',
   './actions/road-actions.js',
-  './app.js?v=20260811-route-atlas-narrative-17',
-  './screens/app-renderer.js?v=20260811-route-atlas-narrative-17',
+  './app.js?v=20260811-route-atlas-narrative-18',
+  './screens/app-renderer.js?v=20260811-route-atlas-narrative-18',
   // Loaded by <script src> above with this exact query — keep the version.
-  './screens/wizards.js?v=20260811-route-atlas-narrative-17',
+  './screens/wizards.js?v=20260811-route-atlas-narrative-18',
   // Loaded via ESM import (no query string) — must match the unversioned URL.
   './screens/wizards/index.js',
   './screens/wizards/wizard-shared.js',
@@ -49,9 +49,9 @@ const SHELL_ASSETS = [
   './screens/wizards/item-wizard.js',
   './screens/wizards/gpx-wizard.js',
   './screens/wizards/road-wizard.js',
-  './screens/extra-writes.js?v=20260811-route-atlas-narrative-17',
+  './screens/extra-writes.js?v=20260811-route-atlas-narrative-18',
   // Loaded by <script src> above with this exact query — keep the version.
-  './screens/render/archive/archive-map-controller.js?v=20260811-route-atlas-narrative-17',
+  './screens/render/archive/archive-map-controller.js?v=20260811-route-atlas-narrative-18',
   './screens/render/archive/archive-map-leaflet.js',
   './screens/render/archive/archive-map-fallback.js',
   './screens/render/archive/archive-map-geometry.js',
@@ -73,7 +73,7 @@ const SHELL_ASSETS = [
   './screens/render/archive/archive-list-mobile.js',
   './screens/render/trips/trips-desktop.js',
   './screens/render/trips/trips-mobile.js',
-  './screens/app-actions.js?v=20260811-route-atlas-narrative-17',
+  './screens/app-actions.js?v=20260811-route-atlas-narrative-18',
   './manifest.json',
   './icons/icon-192.png',
   './icons/icon-512.png',

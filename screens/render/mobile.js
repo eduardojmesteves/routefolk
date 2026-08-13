@@ -31,13 +31,27 @@ function bottomNav(active) {
   return `<nav class="rf-clean-bottom"><button class="${active === 'trips' ? 'is-active' : ''}" data-action="rf-mobile-nav" data-tab="trips">Trips</button><button class="${active === 'archive' ? 'is-active' : ''}" data-action="rf-mobile-nav" data-tab="archive">Archive</button><button class="${active === 'account' ? 'is-active' : ''}" data-action="rf-mobile-nav" data-tab="account">You</button></nav>`;
 }
 
-// Route Atlas mockup: on every mobile frame, the header (title, back
-// button, and the Stages/Summary/Costs/Items tab row where present) is
-// a fixed sibling OUTSIDE the scroll container — only the body content
-// scrolls beneath it. header defaults to '' for screens with nothing
-// to pin (loading/error placeholders).
+// The bottom nav pill and FAB are position:fixed, viewport-anchored
+// elements — but on iOS standalone PWA they were still nested inside
+// #app > .rf-screen > .rf-clean-mobile, all of which carry overflow:
+// hidden. Multiple other projects hitting the same "nav floats away from
+// the true bottom" bug on iOS PWA (we-promise/sure#835, a WordPress PWA
+// write-up) only got it to hold reliably once the fixed chrome was moved
+// to render completely outside any nested/overflow-constrained wrapper —
+// a direct child of <body>, not of the app shell. renderRoutefolk() in
+// app-renderer.js injects this into #rf-mobile-chrome (a body-level
+// sibling of #app, see index.html) instead of the returned shell markup.
+// Event delegation (actions/action-router.js) listens on `document`, so
+// moving these out of #app does not affect click handling.
+let lastChrome = '';
+
 function screen(body, active = 'trips', { fab = '', header = '' } = {}) {
-  return `${offlineBannerHtml()}<div class="rf-clean-mobile">${header}<div class="rf-clean-scroll">${body}</div>${fab}${bottomNav(active)}</div>`;
+  lastChrome = `${fab}${bottomNav(active)}`;
+  return `${offlineBannerHtml()}<div class="rf-clean-mobile">${header}<div class="rf-clean-scroll">${body}</div></div>`;
+}
+
+export function mobileChrome() {
+  return lastChrome;
 }
 
 function tripHeader(trip, active, backTo = 'trips', summaryOnly = false) {
