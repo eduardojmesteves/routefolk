@@ -94,22 +94,40 @@
     height:auto!important;
     flex:1 1 auto!important;
     min-height:0!important;
+    /* The pill nav below is now position:fixed (viewport-pinned, see
+       .rf-clean-bottom) instead of a normal flex sibling, so it no longer
+       reserves its own space in the flex column — without this padding,
+       the last card in any scrolled list would rest directly behind it. */
+    padding-bottom:calc(44px + 16px + 16px + env(safe-area-inset-bottom,0px))!important;
   }
 
+  /* Fixed directly to the viewport rather than laid out as a flex sibling
+     inside .rf-clean-mobile. iOS standalone-PWA mode has been observed to
+     recompute the app shell's dvh-derived height during scroll/interaction
+     in a way that can leave a flow-positioned last child short of the true
+     screen edge (a well-documented class of bug across other iOS PWAs, not
+     unique to this app) — position:fixed anchors straight to the visual
+     viewport, so the pill's position no longer depends on getting the
+     shell's height exactly right. */
   .rf-clean-bottom{
+    position:fixed!important;
+    left:16px!important;
+    right:16px!important;
+    bottom:calc(16px + env(safe-area-inset-bottom,0px))!important;
     height:auto!important;
     min-height:44px!important;
     display:flex!important;
     align-items:stretch!important;
     justify-content:space-around!important;
     gap:4px!important;
-    margin:0 16px calc(16px + env(safe-area-inset-bottom,0px))!important;
+    margin:0!important;
     padding:0 8px!important;
     border-top:0!important;
     border-radius:var(--rf-radius-pill)!important;
     background:var(--rf-desktop-surface)!important;
     box-shadow:var(--rf-shadow-md)!important;
     backdrop-filter:none!important;
+    z-index:10!important;
   }
 
   .rf-clean-bottom button{
@@ -174,23 +192,16 @@
 
   /* "+ New trip" — floating action button anchored above the pill nav,
      per the design handoff's mobile "Trips list" frame (rf-btn-primary,
-     position:absolute, right:18px). Replaces the old in-header button;
-     .rf-clean-mobile carries the position:relative it anchors to
-     (mirrors the handoff's .rf-phone-screen{position:relative}). Uses
-     the handoff's accent-primary fill verbatim — this is the one
-     mobile CTA pill matching that color; every other CTA pill (Log
-     expense, Add item, form Save buttons) is still the app's ink/surface
-     neutral pill, a pre-existing gap from the handoff worth a separate
-     pass, not folded into this one. */
-  .rf-clean-mobile{
-    position:relative!important;
-  }
-
+     right:18px). Fixed straight to the viewport, same reasoning as
+     .rf-clean-bottom above: anchoring to .rf-clean-mobile's own box
+     (position:absolute) made the FAB only as correctly-placed as that
+     ancestor's height, which is the thing iOS was getting wrong.
+     position:fixed removes that dependency entirely. */
   .rf-clean-fab-new-trip{
-    position:absolute!important;
+    position:fixed!important;
     right:18px!important;
     bottom:calc(44px + 16px + 14px + env(safe-area-inset-bottom,0px))!important;
-    z-index:5!important;
+    z-index:9!important;
     border:0!important;
     border-radius:var(--rf-radius-pill)!important;
     padding:13px 19px!important;
