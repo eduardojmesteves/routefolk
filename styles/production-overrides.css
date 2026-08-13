@@ -136,7 +136,7 @@
        .rf-clean-bottom) instead of a normal flex sibling, so it no longer
        reserves its own space in the flex column — without this padding,
        the last card in any scrolled list would rest directly behind it. */
-    padding-bottom:calc(44px + 16px + 16px + env(safe-area-inset-bottom,0px))!important;
+    padding-bottom:calc(44px + 11px + 16px + env(safe-area-inset-bottom,0px))!important;
   }
 
   /* Fixed directly to the viewport rather than laid out as a flex sibling
@@ -151,7 +151,7 @@
     position:fixed!important;
     left:16px!important;
     right:16px!important;
-    bottom:calc(16px + env(safe-area-inset-bottom,0px))!important;
+    bottom:calc(11px + env(safe-area-inset-bottom,0px))!important;
     height:auto!important;
     min-height:44px!important;
     display:flex!important;
@@ -238,7 +238,7 @@
   .rf-clean-fab-new-trip{
     position:fixed!important;
     right:18px!important;
-    bottom:calc(44px + 16px + 14px + env(safe-area-inset-bottom,0px))!important;
+    bottom:calc(44px + 11px + 14px + env(safe-area-inset-bottom,0px))!important;
     z-index:9!important;
     border:0!important;
     border-radius:var(--rf-radius-pill)!important;
@@ -317,7 +317,7 @@
        card (e.g. a 0km/0-stage planning trip) scrolls to rest directly
        behind the FAB instead of stopping above it — matches the FAB's
        own bottom offset + its height + a breathing-room gap. */
-    margin-bottom:calc(44px + 16px + 14px + 40px + 16px + env(safe-area-inset-bottom,0px))!important;
+    margin-bottom:calc(44px + 11px + 14px + 40px + 16px + env(safe-area-inset-bottom,0px))!important;
   }
 
   .rf-clean-trip-card,
