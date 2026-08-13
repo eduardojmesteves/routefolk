@@ -26,13 +26,27 @@
      an oversized ancestor can still perturb how iOS resolves the
      containing block for position:fixed descendants. Force every level of
      the chain (not just the innermost div) onto the JS-verified height,
-     matching the fix used by other projects that hit this same bug. */
+     matching the fix used by other projects that hit this same bug.
+
+     + env(safe-area-inset-bottom): a documented WebKit quirk in iOS
+     Home Screen PWAs with viewport-fit=cover — 100dvh, innerHeight, and
+     visualViewport.height (so --app-vh too, since it reads those same
+     APIs) all under-report by roughly the home-indicator's height, as if
+     the safe-area-bottom inset were already subtracted from "the
+     viewport" before JS ever sees it. Left uncompensated, every box in
+     this chain renders that much short of the true screen edge, and
+     whatever's outside the page's own painted box shows through as the
+     WKWebView's default backing color instead of our background —
+     exactly the "gap" symptom. Deliberately over-sizing the shell by
+     that same amount closes it back up. Source: https://stackoverflow.com/
+     questions/79902310 (iOS 26, Home Screen PWA, viewport-fit=cover —
+     same combination this app runs). */
   html, body, #app, .rf-screen,
   .rf-app.is-redesigned,
   .rf-app.is-redesigned .rf-main,
   .rf-app.is-redesigned .rf-screen{
-    height:calc(var(--app-vh, 100dvh))!important;
-    min-height:calc(var(--app-vh, 100dvh))!important;
+    height:calc(var(--app-vh, 100dvh) + env(safe-area-inset-bottom, 0px))!important;
+    min-height:calc(var(--app-vh, 100dvh) + env(safe-area-inset-bottom, 0px))!important;
   }
 
 
@@ -96,8 +110,10 @@
        bottom edge that isn't the real screen bottom. --app-vh is a
        JS-verified pixel height set on <html> by lib/palette-init.js,
        which runs before this stylesheet's first paint; falls back to
-       100dvh if that hasn't run for some reason. */
-    height:calc(var(--app-vh, 100dvh))!important;
+       100dvh if that hasn't run for some reason. The + env(safe-area-
+       inset-bottom) matches the html/body/#app/.rf-screen rule above —
+       see its comment for why the raw value under-reports. */
+    height:calc(var(--app-vh, 100dvh) + env(safe-area-inset-bottom, 0px))!important;
     display:flex!important;
     flex-direction:column!important;
   }

@@ -4,13 +4,13 @@
 // Bump CACHE whenever shell assets change.
 // ============================================================
 
-const CACHE = 'routefolk-shell-v139-body-level-chrome';
+const CACHE = 'routefolk-shell-v140-safe-area-compensation';
 
 const SHELL_ASSETS = [
   './',
   './index.html',
   // CSS entry point (loaded by index.html)
-  './styles/index.css?v=20260811-route-atlas-21',
+  './styles/index.css?v=20260811-route-atlas-22',
   // Individual CSS files (fetched separately by browser via @import — must be cached for offline)
   // @import never carries a query string, so these must match the unversioned URL actually requested.
   './style.css',
